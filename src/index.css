@@ -1,0 +1,36 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@200..800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	body {
+		font-family: "Nunito", sans-serif;
+	}
+}
+
+@layer utilities {
+	.btn-secondary:not(.btn-outline) {
+		background-color: #7dd3fc;
+		border: #7dd3fc;
+		color: #333c4d;
+	}
+
+	.btn-secondary:not(.btn-outline):hover {
+		background-color: #38bdf8;
+		border: #38bdf8;
+	}
+
+	.btn-secondary.btn-outline {
+		border: 1px solid #38bdf8;
+		color: #38bdf8;
+		background-color: white;
+	}
+
+	.btn-secondary.btn-outline:hover {
+		border: 1px solid #7dd3fc;
+		color: #333c4d;
+		background-color: #7dd3fc;
+	}
+}
