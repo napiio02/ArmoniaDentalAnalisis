@@ -80,9 +80,9 @@ function Login() {
 					)}
 
 					<div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-3 text-sm text-sky-700">
-						<p className="font-semibold mb-1">Credenciales de demo:</p>
-						<p>📧 admin@armoniadental.com</p>
-						<p>🔑 1234</p>
+						<p className="font-semibold mb-1">Credenciales de Prueba:</p>
+						<p>admin@armoniadental.com</p>
+						<p>1234</p>
 					</div>
 
 					<form onSubmit={handleSubmit}>

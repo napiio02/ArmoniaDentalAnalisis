@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router";
 import Navbar from "../components/Navbar";
 import Pagination from "../components/Paginacion";
-import { Search, Plus, Package, AlertTriangle, X } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, X, Pencil, ToggleLeft, ToggleRight } from "lucide-react";
 import { INSUMOS } from "../data/mockData";
 
 const Inventario = () => {
@@ -23,7 +24,6 @@ const Inventario = () => {
 	});
 
 	const insumosPorPagina = 10;
-
 	const categorias = [...new Set(INSUMOS.map((i) => i.categoria))];
 
 	useEffect(() => {
@@ -77,6 +77,12 @@ const Inventario = () => {
 			setMostrarModal(false);
 			setGuardando(false);
 		}, 600);
+	};
+
+	const toggleActivo = (id) => {
+		setInsumos((prev) =>
+			prev.map((i) => (i._id === id ? { ...i, activo: !i.activo } : i))
+		);
 	};
 
 	const insumosStockBajo = insumos.filter(
@@ -177,6 +183,7 @@ const Inventario = () => {
 											<th>Unidad</th>
 											<th>Proveedor</th>
 											<th>Estado</th>
+											<th className="text-center">Acciones</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -226,6 +233,32 @@ const Inventario = () => {
 													) : (
 														<span className="badge badge-error">Inactivo</span>
 													)}
+												</td>
+												<td className="text-center">
+													<div className="flex gap-2 justify-center">
+														{/* Ir a editar stock */}
+														<Link
+															to={`/inventario-editar/${insumo._id}`}
+															className="btn btn-sm btn-outline btn-neutral"
+															title="Editar stock"
+														>
+															<Pencil size={14} />
+														</Link>
+														{/* Toggle activo/inactivo */}
+														<button
+															onClick={() => toggleActivo(insumo._id)}
+															className={`btn btn-sm btn-outline ${
+																insumo.activo ? "btn-error" : "btn-success"
+															}`}
+															title={insumo.activo ? "Desactivar" : "Activar"}
+														>
+															{insumo.activo ? (
+																<ToggleRight size={16} />
+															) : (
+																<ToggleLeft size={16} />
+															)}
+														</button>
+													</div>
 												</td>
 											</tr>
 										))}

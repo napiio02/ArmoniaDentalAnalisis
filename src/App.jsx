@@ -9,12 +9,14 @@ import EditarPaciente from "./pages/EditarPaciente";
 import VisualizarPaciente from "./pages/VisualizarPaciente";
 import Expedientes from "./pages/Expedientes";
 import Citas from "./pages/Citas";
-// import Inventario from "./pages/Inventario";
+import Inventario from "./pages/Inventario";
+import EditarInsumo from "./pages/EditarInsumo";
 import ControlMarcas from "./pages/ControlMarcas";
 // import Comprobantes from "./pages/Comprobantes";
 import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
 import Odontograma from "./pages/Odontograma";
+import RecuperarPass from "./pages/RecuperarPass";
 
 const ProtectedRoute = ({ children }) => {
 	const isAuthenticated = localStorage.getItem("token");
@@ -27,6 +29,8 @@ const App = () => {
 			<Routes>
 				{/* Rutas públicas */}
 				<Route path="/login" element={<Login />} />
+
+				<Route path="/recuperar-password" element={<RecuperarPass />} />
 
 				{/* Rutas privadas */}
 				<Route
@@ -85,14 +89,20 @@ const App = () => {
 						</ProtectedRoute>
 					}
 				/>
-				{/* <Route
+				{ <Route
 					path="/inventario"
 					element={
 						<ProtectedRoute>
 							<Inventario />
 						</ProtectedRoute>
 					}
-				/> */}
+				/> }
+				<Route path="/inventario-editar/:id" 
+				element={
+				<ProtectedRoute>
+					<EditarInsumo />
+					</ProtectedRoute>} 
+				/>
 				<Route
 					path="/control-marcas"
 					element={
