@@ -2,11 +2,7 @@ node_modules
 .DS_Store
 dist
 
-# enviroment variables
+# environment variables
 .env
 
-/.vs/ArmoniaDentalAnalisis/FileContentIndex
-/.vs/ArmoniaDentalAnalisis/CopilotIndices/17.14.1653.19549
-/.vs/slnx.sqlite
-/.vs/ArmoniaDentalAnalisis/CopilotIndices/17.14.1653.19549/CodeChunks.db
-/.vs/slnx.sqlite-journal
+.vs/
