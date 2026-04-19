@@ -5,11 +5,13 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Pacientes from "./pages/Pacientes";
 import NuevoPaciente from "./pages/NuevoPaciente";
+import EditarPaciente from "./pages/EditarPaciente";
+import VisualizarPaciente from "./pages/VisualizarPaciente";
 import Expedientes from "./pages/Expedientes";
 import Citas from "./pages/Citas";
-import Inventario from "./pages/Inventario";
+// import Inventario from "./pages/Inventario";
 import ControlMarcas from "./pages/ControlMarcas";
-import Comprobantes from "./pages/Comprobantes";
+// import Comprobantes from "./pages/Comprobantes";
 import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
 import Odontograma from "./pages/Odontograma";
@@ -52,6 +54,22 @@ const App = () => {
 					}
 				/>
 				<Route
+					path="/pacientes/:id"
+					element={
+						<ProtectedRoute>
+							<VisualizarPaciente />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path="/pacientes/editar/:id"
+					element={
+						<ProtectedRoute>
+							<EditarPaciente />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
 					path="/expedientes"
 					element={
 						<ProtectedRoute>
@@ -67,14 +85,14 @@ const App = () => {
 						</ProtectedRoute>
 					}
 				/>
-				<Route
+				{/* <Route
 					path="/inventario"
 					element={
 						<ProtectedRoute>
 							<Inventario />
 						</ProtectedRoute>
 					}
-				/>
+				/> */}
 				<Route
 					path="/control-marcas"
 					element={
@@ -83,14 +101,14 @@ const App = () => {
 						</ProtectedRoute>
 					}
 				/>
-				<Route
+				{/* <Route
 					path="/comprobantes"
 					element={
 						<ProtectedRoute>
 							<Comprobantes />
 						</ProtectedRoute>
 					}
-				/>
+				/> */}
 				<Route
 					path="/reportes"
 					element={
