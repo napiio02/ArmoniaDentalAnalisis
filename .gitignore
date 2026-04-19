@@ -4,3 +4,6 @@ dist
 # enviroment variables
 .env
 
+/.vs/ArmoniaDentalAnalisis/FileContentIndex
+/.vs/ArmoniaDentalAnalisis/CopilotIndices/17.14.1653.19549
+/.vs/slnx.sqlite
