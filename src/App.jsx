@@ -12,7 +12,7 @@ import Citas from "./pages/Citas";
 import Inventario from "./pages/Inventario";
 import EditarInsumo from "./pages/EditarInsumo";
 import ControlMarcas from "./pages/ControlMarcas";
-// import Comprobantes from "./pages/Comprobantes";
+import Comprobantes from "./pages/Comprobantes";
 import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
 import Odontograma from "./pages/Odontograma";
@@ -111,14 +111,14 @@ const App = () => {
 						</ProtectedRoute>
 					}
 				/>
-				{/* <Route
+				{ <Route
 					path="/comprobantes"
 					element={
 						<ProtectedRoute>
 							<Comprobantes />
 						</ProtectedRoute>
 					}
-				/> */}
+				/> }
 				<Route
 					path="/reportes"
 					element={
