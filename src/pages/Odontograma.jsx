@@ -8,6 +8,10 @@ import {
 	FileText,
 	History,
 	ClipboardList,
+	Search,
+	UserRound,
+	Stethoscope,
+	ShieldPlus,
 } from "lucide-react";
 
 /* =========================================================
@@ -286,14 +290,19 @@ const PRELOADED_CASES = {
 	},
 };
 
+const DEMO_PATIENTS = [
+	{ _id: "p1", nombre: "Paciente demo permanente", activo: true },
+	{ _id: "p2", nombre: "Paciente demo temporal", activo: true },
+];
+
+/* =========================================================
+   HELPERS
+========================================================= */
 function getPatientMockId(pacienteId) {
 	if (!pacienteId) return "p1";
 	return pacienteId;
 }
 
-/* =========================================================
-   HELPERS
-========================================================= */
 function blankTooth() {
 	return {
 		marks: [],
@@ -323,11 +332,26 @@ function getType(num) {
 	return "incisivo";
 }
 
+function normalizeText(value = "") {
+	return value
+		.toLowerCase()
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.trim();
+}
+
 function getTopLabels(marks) {
+	const seen = new Set();
+
 	return marks
 		.map((mark) => getActionById(mark.actionId))
 		.filter(Boolean)
 		.filter((action) => ["label", "whole"].includes(action.type))
+		.filter((action) => {
+			if (seen.has(action.id)) return false;
+			seen.add(action.id);
+			return true;
+		})
 		.map((action) => ({
 			text: action.shortLabel,
 			color: action.color,
@@ -340,10 +364,6 @@ function getFaceColor(marks, face) {
 	if (!mark) return null;
 	const action = getActionById(mark.actionId);
 	return action?.color || null;
-}
-
-function hasWholeAction(marks, ids) {
-	return marks.some((mark) => ids.includes(mark.actionId));
 }
 
 function getWholeAction(marks, ids) {
@@ -362,6 +382,61 @@ function formatNow() {
 	});
 }
 
+function getExclusiveGroup(actionId) {
+	if (["ausente", "implante", "resto_radicular", "indicada_exodoncia"].includes(actionId)) {
+		return "estado_estructural";
+	}
+
+	if (
+		[
+			"corona_metal_porcelana",
+			"corona_libre_metal",
+			"corona_acero_cromado",
+		].includes(actionId)
+	) {
+		return "coronas";
+	}
+
+	return null;
+}
+
+function markEquals(a, b) {
+	return a.actionId === b.actionId && a.area === b.area;
+}
+
+function addHistoryEntry(currentTooth, tipo, detalle) {
+	return {
+		...currentTooth,
+		historial: [
+			{
+				fecha: formatNow(),
+				tipo,
+				detalle,
+			},
+			...(currentTooth?.historial || []),
+		],
+	};
+}
+
+function buildPatientOptions() {
+	const reales = (PACIENTES || [])
+		.filter((p) => p?.activo)
+		.map((p) => ({
+			_id: p._id,
+			nombre: p.nombre,
+			activo: p.activo,
+		}));
+
+	const ids = new Set();
+	const merged = [...DEMO_PATIENTS, ...reales].filter((p) => {
+		if (!p?._id || ids.has(p._id)) return false;
+		ids.add(p._id);
+		return true;
+	});
+
+	return merged;
+}
+
 /* =========================================================
    SVG DEL DIENTE
 ========================================================= */
@@ -369,7 +444,6 @@ function ToothSVG({ num, upper, tooth, onContextMenu, onClick, small }) {
 	const type = getType(num);
 	const w = small ? 34 : 44;
 	const h = small ? 72 : 90;
-
 	const marks = tooth.marks || [];
 
 	const ausente = getWholeAction(marks, ["ausente"]);
@@ -388,7 +462,6 @@ function ToothSVG({ num, upper, tooth, onContextMenu, onClick, small }) {
 		]) || null;
 
 	const fractureMarks = marks.filter((m) => m.actionId === "fractura_coronal");
-
 	const gTransform = upper ? "scale(1)" : "translate(0,80) scale(1,-1)";
 
 	const shapes = {
@@ -490,18 +563,16 @@ function ToothSVG({ num, upper, tooth, onContextMenu, onClick, small }) {
 				)}
 
 				{corona && (
-					<>
-						<rect
-							x="10"
-							y="19"
-							width="20"
-							height="16"
-							fill="none"
-							stroke={corona.color}
-							strokeWidth="1.7"
-							strokeDasharray="2 1"
-						/>
-					</>
+					<rect
+						x="10"
+						y="19"
+						width="20"
+						height="16"
+						fill="none"
+						stroke={corona.color}
+						strokeWidth="1.7"
+						strokeDasharray="2 1"
+					/>
 				)}
 
 				{sellante && !ausente && (
@@ -603,6 +674,7 @@ const CIRCLE_FACES = {
 
 function ObtCircle({ num, tooth, onFaceClick, small }) {
 	const size = small ? 28 : 38;
+
 	return (
 		<svg width={size} height={size} viewBox="0 0 40 40" className="block">
 			<defs>
@@ -694,10 +766,7 @@ function ToothCol({
 			</div>
 
 			{upper && (
-				<div
-					className={`rounded-md transition ${isSelected ? "ring-2 ring-sky-300" : ""
-						}`}
-				>
+				<div className={`rounded-md transition ${isSelected ? "ring-2 ring-sky-300" : ""}`}>
 					<ToothSVG
 						num={num}
 						upper={true}
@@ -717,10 +786,7 @@ function ToothCol({
 			/>
 
 			{!upper && (
-				<div
-					className={`rounded-md transition ${isSelected ? "ring-2 ring-sky-300" : ""
-						}`}
-				>
+				<div className={`rounded-md transition ${isSelected ? "ring-2 ring-sky-300" : ""}`}>
 					<ToothSVG
 						num={num}
 						upper={false}
@@ -733,11 +799,129 @@ function ToothCol({
 			)}
 
 			<span
-				className={`font-mono font-semibold ${small ? "text-[9px]" : "text-[10px]"
-					} ${isSelected ? "text-sky-700" : "text-gray-500"}`}
+				className={`font-mono font-semibold ${small ? "text-[9px]" : "text-[10px]"} ${
+					isSelected ? "text-sky-700" : "text-gray-500"
+				}`}
 			>
 				{num}
 			</span>
+		</div>
+	);
+}
+
+/* =========================================================
+   BUSCADOR DE PACIENTES
+========================================================= */
+function PatientAutocomplete({
+	options,
+	selectedId,
+	query,
+	setQuery,
+	onSelect,
+}) {
+	const [open, setOpen] = useState(false);
+	const wrapperRef = useRef(null);
+
+	const filtered = useMemo(() => {
+		const term = normalizeText(query);
+		if (!term) return options.slice(0, 8);
+
+		return options
+			.filter((p) => normalizeText(p.nombre).includes(term))
+			.slice(0, 10);
+	}, [options, query]);
+
+	useEffect(() => {
+		function handleClickOutside(event) {
+			if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+				setOpen(false);
+			}
+		}
+
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, []);
+
+	const selectedPatient = options.find((p) => p._id === selectedId);
+
+	return (
+		<div className="relative" ref={wrapperRef}>
+			<div className="relative">
+				<Search
+					size={16}
+					className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+				/>
+				<input
+					type="text"
+					value={query}
+					onChange={(e) => {
+						setQuery(e.target.value);
+						setOpen(true);
+					}}
+					onFocus={() => setOpen(true)}
+					placeholder="Buscar paciente por nombre..."
+					className="input input-bordered w-full bg-white pl-10 pr-10"
+				/>
+				{query && (
+					<button
+						type="button"
+						onClick={() => {
+							setQuery("");
+							setOpen(true);
+						}}
+						className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+					>
+						<X size={15} />
+					</button>
+				)}
+			</div>
+
+			{selectedPatient && (
+				<div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+					<div className="flex items-center gap-2">
+						<UserRound size={14} />
+						<span className="font-medium">{selectedPatient.nombre}</span>
+					</div>
+				</div>
+			)}
+
+			{open && (
+				<div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+					<div className="max-h-72 overflow-y-auto py-2">
+						{filtered.length > 0 ? (
+							filtered.map((patient) => (
+								<button
+									key={patient._id}
+									type="button"
+									onClick={() => {
+										onSelect(patient);
+										setOpen(false);
+									}}
+									className={`flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-gray-50 ${
+										selectedId === patient._id ? "bg-sky-50" : ""
+									}`}
+								>
+									<div className="rounded-full bg-gray-100 p-2 text-gray-500">
+										<UserRound size={14} />
+									</div>
+									<div className="min-w-0">
+										<p className="truncate text-sm font-medium text-gray-800">
+											{patient.nombre}
+										</p>
+										<p className="text-xs text-gray-400">
+											ID: {patient._id}
+										</p>
+									</div>
+								</button>
+							))
+						) : (
+							<div className="px-3 py-4 text-sm text-gray-400">
+								No se encontraron pacientes con ese nombre.
+							</div>
+						)}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -753,10 +937,10 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
 			<div className="fixed inset-0 z-40" onClick={onClose} />
 
 			<div
-				className="fixed z-50 w-[320px] rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden"
+				className="fixed z-50 w-[330px] rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden"
 				style={{ left: x, top: y }}
 			>
-				<div className="flex items-center justify-between px-3 py-2 border-b bg-gray-50">
+				<div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
 					<p className="text-sm font-semibold text-gray-700">
 						Registrar en pieza
 					</p>
@@ -769,7 +953,7 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
 					</button>
 				</div>
 
-				<div className="max-h-[420px] overflow-y-auto">
+				<div className="max-h-[440px] overflow-y-auto">
 					{CONTEXT_ACTIONS.map((group) => (
 						<div key={group.group} className="p-3 border-b last:border-b-0">
 							<p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
@@ -788,9 +972,16 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
 											className="w-3 h-3 rounded-full border border-gray-300"
 											style={{ backgroundColor: item.color }}
 										/>
-										<span className="text-sm text-gray-700">
-											{item.label}
-										</span>
+										<div className="flex flex-col">
+											<span className="text-sm text-gray-700">
+												{item.label}
+											</span>
+											<span className="text-[11px] text-gray-400">
+												{item.type === "faces" || item.type === "shape"
+													? "Aplicar sobre cara"
+													: "Aplicar sobre pieza"}
+											</span>
+										</div>
 									</button>
 								))}
 							</div>
@@ -872,6 +1063,7 @@ function ObservationModal({
 ========================================================= */
 export default function Odontograma() {
 	const [pacienteId, setPacienteId] = useState("");
+	const [patientQuery, setPatientQuery] = useState("");
 	const [dentadura, setDentadura] = useState("permanente");
 	const [teeth, setTeeth] = useState(buildBlankTeeth());
 	const [selectedTooth, setSelectedTooth] = useState(null);
@@ -894,8 +1086,20 @@ export default function Odontograma() {
 
 	const pageRef = useRef(null);
 
+	const patientOptions = useMemo(() => buildPatientOptions(), []);
+	const selectedPatient = useMemo(
+		() => patientOptions.find((p) => p._id === pacienteId) || null,
+		[pacienteId, patientOptions]
+	);
+
 	const selectedToothData = selectedTooth ? teeth[selectedTooth] : null;
 	const isPerm = dentadura === "permanente";
+
+	useEffect(() => {
+		if (selectedPatient) {
+			setPatientQuery(selectedPatient.nombre);
+		}
+	}, [selectedPatient]);
 
 	useEffect(() => {
 		const presetId = getPatientMockId(pacienteId);
@@ -912,6 +1116,12 @@ export default function Odontograma() {
 
 		setTeeth(base);
 		setSelectedTooth(null);
+
+		if (presetId === "p2") {
+			setDentadura("temporal");
+		} else {
+			setDentadura("permanente");
+		}
 	}, [pacienteId]);
 
 	useEffect(() => {
@@ -924,6 +1134,24 @@ export default function Odontograma() {
 		window.addEventListener("keydown", handleEscape);
 		return () => window.removeEventListener("keydown", handleEscape);
 	}, []);
+
+	const currentFaceAction = useMemo(
+		() => getActionById(faceActionId),
+		[faceActionId]
+	);
+
+	const selectedMarks = useMemo(() => {
+		if (!selectedToothData?.marks?.length) return [];
+
+		return selectedToothData.marks.map((mark, index) => {
+			const action = getActionById(mark.actionId);
+			return {
+				...mark,
+				index,
+				action,
+			};
+		}).filter((item) => item.action);
+	}, [selectedToothData]);
 
 	const renderQuadrant = (nums, upper, small = false) => (
 		<div className="flex items-end gap-0.5 justify-center">
@@ -943,26 +1171,12 @@ export default function Odontograma() {
 		</div>
 	);
 
-	function appendHistory(toothNumber, tipo, detalle) {
-		return {
-			...teeth[toothNumber],
-			historial: [
-				{
-					fecha: formatNow(),
-					tipo,
-					detalle,
-				},
-				...(teeth[toothNumber]?.historial || []),
-			],
-		};
-	}
-
 	function openContextMenu(event, toothNumber) {
 		event.preventDefault();
 		setSelectedTooth(toothNumber);
 
-		const offsetX = window.innerWidth - event.clientX < 340 ? 340 : 0;
-		const offsetY = window.innerHeight - event.clientY < 460 ? 430 : 0;
+		const offsetX = window.innerWidth - event.clientX < 350 ? 350 : 0;
+		const offsetY = window.innerHeight - event.clientY < 470 ? 440 : 0;
 
 		setContextMenu({
 			open: true,
@@ -976,49 +1190,48 @@ export default function Odontograma() {
 		setSelectedTooth(toothNumber);
 	}
 
+	function selectPatient(patient) {
+		setPacienteId(patient._id);
+		setPatientQuery(patient.nombre);
+	}
+
 	function handleFaceClick(toothNumber, face) {
 		if (!faceActionId) return;
 
 		const action = getActionById(faceActionId);
 		if (!action) return;
-
 		if (!["faces", "shape"].includes(action.type)) return;
 
 		setSelectedTooth(toothNumber);
+
 		setTeeth((prev) => {
 			const current = prev[toothNumber];
-			const existingIndex = current.marks.findIndex(
-				(mark) => mark.area === face
+			const existing = current.marks.find(
+				(mark) => mark.area === face && mark.actionId === action.id
 			);
 
+			if (existing) {
+				return prev;
+			}
+
+			const sameFaceIndex = current.marks.findIndex((mark) => mark.area === face);
 			let newMarks = [...current.marks];
 
-			if (
-				existingIndex >= 0 &&
-				newMarks[existingIndex].actionId === action.id
-			) {
-				newMarks.splice(existingIndex, 1);
-			} else {
-				if (existingIndex >= 0) {
-					newMarks.splice(existingIndex, 1);
-				}
-				newMarks.push({ actionId: action.id, area: face });
+			if (sameFaceIndex >= 0) {
+				newMarks.splice(sameFaceIndex, 1);
 			}
+
+			newMarks.push({ actionId: action.id, area: face });
+
+			const updatedTooth = addHistoryEntry(
+				{ ...current, marks: newMarks },
+				"Registro",
+				`${action.label} en cara ${face}.`
+			);
 
 			return {
 				...prev,
-				[toothNumber]: {
-					...current,
-					marks: newMarks,
-					historial: [
-						{
-							fecha: formatNow(),
-							tipo: "Registro",
-							detalle: `${action.label} en cara ${face}.`,
-						},
-						...current.historial,
-					],
-				},
+				[toothNumber]: updatedTooth,
 			};
 		});
 	}
@@ -1037,42 +1250,60 @@ export default function Odontograma() {
 
 		setTeeth((prev) => {
 			const current = prev[toothNumber];
-
-			const filteredMarks = current.marks.filter((mark) => {
-				const markAction = getActionById(mark.actionId);
-				if (!markAction) return true;
-
-				if (action.type === "whole") {
-					return mark.area !== "whole";
-				}
-
-				if (action.type === "label") {
-					return mark.area !== "label";
-				}
-
-				return true;
-			});
-
 			const area = action.type === "label" ? "label" : "whole";
+			const incomingMark = { actionId: action.id, area };
+
+			const alreadyExists = current.marks.some((mark) => markEquals(mark, incomingMark));
+			if (alreadyExists) {
+				return prev;
+			}
+
+			let newMarks = [...current.marks];
+			const exclusiveGroup = getExclusiveGroup(action.id);
+
+			if (exclusiveGroup) {
+				newMarks = newMarks.filter((mark) => {
+					const existingGroup = getExclusiveGroup(mark.actionId);
+					return existingGroup !== exclusiveGroup;
+				});
+			}
+
+			newMarks.push(incomingMark);
+
+			const updatedTooth = addHistoryEntry(
+				{ ...current, marks: newMarks },
+				"Registro",
+				`${action.label} registrado en la pieza.`
+			);
 
 			return {
 				...prev,
-				[toothNumber]: {
-					...current,
-					marks: [...filteredMarks, { actionId: action.id, area }],
-					historial: [
-						{
-							fecha: formatNow(),
-							tipo: "Registro",
-							detalle: `${action.label} registrado en la pieza.`,
-						},
-						...current.historial,
-					],
-				},
+				[toothNumber]: updatedTooth,
 			};
 		});
 
 		setContextMenu((prev) => ({ ...prev, open: false }));
+	}
+
+	function handleRemoveMark(toothNumber, markToRemove) {
+		setTeeth((prev) => {
+			const current = prev[toothNumber];
+			const newMarks = current.marks.filter((mark) => !markEquals(mark, markToRemove));
+
+			const action = getActionById(markToRemove.actionId);
+			const detalleBase = action?.label || "Registro";
+
+			const updatedTooth = addHistoryEntry(
+				{ ...current, marks: newMarks },
+				"Actualización",
+				`Se eliminó ${detalleBase}${["V", "L", "M", "D", "O"].includes(markToRemove.area) ? ` de la cara ${markToRemove.area}` : ""}.`
+			);
+
+			return {
+				...prev,
+				[toothNumber]: updatedTooth,
+			};
+		});
 	}
 
 	function handleClearTooth(toothNumber) {
@@ -1096,6 +1327,7 @@ export default function Odontograma() {
 		if (!window.confirm("¿Deseas restablecer todo el odontograma?")) return;
 		setTeeth(buildBlankTeeth());
 		setSelectedTooth(null);
+		setNotasGenerales("");
 	}
 
 	function handleSaveGeneral() {
@@ -1115,32 +1347,27 @@ export default function Odontograma() {
 		const toothNumber = observationModal.toothNumber;
 		if (!toothNumber) return;
 
-		setTeeth((prev) => ({
-			...prev,
-			[toothNumber]: {
-				...prev[toothNumber],
-				observacion: value,
-				historial: [
-					{
-						fecha: formatNow(),
-						tipo: "Observación",
-						detalle: value || "Observación eliminada.",
-					},
-					...prev[toothNumber].historial,
-				],
-			},
-		}));
+		setTeeth((prev) => {
+			const updatedTooth = addHistoryEntry(
+				{
+					...prev[toothNumber],
+					observacion: value,
+				},
+				"Observación",
+				value || "Observación eliminada."
+			);
+
+			return {
+				...prev,
+				[toothNumber]: updatedTooth,
+			};
+		});
 
 		setObservationModal({
 			open: false,
 			toothNumber: null,
 		});
 	}
-
-	const currentFaceAction = useMemo(
-		() => getActionById(faceActionId),
-		[faceActionId]
-	);
 
 	return (
 		<div ref={pageRef} className="min-h-screen bg-gray-100 text-gray-800">
@@ -1170,32 +1397,41 @@ export default function Odontograma() {
 			/>
 
 			<div className="flex">
-				<aside className="w-72 flex-shrink-0 bg-white border-r border-gray-200 min-h-screen p-4 flex flex-col gap-4">
-					<div>
-						<p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-							Paciente
-						</p>
+				<aside className="w-[340px] flex-shrink-0 bg-white border-r border-gray-200 min-h-screen p-4 flex flex-col gap-4">
+					<div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+						<div className="flex items-center gap-2 mb-3">
+							<div className="rounded-xl bg-sky-100 p-2 text-sky-700">
+								<UserRound size={18} />
+							</div>
+							<div>
+								<p className="text-sm font-semibold text-gray-800">Paciente</p>
+								<p className="text-xs text-gray-500">
+									Busca y selecciona rápidamente
+								</p>
+							</div>
+						</div>
 
-						<select
-							className="select select-bordered w-full bg-white"
-							value={pacienteId}
-							onChange={(e) => setPacienteId(e.target.value)}
-						>
-							<option value="">Seleccionar paciente</option>
-							<option value="p1">Paciente demo permanente</option>
-							<option value="p2">Paciente demo temporal</option>
-							{PACIENTES?.filter((p) => p.activo)?.map((p) => (
-								<option key={p._id} value={p._id}>
-									{p.nombre}
-								</option>
-							))}
-						</select>
+						<PatientAutocomplete
+							options={patientOptions}
+							selectedId={pacienteId}
+							query={patientQuery}
+							setQuery={setPatientQuery}
+							onSelect={selectPatient}
+						/>
 					</div>
 
-					<div>
-						<p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-							Tipo de dentición
-						</p>
+					<div className="rounded-2xl border border-gray-200 bg-white p-4">
+						<div className="flex items-center gap-2 mb-3">
+							<div className="rounded-xl bg-emerald-100 p-2 text-emerald-700">
+								<Stethoscope size={18} />
+							</div>
+							<div>
+								<p className="text-sm font-semibold text-gray-800">Dentición</p>
+								<p className="text-xs text-gray-500">
+									Selecciona el tipo para la vista
+								</p>
+							</div>
+						</div>
 
 						<div className="flex gap-3">
 							<label className="flex items-center gap-2 cursor-pointer">
@@ -1222,10 +1458,20 @@ export default function Odontograma() {
 						</div>
 					</div>
 
-					<div className="border-t pt-4">
-						<p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-							Acción para caras
-						</p>
+					<div className="rounded-2xl border border-gray-200 bg-white p-4">
+						<div className="flex items-center gap-2 mb-3">
+							<div className="rounded-xl bg-violet-100 p-2 text-violet-700">
+								<ShieldPlus size={18} />
+							</div>
+							<div>
+								<p className="text-sm font-semibold text-gray-800">
+									Acción para caras
+								</p>
+								<p className="text-xs text-gray-500">
+									Luego haz clic en una cara del diente
+								</p>
+							</div>
+						</div>
 
 						<div className="grid grid-cols-1 gap-2">
 							{[
@@ -1244,10 +1490,11 @@ export default function Odontograma() {
 										key={item.id}
 										type="button"
 										onClick={() => setFaceActionId(item.id)}
-										className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition text-left ${faceActionId === item.id
-											? "border-sky-300 bg-sky-50"
-											: "border-gray-200 hover:bg-gray-50"
-											}`}
+										className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition text-left ${
+											faceActionId === item.id
+												? "border-sky-300 bg-sky-50"
+												: "border-gray-200 hover:bg-gray-50"
+										}`}
 									>
 										<span
 											className="w-3 h-3 rounded-full border border-gray-300"
@@ -1260,44 +1507,49 @@ export default function Odontograma() {
 						</div>
 					</div>
 
-					<div className="border-t pt-4">
+					<div className="rounded-2xl border border-gray-200 bg-white p-4">
 						<p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
 							Pieza seleccionada
 						</p>
 
 						{selectedTooth ? (
-							<div className="rounded-xl border border-gray-200 p-3 bg-gray-50 space-y-3">
+							<div className="space-y-3">
 								<div>
-									<p className="text-sm font-semibold text-gray-800">
+									<p className="text-base font-semibold text-gray-800">
 										Pieza {selectedTooth}
 									</p>
 									<p className="text-xs text-gray-500">
-										Usa clic derecho sobre la pieza para abrir el menú.
+										Clic derecho sobre la pieza para registrar nuevas acciones.
 									</p>
 								</div>
 
 								<div className="flex flex-wrap gap-2">
-									{selectedToothData?.marks?.length > 0 ? (
-										selectedToothData.marks.map((mark, i) => {
-											const action = getActionById(mark.actionId);
-											if (!action) return null;
-
-											return (
+									{selectedMarks.length > 0 ? (
+										selectedMarks.map((item) => (
+											<div
+												key={`${item.actionId}-${item.area}`}
+												className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm"
+											>
 												<span
-													key={`${mark.actionId}-${mark.area}-${i}`}
-													className="badge badge-outline gap-1 px-2 py-3"
-												>
-													<span
-														className="w-2 h-2 rounded-full inline-block"
-														style={{ backgroundColor: action.color }}
-													/>
-													{action.label}
-													{["V", "L", "M", "D", "O"].includes(mark.area)
-														? ` ${mark.area}`
+													className="w-2.5 h-2.5 rounded-full inline-block"
+													style={{ backgroundColor: item.action.color }}
+												/>
+												<span className="text-gray-700">
+													{item.action.label}
+													{["V", "L", "M", "D", "O"].includes(item.area)
+														? ` ${item.area}`
 														: ""}
 												</span>
-											);
-										})
+												<button
+													type="button"
+													onClick={() => handleRemoveMark(selectedTooth, item)}
+													className="text-gray-400 hover:text-red-600"
+													title="Quitar marca"
+												>
+													<X size={14} />
+												</button>
+											</div>
+										))
 									) : (
 										<span className="text-sm text-gray-400">
 											Sin registros en esta pieza.
@@ -1332,7 +1584,7 @@ export default function Odontograma() {
 						)}
 					</div>
 
-					<div className="mt-auto pt-4 border-t flex flex-col gap-2">
+					<div className="mt-auto pt-2 flex flex-col gap-2">
 						<button
 							type="button"
 							className="btn btn-ghost gap-2"
@@ -1368,16 +1620,22 @@ export default function Odontograma() {
 								Caras activas con {currentFaceAction.label}
 							</div>
 						)}
+
+						{selectedPatient && (
+							<div className="badge badge-lg bg-white border-gray-300 text-gray-700 gap-2">
+								<UserRound size={14} />
+								{selectedPatient.nombre}
+							</div>
+						)}
 					</div>
 
 					<div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 min-w-[920px]">
-						<div className="mb-3">
+						<div className="mb-4">
 							<h1 className="text-xl font-bold text-gray-800">
 								Odontograma clínico
 							</h1>
 							<p className="text-sm text-gray-500">
-								Vista gráfica por pieza, caras, observaciones y
-								registros precargados para demo.
+								Vista gráfica por pieza, caras, observaciones y registros del paciente.
 							</p>
 						</div>
 
@@ -1456,7 +1714,7 @@ export default function Odontograma() {
 								{[
 									{ color: STATUS_COLORS.verde, text: "Resina y sellante" },
 									{ color: STATUS_COLORS.azul, text: "Amalgama, coronas y endodoncia" },
-									{ color: STATUS_COLORS.rojo, text: "Caries, material temporal, exodoncia y RR" },
+									{ color: STATUS_COLORS.rojo, text: "Caries, material temporal, exodoncia y resto radicular" },
 									{ color: STATUS_COLORS.negro, text: "Ausente, implante y ortodoncia fija" },
 								].map((item) => (
 									<div key={item.text} className="flex items-center gap-2">
