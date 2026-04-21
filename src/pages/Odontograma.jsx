@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 /* =========================================================
-   NUMERACI”N FDI
+   NUMERACI√ìN FDI
 ========================================================= */
 const SUP_DER = [18, 17, 16, 15, 14, 13, 12, 11];
 const SUP_IZQ = [21, 22, 23, 24, 25, 26, 27, 28];
@@ -35,7 +35,7 @@ const ALL_NUMS = [
 ];
 
 /* =========================================================
-   SIMBOLOGÕA
+   SIMBOLOG√çA
 ========================================================= */
 const STATUS_COLORS = {
 	verde: "#16a34a",
@@ -85,14 +85,14 @@ const CONTEXT_ACTIONS = [
 			},
 			{
 				id: "giroversion",
-				label: "GiroversiÛn",
+				label: "Giroversi√≥n",
 				color: STATUS_COLORS.azul,
 				shortLabel: "GIR",
 				type: "label",
 			},
 			{
 				id: "fusion",
-				label: "FusiÛn",
+				label: "Fusi√≥n",
 				color: STATUS_COLORS.azul,
 				shortLabel: "FUS",
 				type: "label",
@@ -132,7 +132,7 @@ const CONTEXT_ACTIONS = [
 			},
 			{
 				id: "incrustacion",
-				label: "IncrustaciÛn",
+				label: "Incrustaci√≥n",
 				color: STATUS_COLORS.azul,
 				shortLabel: "INC",
 				type: "faces",
@@ -217,12 +217,12 @@ const PRELOADED_CASES = {
 		},
 		11: {
 			marks: [{ actionId: "corona_libre_metal", area: "whole" }],
-			observacion: "Corona estÈtica vigente.",
+			observacion: "Corona est√©tica vigente.",
 			historial: [
 				{
 					fecha: "2026-02-02",
 					tipo: "Tratamiento",
-					detalle: "ColocaciÛn de corona libre de metal.",
+					detalle: "Colocaci√≥n de corona libre de metal.",
 				},
 			],
 		},
@@ -239,7 +239,7 @@ const PRELOADED_CASES = {
 		},
 		36: {
 			marks: [{ actionId: "indicada_exodoncia", area: "whole" }],
-			observacion: "Dolor persistente. Valorar extracciÛn.",
+			observacion: "Dolor persistente. Valorar extracci√≥n.",
 			historial: [
 				{
 					fecha: "2026-04-10",
@@ -263,12 +263,12 @@ const PRELOADED_CASES = {
 	p2: {
 		55: {
 			marks: [{ actionId: "material_temporal", area: "O" }],
-			observacion: "Paciente pedi·trico con material temporal.",
+			observacion: "Paciente pedi√°trico con material temporal.",
 			historial: [
 				{
 					fecha: "2026-04-07",
 					tipo: "Tratamiento",
-					detalle: "ColocaciÛn de material temporal.",
+					detalle: "Colocaci√≥n de material temporal.",
 				},
 			],
 		},
@@ -591,7 +591,7 @@ function ToothSVG({ num, upper, tooth, onContextMenu, onClick, small }) {
 }
 
 /* =========================================================
-   CÕRCULO DE CARAS
+   C√çRCULO DE CARAS
 ========================================================= */
 const CIRCLE_FACES = {
 	V: "M3,3 L37,3 L27,13 L13,13 Z",
@@ -689,7 +689,7 @@ function ToothCol({
 						</span>
 					))
 				) : (
-					<span className="text-[8px] text-gray-300">ó</span>
+					<span className="text-[8px] text-gray-300">‚Äî</span>
 				)}
 			</div>
 
@@ -743,7 +743,7 @@ function ToothCol({
 }
 
 /* =========================================================
-   MEN⁄ CONTEXTUAL
+   MEN√ö CONTEXTUAL
 ========================================================= */
 function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
 	if (!open) return null;
@@ -837,7 +837,7 @@ function ObservationModal({
 				<div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
 					<div className="px-5 py-4 border-b bg-gray-50">
 						<p className="font-semibold text-gray-800">
-							ObservaciÛn clÌnica de la pieza {toothNumber}
+							Observaci√≥n cl√≠nica de la pieza {toothNumber}
 						</p>
 					</div>
 
@@ -846,7 +846,7 @@ function ObservationModal({
 							className="textarea textarea-bordered w-full h-36 text-sm"
 							value={value}
 							onChange={(e) => setValue(e.target.value)}
-							placeholder="Escribe una observaciÛn clÌnica complementaria..."
+							placeholder="Escribe una observaci√≥n cl√≠nica complementaria..."
 						/>
 					</div>
 
@@ -858,7 +858,7 @@ function ObservationModal({
 							className="btn btn-primary"
 							onClick={() => onSave(value)}
 						>
-							Guardar observaciÛn
+							Guardar observaci√≥n
 						</button>
 					</div>
 				</div>
@@ -1083,8 +1083,8 @@ export default function Odontograma() {
 				historial: [
 					{
 						fecha: formatNow(),
-						tipo: "ActualizaciÛn",
-						detalle: "Se limpiÛ el registro de la pieza.",
+						tipo: "Actualizaci√≥n",
+						detalle: "Se limpi√≥ el registro de la pieza.",
 					},
 				],
 			},
@@ -1093,7 +1093,7 @@ export default function Odontograma() {
 	}
 
 	function handleResetAll() {
-		if (!window.confirm("øDeseas restablecer todo el odontograma?")) return;
+		if (!window.confirm("¬øDeseas restablecer todo el odontograma?")) return;
 		setTeeth(buildBlankTeeth());
 		setSelectedTooth(null);
 	}
@@ -1123,8 +1123,8 @@ export default function Odontograma() {
 				historial: [
 					{
 						fecha: formatNow(),
-						tipo: "ObservaciÛn",
-						detalle: value || "ObservaciÛn eliminada.",
+						tipo: "Observaci√≥n",
+						detalle: value || "Observaci√≥n eliminada.",
 					},
 					...prev[toothNumber].historial,
 				],
@@ -1194,7 +1194,7 @@ export default function Odontograma() {
 
 					<div>
 						<p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-							Tipo de denticiÛn
+							Tipo de dentici√≥n
 						</p>
 
 						<div className="flex gap-3">
@@ -1224,7 +1224,7 @@ export default function Odontograma() {
 
 					<div className="border-t pt-4">
 						<p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-							AcciÛn para caras
+							Acci√≥n para caras
 						</p>
 
 						<div className="grid grid-cols-1 gap-2">
@@ -1245,8 +1245,8 @@ export default function Odontograma() {
 										type="button"
 										onClick={() => setFaceActionId(item.id)}
 										className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition text-left ${faceActionId === item.id
-												? "border-sky-300 bg-sky-50"
-												: "border-gray-200 hover:bg-gray-50"
+											? "border-sky-300 bg-sky-50"
+											: "border-gray-200 hover:bg-gray-50"
 											}`}
 									>
 										<span
@@ -1272,7 +1272,7 @@ export default function Odontograma() {
 										Pieza {selectedTooth}
 									</p>
 									<p className="text-xs text-gray-500">
-										Usa clic derecho sobre la pieza para abrir el men˙.
+										Usa clic derecho sobre la pieza para abrir el men√∫.
 									</p>
 								</div>
 
@@ -1312,7 +1312,7 @@ export default function Odontograma() {
 										className="btn btn-sm btn-outline justify-start"
 									>
 										<FileText size={14} />
-										Editar observaciÛn
+										Editar observaci√≥n
 									</button>
 
 									<button
@@ -1348,7 +1348,7 @@ export default function Odontograma() {
 							onClick={handleSaveGeneral}
 						>
 							<Save size={15} />
-							{guardado ? "°Guardado!" : "Guardar odontograma"}
+							{guardado ? "¬°Guardado!" : "Guardar odontograma"}
 						</button>
 					</div>
 				</aside>
@@ -1373,10 +1373,10 @@ export default function Odontograma() {
 					<div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 min-w-[920px]">
 						<div className="mb-3">
 							<h1 className="text-xl font-bold text-gray-800">
-								Odontograma clÌnico
+								Odontograma cl√≠nico
 							</h1>
 							<p className="text-sm text-gray-500">
-								Vista gr·fica por pieza, caras, observaciones y
+								Vista gr√°fica por pieza, caras, observaciones y
 								registros precargados para demo.
 							</p>
 						</div>
@@ -1406,7 +1406,7 @@ export default function Odontograma() {
 						) : (
 							<>
 								<p className="text-center text-xs text-gray-400 uppercase tracking-widest font-semibold mb-4">
-									DenticiÛn temporal
+									Dentici√≥n temporal
 								</p>
 
 								<div className="grid grid-cols-2 border-b-2 border-dashed border-gray-200 pb-6 mb-6">
@@ -1502,13 +1502,13 @@ export default function Odontograma() {
 					{selectedTooth && (
 						<div className="mt-4 bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
 							<p className="text-sm font-semibold text-gray-700 mb-2">
-								ObservaciÛn de la pieza {selectedTooth}
+								Observaci√≥n de la pieza {selectedTooth}
 							</p>
 
 							<p className="text-sm text-gray-600 whitespace-pre-wrap">
 								{selectedToothData?.observacion?.trim()
 									? selectedToothData.observacion
-									: "Sin observaciÛn registrada."}
+									: "Sin observaci√≥n registrada."}
 							</p>
 						</div>
 					)}

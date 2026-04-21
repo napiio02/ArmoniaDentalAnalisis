@@ -65,21 +65,6 @@ const Home = () => {
 						<div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 p-6">
 							<div className="flex items-start justify-between">
 								<div>
-									<p className="text-sm text-gray-600 mb-1">Ingresos del Mes</p>
-									<h3 className="text-3xl font-bold text-gray-900">
-										₡{ingresosMes.toLocaleString("es-CR")}
-									</h3>
-									<p className="text-xs text-green-600 mt-1">+12% vs mes anterior</p>
-								</div>
-								<div className="p-2 bg-primary/15 rounded-lg">
-									<DollarSign className="w-6 h-6 text-primary" />
-								</div>
-							</div>
-						</div>
-
-						<div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 p-6">
-							<div className="flex items-start justify-between">
-								<div>
 									<p className="text-sm text-gray-600 mb-1">Insumos Stock Bajo</p>
 									<h3 className="text-3xl font-bold text-gray-900">
 										{insumosStockBajo}

@@ -186,9 +186,6 @@ const Expedientes = () => {
 											<h3 className="font-semibold text-gray-800 text-lg">
 												Historial de Atenciones
 											</h3>
-											<button className="btn btn-secondary btn-sm">
-												<Plus size={14} /> Nueva Anotación
-											</button>
 										</div>
 
 										{expedientesPaciente.length === 0 ? (

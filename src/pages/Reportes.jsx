@@ -215,7 +215,7 @@ const Reportes = () => {
 							</div>
 						</div>
 
-						{/* Ingresos por tipo de comprobante */}
+						{/* Ingresos por tipo de comprobante */} 
 						<div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
 							<h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
 								<TrendingUp className="w-5 h-5 text-primary" />
