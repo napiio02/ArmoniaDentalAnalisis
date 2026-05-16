@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import Navbar from "../components/Navbar";
-import { PACIENTES } from "../data/mockData";
+import Navbar from "../../components/Navbar";
+import { PACIENTES } from "../../data/mockData";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { Link } from "react-router";
 

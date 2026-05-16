@@ -3,10 +3,10 @@ import { Route, Routes, Navigate } from "react-router";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Pacientes from "./pages/Pacientes";
-import NuevoPaciente from "./pages/NuevoPaciente";
-import EditarPaciente from "./pages/EditarPaciente";
-import VisualizarPaciente from "./pages/VisualizarPaciente";
+import Pacientes from "./pages/Pacientes/Pacientes";
+import NuevoPaciente from "./pages/Pacientes/NuevoPaciente";
+import EditarPaciente from "./pages/Pacientes/EditarPaciente";
+import VisualizarPaciente from "./pages/Pacientes/VisualizarPaciente";
 import Expedientes from "./pages/Expedientes";
 import Citas from "./pages/Citas";
 import Inventario from "./pages/Inventario";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import Navbar from "../components/Navbar";
+import Navbar from "../../components/Navbar";
 import { Pencil } from "lucide-react";
 
 const EditarPaciente = () => {

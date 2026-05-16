@@ -156,8 +156,8 @@ const Inventario = () => {
 									onChange={(e) => setStockFiltro(e.target.value)}
 								>
 									<option value="todo">Todo el stock</option>
-									<option value="bajo">Stock bajo ⚠️</option>
-									<option value="ok">Stock OK ✅</option>
+									<option value="bajo">Stock bajo</option>
+									<option value="ok">Stock OK</option>
 								</select>
 							</div>
 						</div>

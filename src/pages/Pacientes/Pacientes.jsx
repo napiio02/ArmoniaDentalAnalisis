@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import Navbar from "../components/Navbar";
-import Pagination from "../components/Paginacion";
+import Navbar from "../../components/Navbar";
+import { PACIENTES } from "../../data/mockData";
+import Pagination from "../../components/Paginacion";
 import { Search, Eye, ToggleLeft, ToggleRight, Plus, Pencil } from "lucide-react";
-import { PACIENTES } from "../data/mockData";
 
 const Pacientes = () => {
 	const [pacientes, setPacientes] = useState(PACIENTES);
