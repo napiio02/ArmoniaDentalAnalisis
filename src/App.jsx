@@ -15,7 +15,7 @@ import ControlMarcas from "./pages/ControlMarcas";
 import Comprobantes from "./pages/Comprobantes";
 import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
-import Odontograma from "./pages/Odontograma";
+import Odontograma from "./pages/Odontograma/Odontograma";
 import RecuperarPass from "./pages/RecuperarPass";
 
 const ProtectedRoute = ({ children }) => {
