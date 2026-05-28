@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 
 import { UsersRoutes } from "./routes/UsersRoutes.js";
 import { RolesRoutes } from "./routes/RolesRoutes.js";
+import { InsumosRoutes } from "./routes/InsumosRoutes.js";
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 
@@ -24,6 +25,7 @@ app.use(express.json());
 
 UsersRoutes(app);
 RolesRoutes(app);
+InsumosRoutes(app);
 
 app.listen(port, async () => {
 

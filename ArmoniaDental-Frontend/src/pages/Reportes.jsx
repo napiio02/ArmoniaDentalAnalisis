@@ -1,5 +1,5 @@
 import Navbar from "../components/Navbar";
-import { CITAS, PACIENTES, MARCAS, INSUMOS } from "../data/mockData";
+import { CITAS, PACIENTES, MARCAS } from "../data/mockData";
 import { BarChart2, Calendar, Users, AlertTriangle, FileText } from "lucide-react";
 import { useState } from "react";
 

@@ -1,28 +1,80 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import Navbar from "../components/Navbar";
+import Navbar from "../../components/Navbar";
 import { AlertTriangle, ArrowLeft, Save, X } from "lucide-react";
-import { INSUMOS } from "../data/mockData";
+import { insumoService } from "../../services/insumoService";
 
 const EditarInsumo = () => {
 	const { id } = useParams();
 	const navigate = useNavigate();
 
-	const insumoOriginal = INSUMOS.find((i) => i._id === id);
-
-	const [formData, setFormData] = useState({
-		stock_actual: insumoOriginal?.stock_actual ?? "",
-		stock_minimo: insumoOriginal?.stock_minimo ?? "",
-	});
+	const [insumoOriginal, setInsumoOriginal] = useState(null);
+	const [cargando, setCargando] = useState(true);
 	const [guardando, setGuardando] = useState(false);
+	const [error, setError] = useState(null);
+	const [formData, setFormData] = useState({
+		stock_actual: "",
+		stock_minimo: "",
+	});
 
-	if (!insumoOriginal) {
+	// ── Cargar insumo por ID ──
+	useEffect(() => {
+		const fetchInsumo = async () => {
+			try {
+				const { data } = await insumoService.getById(id);
+				setInsumoOriginal(data);
+				setFormData({
+					stock_actual: data.stock_actual,
+					stock_minimo: data.stock_minimo,
+				});
+			} catch (err) {
+				setError("No se encontró el insumo.");
+			} finally {
+				setCargando(false);
+			}
+		};
+
+		fetchInsumo();
+	}, [id]);
+
+	// ── Guardar cambios ──
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setGuardando(true);
+		try {
+			await insumoService.update(id, {
+				stock_actual: Number(formData.stock_actual),
+				stock_minimo: Number(formData.stock_minimo),
+			});
+			navigate("/inventario");
+		} catch (err) {
+			setError("Error al guardar los cambios.");
+			setGuardando(false);
+		}
+	};
+
+	const stockBajo =
+		Number(formData.stock_actual) <= Number(formData.stock_minimo);
+
+	// ── Estados de carga y error ──
+	if (cargando) {
+		return (
+			<div>
+				<Navbar />
+				<div className="flex justify-center items-center h-64">
+					<span className="loading loading-spinner loading-lg text-primary" />
+				</div>
+			</div>
+		);
+	}
+
+	if (error || !insumoOriginal) {
 		return (
 			<div>
 				<Navbar />
 				<div className="container mx-auto p-8">
 					<div className="alert alert-error max-w-md">
-						<span>Insumo no encontrado.</span>
+						<span>{error || "Insumo no encontrado."}</span>
 					</div>
 					<button
 						className="btn btn-ghost mt-4 gap-2"
@@ -36,34 +88,17 @@ const EditarInsumo = () => {
 		);
 	}
 
-	const handleSubmit = (e) => {
-		e.preventDefault();
-		setGuardando(true);
-		setTimeout(() => {
-			setGuardando(false);
-			navigate("/inventario");
-		}, 700);
-	};
-
-	const stockBajo =
-		Number(formData.stock_actual) <= Number(formData.stock_minimo);
-
 	return (
 		<div>
 			<Navbar />
 			<div className="container mx-auto p-8">
 				<div className="lg:px-8 max-w-lg mx-auto">
-
-					{/* mismo estilo de encabezado que las otras páginas */}
 					<h2 className="text-3xl font-bold text-gray-800 mb-2">Editar Insumo</h2>
 					<p className="text-gray-600 mb-6">
 						Solo se puede modificar el stock actual y el stock mínimo
 					</p>
 
-					{/* Card igual al modal-box de DaisyUI */}
 					<div className="bg-white rounded-2xl shadow-md p-6 border border-gray-200">
-
-						{/* Encabezado del card con X para volver */}
 						<div className="flex justify-between items-center mb-4">
 							<h3 className="font-bold text-lg">Editar stock</h3>
 							<button
@@ -74,7 +109,7 @@ const EditarInsumo = () => {
 							</button>
 						</div>
 
-						{/* Info del insumo (solo lectura) igual al bg-gray-50 del modal */}
+						{/* Info solo lectura */}
 						<div className="bg-gray-50 rounded-lg p-3 mb-4">
 							<p className="font-semibold text-gray-800">{insumoOriginal.nombre}</p>
 							<p className="text-sm text-gray-500">
@@ -125,7 +160,6 @@ const EditarInsumo = () => {
 								</div>
 							)}
 
-							{/* Mismos botones que el modal */}
 							<div className="flex justify-end gap-3 pt-2">
 								<button
 									type="button"
@@ -142,7 +176,7 @@ const EditarInsumo = () => {
 									{guardando ? (
 										<span className="loading loading-spinner loading-xs" />
 									) : (
-										"Guardar cambios"
+										<><Save size={15} /> Guardar cambios</>
 									)}
 								</button>
 							</div>

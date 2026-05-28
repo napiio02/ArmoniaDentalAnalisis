@@ -1,7 +1,7 @@
 ﻿import { Link } from "react-router";
 import Navbar from "../components/Navbar";
 import { Users, Calendar, DollarSign, Package, Clock, FileText } from "lucide-react";
-import { PACIENTES, CITAS, INSUMOS, COMPROBANTES } from "../data/mockData";
+import { PACIENTES, CITAS, COMPROBANTES } from "../data/mockData";
 
 const Home = () => {
 	const pacientesActivos = PACIENTES.filter((p) => p.activo).length;
@@ -10,9 +10,7 @@ const Home = () => {
 		return fecha.getMonth() === 3 && fecha.getFullYear() === 2026;
 	}).length;
 	const ingresosMes = COMPROBANTES.reduce((acc, c) => acc + c.monto, 0);
-	const insumosStockBajo = INSUMOS.filter(
-		(i) => i.activo && i.stock_actual <= i.stock_minimo
-	).length;
+	const insumosStockBajo = 0;
 
 	const citasHoy = CITAS.filter((c) => {
 		const fecha = new Date(c.fecha_hora);
