@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../../components/Navbar";
-import { PACIENTES } from "../../data/mockData";
+import { obtenerPacientesConExpediente } from "../../services/pacienteService";
 import OdontogramaChart from "./components/OdontogramaChart";
 
 import {
@@ -36,6 +36,11 @@ import {
 	buildObservationEvent,
 	buildOdontogramaPayload,
 } from "./utils/odontogramaHelpers";
+
+import {
+	guardarOdontograma,
+	obtenerOdontogramaPorPaciente,
+} from "../../services/odontogramaService";
 
 /* =========================================================
    BUSCADOR DE PACIENTES
@@ -125,9 +130,8 @@ function PatientAutocomplete({
 										onSelect(patient);
 										setOpen(false);
 									}}
-									className={`flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-gray-50 ${
-										selectedId === patient._id ? "bg-sky-50" : ""
-									}`}
+									className={`flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-gray-50 ${selectedId === patient._id ? "bg-sky-50" : ""
+										}`}
 								>
 									<div className="rounded-full bg-gray-100 p-2 text-gray-500">
 										<UserRound size={14} />
@@ -332,12 +336,19 @@ function ToothMenu({ open, x, y, onClose, onViewInfo, onOpenActions }) {
    COMPONENTE PRINCIPAL
 ========================================================= */
 export default function Odontograma() {
+	const [pacientes, setPacientes] = useState([]);
+	const [cargandoPacientes, setCargandoPacientes] = useState(false);
+	const [errorPacientes, setErrorPacientes] = useState("");
+
 	const [pacienteId, setPacienteId] = useState("");
 	const [patientQuery, setPatientQuery] = useState("");
 	const [dentadura, setDentadura] = useState("permanente");
 	const [teeth, setTeeth] = useState(buildBlankTeeth());
 	const [selectedTooth, setSelectedTooth] = useState(null);
 	const [guardado, setGuardado] = useState(false);
+	const [guardando, setGuardando] = useState(false);
+	const [cargandoOdontograma, setCargandoOdontograma] = useState(false);
+	const [errorOdontograma, setErrorOdontograma] = useState("");
 	const [notasGenerales, setNotasGenerales] = useState("");
 
 	const [pendingEvents, setPendingEvents] = useState([]);
@@ -366,12 +377,35 @@ export default function Odontograma() {
 
 	const pageRef = useRef(null);
 
-	const patientOptions = useMemo(() => buildPatientOptions(PACIENTES), []);
+	const patientOptions = useMemo(
+		() => buildPatientOptions(pacientes),
+		[pacientes]
+	);
 
 	const selectedPatient = useMemo(
 		() => patientOptions.find((p) => p._id === pacienteId) || null,
 		[pacienteId, patientOptions]
 	);
+
+	useEffect(() => {
+		async function cargarPacientes() {
+			try {
+				setCargandoPacientes(true);
+				setErrorPacientes("");
+
+				const respuesta = await obtenerPacientesConExpediente();
+
+				setPacientes(respuesta.data || []);
+			} catch (error) {
+				console.error("Error cargando pacientes:", error);
+				setErrorPacientes(error.message);
+			} finally {
+				setCargandoPacientes(false);
+			}
+		}
+
+		cargarPacientes();
+	}, []);
 
 	const selectedToothData = selectedTooth ? teeth[selectedTooth] : null;
 
@@ -416,12 +450,42 @@ export default function Odontograma() {
 	}, [selectedPatient]);
 
 	useEffect(() => {
-		setTeeth(buildBlankTeeth());
-		setSelectedTooth(null);
-		setNotasGenerales("");
-		setDentadura("permanente");
-		setPendingEvents([]);
-		setHasUnsavedChanges(false);
+		async function cargarOdontogramaPaciente() {
+			setTeeth(buildBlankTeeth());
+			setSelectedTooth(null);
+			setNotasGenerales("");
+			setDentadura("permanente");
+			setPendingEvents([]);
+			setHasUnsavedChanges(false);
+			setErrorOdontograma("");
+
+			if (!pacienteId) return;
+
+			try {
+				setCargandoOdontograma(true);
+
+				const respuesta = await obtenerOdontogramaPorPaciente(pacienteId);
+				const odontograma = respuesta?.data;
+
+				if (!odontograma) return;
+
+				setDentadura(odontograma.dentadura || "permanente");
+				setNotasGenerales(odontograma.notas_generales || "");
+
+				if (odontograma.teeth) {
+					setTeeth({
+						...buildBlankTeeth(),
+						...odontograma.teeth,
+					});
+				}
+			} catch (error) {
+				setErrorOdontograma(error.message);
+			} finally {
+				setCargandoOdontograma(false);
+			}
+		}
+
+		cargarOdontogramaPaciente();
 	}, [pacienteId]);
 
 	useEffect(() => {
@@ -638,53 +702,72 @@ export default function Odontograma() {
 		setHasUnsavedChanges(false);
 	}
 
-	function handleSaveGeneral() {
+	async function handleSaveGeneral() {
 		if (!pacienteId) {
 			alert("Debes seleccionar un paciente antes de guardar el odontograma.");
 			return;
 		}
 
-		const payload = buildOdontogramaPayload({
-			pacienteId,
-			expedienteId: selectedPatient?.expediente_id || "",
-			dentadura,
-			teeth,
-			notasGenerales,
-			pendingEvents,
-		});
+		if (!selectedPatient?.expediente_id) {
+			alert("El paciente seleccionado no tiene expediente clínico asociado.");
+			return;
+		}
 
-		console.log("Payload listo para enviar a Mongo:", payload);
+		try {
+			setGuardando(true);
+			setErrorOdontograma("");
 
-		setTeeth((prev) => {
-			const updated = { ...prev };
+			const payload = buildOdontogramaPayload({
+				pacienteId,
+				expedienteId: selectedPatient.expediente_id,
+				dentadura,
+				teeth,
+				notasGenerales,
+				pendingEvents,
+			});
 
-			for (const event of pendingEvents) {
-				const toothNumber = event.pieza_numero;
+			const respuesta = await guardarOdontograma(payload);
+			const odontogramaGuardado = respuesta?.data;
 
-				if (!updated[toothNumber]) continue;
+			setTeeth((prev) => {
+				const updated = { ...prev };
 
-				updated[toothNumber] = {
-					...updated[toothNumber],
-					historial: [
-						{
-							fecha: event.fecha_visual,
-							tipo: event.tipo_evento,
-							detalle: event.detalle,
-							pendiente: false,
-						},
-						...(updated[toothNumber].historial || []),
-					],
-				};
-			}
+				for (const event of pendingEvents) {
+					const toothNumber = event.pieza_numero;
 
-			return updated;
-		});
+					if (!updated[toothNumber]) continue;
 
-		setPendingEvents([]);
-		setHasUnsavedChanges(false);
+					updated[toothNumber] = {
+						...updated[toothNumber],
+						historial: [
+							{
+								fecha: event.fecha_visual,
+								tipo: event.tipo_evento,
+								detalle: event.detalle,
+								pendiente: false,
+							},
+							...(updated[toothNumber].historial || []),
+						],
+					};
+				}
 
-		setGuardado(true);
-		setTimeout(() => setGuardado(false), 1800);
+				return updated;
+			});
+
+			console.log("Odontograma guardado en Mongo:", odontogramaGuardado);
+
+			setPendingEvents([]);
+			setHasUnsavedChanges(false);
+
+			setGuardado(true);
+			setTimeout(() => setGuardado(false), 1800);
+		} catch (error) {
+			console.error("Error guardando odontograma:", error);
+			setErrorOdontograma(error.message);
+			alert(error.message);
+		} finally {
+			setGuardando(false);
+		}
 	}
 
 	function openObservationModal() {
@@ -745,8 +828,8 @@ export default function Odontograma() {
 				}}
 				onOpenActions={() => {
 					const fakeEvent = {
-						preventDefault: () => {},
-						stopPropagation: () => {},
+						preventDefault: () => { },
+						stopPropagation: () => { },
 						clientX: toothMenu.x,
 						clientY: toothMenu.y,
 					};
@@ -784,13 +867,27 @@ export default function Odontograma() {
 							</div>
 						</div>
 
-						<PatientAutocomplete
-							options={patientOptions}
-							selectedId={pacienteId}
-							query={patientQuery}
-							setQuery={setPatientQuery}
-							onSelect={selectPatient}
-						/>
+						{cargandoPacientes && (
+							<div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
+								Cargando pacientes...
+							</div>
+						)}
+
+						{errorPacientes && (
+							<div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+								{errorPacientes}
+							</div>
+						)}
+
+						{!cargandoPacientes && !errorPacientes && (
+							<PatientAutocomplete
+								options={patientOptions}
+								selectedId={pacienteId}
+								query={patientQuery}
+								setQuery={setPatientQuery}
+								onSelect={selectPatient}
+							/>
+						)}
 					</div>
 
 					<div className="rounded-2xl border border-gray-200 bg-white p-4">
@@ -862,11 +959,10 @@ export default function Odontograma() {
 										key={item.id}
 										type="button"
 										onClick={() => setFaceActionId(item.id)}
-										className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition text-left ${
-											faceActionId === item.id
+										className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition text-left ${faceActionId === item.id
 												? "border-sky-300 bg-sky-50"
 												: "border-gray-200 hover:bg-gray-50"
-										}`}
+											}`}
 									>
 										<span
 											className="w-3 h-3 rounded-full border border-gray-300"
@@ -982,14 +1078,26 @@ export default function Odontograma() {
 							type="button"
 							className="btn btn-primary gap-2"
 							onClick={handleSaveGeneral}
+							disabled={guardando}
 						>
 							<Save size={15} />
-							{guardado ? "¡Guardado!" : "Guardar odontograma"}
+							{guardando ? "Guardando..." : guardado ? "¡Guardado!" : "Guardar odontograma"}
 						</button>
 					</div>
 				</aside>
 
 				<main className="flex-1 p-5 overflow-x-auto">
+					{cargandoOdontograma && (
+						<div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+							Cargando odontograma del paciente...
+						</div>
+					)}
+
+					{errorOdontograma && (
+						<div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+							{errorOdontograma}
+						</div>
+					)}
 					<OdontogramaChart
 						dentadura={dentadura}
 						teeth={teeth}
@@ -1041,8 +1149,8 @@ export default function Odontograma() {
 							</p>
 
 							{selectedTooth &&
-							(selectedPendingEvents.length > 0 ||
-								selectedSavedHistory.length > 0) ? (
+								(selectedPendingEvents.length > 0 ||
+									selectedSavedHistory.length > 0) ? (
 								<div className="space-y-2 max-h-56 overflow-y-auto pr-1">
 									{selectedPendingEvents.map((item) => (
 										<div

@@ -1,21 +1,23 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
+import dns from "node:dns";
 
-dotenv.config();
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const connectDB = async () => {
   try {
+    if (!process.env.MONGO_URI) {
+      throw new Error("No se encontró MONGO_URI en el archivo .env");
+    }
 
-    await mongoose.connect(process.env.MONGO_URI);
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 15000,
+      family: 4,
+    });
 
-    console.log("MongoDB conectado correctamente");
-
-  } catch(error) {
-
-    console.error("Error conectando MongoDB:", error);
-
+    console.log(`MongoDB Atlas conectado: ${conn.connection.host}`);
+  } catch (error) {
+    console.error("Error al conectar con MongoDB Atlas:", error.message);
     process.exit(1);
-
   }
 };
 

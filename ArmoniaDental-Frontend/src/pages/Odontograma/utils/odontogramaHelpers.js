@@ -1,4 +1,15 @@
-import { ALL_NUMS, CONTEXT_ACTIONS } from "../data/odontogramaConstants";
+import {
+	ALL_NUMS,
+	CONTEXT_ACTIONS,
+	SUP_DER,
+	SUP_IZQ,
+	INF_IZQ,
+	INF_DER,
+	TEMP_SD,
+	TEMP_SI,
+	TEMP_II,
+	TEMP_ID,
+} from "../data/odontogramaConstants";
 
 export function blankTooth() {
 	return {
@@ -124,6 +135,24 @@ export function markEquals(a, b) {
 }
 
 /* =========================================================
+   PACIENTES
+========================================================= */
+
+export function buildPatientOptions(pacientes = []) {
+	return pacientes
+		.filter((p) => p?.activo)
+		.map((p) => ({
+			_id: p._id,
+			nombre: p.nombre,
+			activo: p.activo,
+			expediente_id: p.expediente_id || "",
+			cedula: p.cedula || "",
+			correo: p.correo || "",
+			telefono: p.telefono || "",
+		}));
+}
+
+/* =========================================================
    EVENTOS PENDIENTES DEL ODONTOGRAMA
    Estos eventos NO son historial definitivo.
    Solo se guardan en Mongo cuando la dentista confirma
@@ -178,7 +207,11 @@ export function buildRemoveEvent(toothNumber, markToRemove) {
 		actionId: markToRemove.actionId,
 		area,
 		detalle: action
-			? `Se eliminó ${action.label}${["V", "L", "M", "D", "O"].includes(area) ? ` de la cara ${area}` : " de la pieza"}.`
+			? `Se eliminó ${action.label}${
+					["V", "L", "M", "D", "O"].includes(area)
+						? ` de la cara ${area}`
+						: " de la pieza"
+			  }.`
 			: "Se eliminó un registro de la pieza.",
 	});
 }
@@ -226,16 +259,10 @@ export function addHistoryEntry(currentTooth, tipo, detalle) {
 	};
 }
 
-export function buildPatientOptions(pacientes = []) {
-	return pacientes
-		.filter((p) => p?.activo)
-		.map((p) => ({
-			_id: p._id,
-			nombre: p.nombre,
-			activo: p.activo,
-			expediente_id: p.expediente_id || "",
-		}));
-}
+/* =========================================================
+   PAYLOAD PARA BACKEND
+   Solo manda piezas permanentes o temporales según dentadura.
+========================================================= */
 
 export function buildOdontogramaPayload({
 	pacienteId,
@@ -245,15 +272,24 @@ export function buildOdontogramaPayload({
 	notasGenerales,
 	pendingEvents,
 }) {
+	const numerosPiezas =
+		dentadura === "temporal"
+			? [...TEMP_SD, ...TEMP_SI, ...TEMP_II, ...TEMP_ID]
+			: [...SUP_DER, ...SUP_IZQ, ...INF_IZQ, ...INF_DER];
+
 	return {
 		paciente_id: pacienteId,
 		expediente_id: expedienteId,
 		dentadura,
-		piezas: Object.entries(teeth).map(([numero, data]) => ({
-			numero: Number(numero),
-			marks: data.marks || [],
-			observacion: data.observacion || "",
-		})),
+		piezas: numerosPiezas.map((numero) => {
+			const data = teeth[numero] || {};
+
+			return {
+				numero: Number(numero),
+				marks: data.marks || [],
+				observacion: data.observacion || "",
+			};
+		}),
 		notas_generales: notasGenerales || "",
 		eventos: pendingEvents || [],
 	};
