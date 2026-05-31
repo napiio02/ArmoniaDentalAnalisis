@@ -60,9 +60,15 @@ function PatientAutocomplete({
 		if (!term) return options.slice(0, 8);
 
 		return options
-			.filter((p) => normalizeText(p.nombre).includes(term))
+			.filter((p) => {
+				const cedula = normalizeText(p.cedula || "");
+				const nombre = normalizeText(p.nombre || "");
+
+				return cedula.includes(term) || nombre.includes(term);
+			})
 			.slice(0, 10);
 	}, [options, query]);
+
 
 	useEffect(() => {
 		function handleClickOutside(event) {
@@ -92,7 +98,7 @@ function PatientAutocomplete({
 						setOpen(true);
 					}}
 					onFocus={() => setOpen(true)}
-					placeholder="Buscar paciente por nombre..."
+					placeholder="Buscar paciente por cédula"
 					className="input input-bordered w-full bg-white pl-10 pr-10"
 				/>
 				{query && (
@@ -109,14 +115,23 @@ function PatientAutocomplete({
 				)}
 			</div>
 
+
+
 			{selectedPatient && (
 				<div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
 					<div className="flex items-center gap-2">
 						<UserRound size={14} />
-						<span className="font-medium">{selectedPatient.nombre}</span>
+						<div>
+							<p className="font-medium">{selectedPatient.nombre}</p>
+							<p className="text-xs text-sky-700">
+								Cédula: {selectedPatient.cedula || "Sin cédula registrada"}
+							</p>
+						</div>
 					</div>
 				</div>
 			)}
+
+
 
 			{open && (
 				<div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
@@ -138,17 +153,19 @@ function PatientAutocomplete({
 									</div>
 									<div className="min-w-0">
 										<p className="truncate text-sm font-medium text-gray-800">
-											{patient.nombre}
+											{patient.cedula || "Sin cédula"}
 										</p>
-										<p className="text-xs text-gray-400">
-											ID: {patient._id}
+										<p className="text-xs text-gray-500">
+											{patient.nombre || "Paciente sin nombre"}
 										</p>
 									</div>
+
+
 								</button>
 							))
 						) : (
 							<div className="px-3 py-4 text-sm text-gray-400">
-								No se encontraron pacientes con ese nombre.
+								No se encontraron pacientes con esa cédula o nombre.
 							</div>
 						)}
 					</div>
@@ -368,7 +385,7 @@ export default function Odontograma() {
 		toothNumber: null,
 	});
 
-	const [faceActionId, setFaceActionId] = useState("resina");
+	const [faceActionId, setFaceActionId] = useState("");
 
 	const [observationModal, setObservationModal] = useState({
 		open: false,
@@ -414,6 +431,70 @@ export default function Odontograma() {
 		[faceActionId]
 	);
 
+
+const visibleTeeth = useMemo(() => {
+	const filtered = {};
+
+	for (const [numero, tooth] of Object.entries(teeth)) {
+		const marks = tooth.marks || [];
+
+		/*
+		   PRIORIDAD VISUAL MÁXIMA:
+		   Si la pieza está marcada como ausente, solo mostramos "ausente".
+		   Esto evita que se vean exodoncia, resina, amalgama, caries, etc.
+		   encima de una pieza que ya está ausente.
+		*/
+		const ausenteMark = marks.find((mark) => mark.actionId === "ausente");
+
+		if (ausenteMark) {
+			filtered[numero] = {
+				...tooth,
+				marks: [ausenteMark],
+			};
+
+			continue;
+		}
+
+		/*
+		   Si no hay una capa/acción de caras seleccionada,
+		   mostramos todo el odontograma completo.
+		*/
+		if (!faceActionId) {
+			filtered[numero] = {
+				...tooth,
+				marks,
+			};
+
+			continue;
+		}
+
+		/*
+		   Si hay una capa activa, por ejemplo resina o amalgama:
+		   - Mostramos solo esa acción en las caras.
+		   - Pero mantenemos visibles las acciones generales de la pieza:
+		     exodoncia, implante, coronas, endodoncia, brackets, etc.
+		*/
+		filtered[numero] = {
+			...tooth,
+			marks: marks.filter((mark) => {
+				const action = getActionById(mark.actionId);
+
+				if (!action) return false;
+
+				if (["whole", "label"].includes(action.type)) {
+					return true;
+				}
+
+				return mark.actionId === faceActionId;
+			}),
+		};
+	}
+
+	return filtered;
+}, [teeth, faceActionId]);
+
+
+
 	const selectedMarks = useMemo(() => {
 		if (!selectedToothData?.marks?.length) return [];
 
@@ -445,7 +526,7 @@ export default function Odontograma() {
 
 	useEffect(() => {
 		if (selectedPatient) {
-			setPatientQuery(selectedPatient.nombre);
+			setPatientQuery(selectedPatient.cedula || selectedPatient.nombre || "");
 		}
 	}, [selectedPatient]);
 
@@ -551,6 +632,8 @@ export default function Odontograma() {
 		});
 	}
 
+
+	
 	function selectPatient(patient) {
 		if (hasUnsavedChanges) {
 			const confirmChange = window.confirm(
@@ -561,33 +644,46 @@ export default function Odontograma() {
 		}
 
 		setPacienteId(patient._id);
-		setPatientQuery(patient.nombre);
+		setPatientQuery(patient.cedula || patient.nombre || "");
 	}
 
+
+
 	function handleFaceClick(toothNumber, face) {
-		if (!faceActionId) return;
+		if (!faceActionId) {
+			alert("Primero selecciona una acción para aplicar sobre la cara dental.");
+			return;
+		}
 
 		const action = getActionById(faceActionId);
 		if (!action) return;
-		if (!["faces", "shape"].includes(action.type)) return;
+
+		if (!["faces", "shape"].includes(action.type)) {
+			alert("La acción seleccionada no se aplica por caras.");
+			return;
+		}
 
 		const current = teeth[toothNumber];
 		if (!current) return;
 
-		const existing = current.marks.find(
+		const alreadyExists = current.marks.some(
 			(mark) => mark.area === face && mark.actionId === action.id
 		);
 
-		if (existing) return;
-
-		const sameFaceIndex = current.marks.findIndex((mark) => mark.area === face);
-		let newMarks = [...current.marks];
-
-		if (sameFaceIndex >= 0) {
-			newMarks.splice(sameFaceIndex, 1);
+		if (alreadyExists) {
+			alert(
+				`${action.label} ya está registrada en la cara ${face} de la pieza ${toothNumber}.`
+			);
+			return;
 		}
 
-		newMarks.push({ actionId: action.id, area: face });
+		const newMarks = [
+			...current.marks,
+			{
+				actionId: action.id,
+				area: face,
+			},
+		];
 
 		setSelectedTooth(toothNumber);
 
@@ -601,6 +697,7 @@ export default function Odontograma() {
 
 		addPendingEvent(buildRegisterEvent(toothNumber, action.id, face));
 	}
+
 
 	function handleSelectAction(action) {
 		const toothNumber = contextMenu.toothNumber;
@@ -862,7 +959,7 @@ export default function Odontograma() {
 							<div>
 								<p className="text-sm font-semibold text-gray-800">Paciente</p>
 								<p className="text-xs text-gray-500">
-									Busca y selecciona rápidamente
+									Busca por cédula o nombre
 								</p>
 							</div>
 						</div>
@@ -1100,7 +1197,7 @@ export default function Odontograma() {
 					)}
 					<OdontogramaChart
 						dentadura={dentadura}
-						teeth={teeth}
+						teeth={visibleTeeth}
 						selectedTooth={selectedTooth}
 						selectedPatient={selectedPatient}
 						currentFaceAction={currentFaceAction}
@@ -1148,30 +1245,8 @@ export default function Odontograma() {
 								Historial de pieza
 							</p>
 
-							{selectedTooth &&
-								(selectedPendingEvents.length > 0 ||
-									selectedSavedHistory.length > 0) ? (
+							{selectedTooth && selectedSavedHistory.length > 0 ? (
 								<div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-									{selectedPendingEvents.map((item) => (
-										<div
-											key={item.id_temporal}
-											className="rounded-xl border border-amber-200 p-3 bg-amber-50"
-										>
-											<div className="flex items-center justify-between gap-2">
-												<p className="text-xs text-amber-600">
-													{item.fecha_visual}
-												</p>
-												<span className="badge badge-sm bg-amber-100 text-amber-700 border-amber-200">
-													Pendiente
-												</span>
-											</div>
-											<p className="text-sm font-medium text-amber-800">
-												{item.tipo_evento}
-											</p>
-											<p className="text-sm text-amber-700">{item.detalle}</p>
-										</div>
-									))}
-
 									{selectedSavedHistory.map((item, index) => (
 										<div
 											key={`${item.fecha}-${index}`}
@@ -1187,7 +1262,9 @@ export default function Odontograma() {
 								</div>
 							) : (
 								<div className="text-sm text-gray-400 rounded-xl border border-dashed border-gray-300 p-4 bg-gray-50">
-									Selecciona una pieza con registros para consultar su historial.
+									{selectedTooth
+										? "Esta pieza no tiene historial guardado todavía."
+										: "Selecciona una pieza para consultar su historial guardado."}
 								</div>
 							)}
 						</div>
