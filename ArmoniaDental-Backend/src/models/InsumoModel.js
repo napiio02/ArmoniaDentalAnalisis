@@ -46,6 +46,10 @@ const insumoSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    fecha_vencimiento: {
+      type: Date,
+      default: null,
+    },
     activo: {
       type: Boolean,
       default: true,
@@ -53,7 +57,7 @@ const insumoSchema = new mongoose.Schema(
   },
   {
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
-  }
+  },
 );
 
 export default mongoose.model("Insumo", insumoSchema);
