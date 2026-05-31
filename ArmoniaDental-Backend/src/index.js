@@ -10,6 +10,7 @@ import { RolesRoutes } from "./routes/RolesRoutes.js";
 import { InsumosRoutes } from "./routes/InsumosRoutes.js";
 import { OdontogramaRoutes } from "./routes/Odontograma/OdontogramaRoutes.js";
 import { PacientesRoutes } from "./routes/PacientesRoutes.js";
+import { CitasRoutes } from "./routes/CitasRoutes.js"; 
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ RolesRoutes(app);
 InsumosRoutes(app);
 OdontogramaRoutes(app);
 PacientesRoutes(app);
+CitasRoutes(app);
 
 app.get("/", (req, res) => {
   res.json({
