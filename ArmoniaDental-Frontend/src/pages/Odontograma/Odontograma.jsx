@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../../components/Navbar";
 import { obtenerPacientesConExpediente } from "../../services/pacienteService";
 import OdontogramaChart from "./components/OdontogramaChart";
+import toast, { Toaster } from "react-hot-toast";
+import {
+    CheckCircle2,
+    AlertTriangle,
+    Info,
+    XCircle
+} from "lucide-react";
 
 import {
 	Save,
@@ -651,7 +658,13 @@ const visibleTeeth = useMemo(() => {
 
 	function handleFaceClick(toothNumber, face) {
 		if (!faceActionId) {
-			alert("Primero selecciona una acción para aplicar sobre la cara dental.");
+			showToast({
+				type: "error",
+				title: "Accion faltante",
+				message:
+					`Primero selecciona una acción para aplicar sobre la cara dental.`
+			});
+			
 			return;
 		}
 
@@ -659,7 +672,12 @@ const visibleTeeth = useMemo(() => {
 		if (!action) return;
 
 		if (!["faces", "shape"].includes(action.type)) {
-			alert("La acción seleccionada no se aplica por caras.");
+			showToast({
+				type: "error",
+				title: "Acción no válida",
+				message:
+					`La acción seleccionada no se aplica por caras.`
+			});
 			return;
 		}
 
@@ -671,11 +689,16 @@ const visibleTeeth = useMemo(() => {
 		);
 
 		if (alreadyExists) {
-			alert(
-				`${action.label} ya está registrada en la cara ${face} de la pieza ${toothNumber}.`
-			);
+			showToast({
+				type: "error",
+				title: "Acción duplicada",
+				message:
+					`${action.label} ya está registrada en la cara ${face} de la pieza ${toothNumber}.`
+			});
 			return;
 		}
+
+		
 
 		const newMarks = [
 			...current.marks,
@@ -790,23 +813,38 @@ const visibleTeeth = useMemo(() => {
 	}
 
 	function handleResetAll() {
-		if (!window.confirm("¿Deseas restablecer todo el odontograma?")) return;
-
 		setTeeth(buildBlankTeeth());
 		setSelectedTooth(null);
 		setNotasGenerales("");
 		setPendingEvents([]);
 		setHasUnsavedChanges(false);
+
+		showToast({
+			type: "success",
+			title: "Odontograma restablecido",
+			message:
+				"Se eliminaron registros, observaciones y cambios pendientes."
+		});
 	}
 
 	async function handleSaveGeneral() {
 		if (!pacienteId) {
-			alert("Debes seleccionar un paciente antes de guardar el odontograma.");
+			showToast({
+				type: "error",
+				title: "Accion faltante",
+				message:
+					`Debes seleccionar un paciente antes de guardar el odontograma.`
+			});
 			return;
 		}
 
 		if (!selectedPatient?.expediente_id) {
-			alert("El paciente seleccionado no tiene expediente clínico asociado.");
+			showToast({
+				type: "error",
+				title: "Paciente sin expediente",
+				message:
+					"El paciente seleccionado no tiene expediente clínico asociado."
+			});
 			return;
 		}
 
@@ -857,11 +895,20 @@ const visibleTeeth = useMemo(() => {
 			setHasUnsavedChanges(false);
 
 			setGuardado(true);
+			showToast({
+				type: "success",
+				title: "Odontograma guardado",
+				message: "El odontograma se ha guardado correctamente."
+			});
 			setTimeout(() => setGuardado(false), 1800);
 		} catch (error) {
 			console.error("Error guardando odontograma:", error);
 			setErrorOdontograma(error.message);
-			alert(error.message);
+			showToast({
+				type: "error",
+				title: "Error al guardar",
+				message: error.message
+			});
 		} finally {
 			setGuardando(false);
 		}
@@ -901,8 +948,170 @@ const visibleTeeth = useMemo(() => {
 		setHasUnsavedChanges(true);
 	}
 
+		const showToast = ({
+	type = "info",
+	title,
+	message,
+	}) => {
+
+	const config = {
+		success: {
+		icon: <CheckCircle2 size={18} />,
+		accent: "emerald",
+		border: "border-emerald-200/60",
+		iconBg: "bg-emerald-100",
+		iconColor: "text-emerald-600",
+		progress: "bg-emerald-500",
+		},
+
+		error: {
+		icon: <XCircle size={18} />,
+		accent: "red",
+		border: "border-red-200/60",
+		iconBg: "bg-red-100",
+		iconColor: "text-red-600",
+		progress: "bg-red-500",
+		},
+
+		warning: {
+		icon: <AlertTriangle size={18} />,
+		accent: "amber",
+		border: "border-amber-200/60",
+		iconBg: "bg-amber-100",
+		iconColor: "text-amber-600",
+		progress: "bg-amber-500",
+		},
+
+		info: {
+		icon: <Info size={18} />,
+		accent: "sky",
+		border: "border-sky-200/60",
+		iconBg: "bg-sky-100",
+		iconColor: "text-sky-600",
+		progress: "bg-sky-500",
+		},
+	};
+
+	const current = config[type];
+
+	toast.custom(
+		(t) => (
+		<div
+		className={`
+
+			relative
+			overflow-hidden
+
+			min-w-[360px]
+			max-w-[430px]
+
+			rounded-2xl
+			border
+			${current.border}
+
+			bg-white
+
+			shadow-[0_20px_60px_rgba(15,23,42,0.12)]
+
+			transition-all
+			duration-500
+			ease-[cubic-bezier(.16,1,.3,1)]
+
+			${
+			t.visible
+				? "translate-y-0 opacity-100 scale-100"
+				: "translate-y-3 opacity-0 scale-95"
+			}
+
+		`}
+		>
+
+			<div className="flex gap-4 p-5">
+
+			<div
+				className={`
+				h-11
+				w-11
+				shrink-0
+				rounded-xl
+
+				${current.iconBg}
+				${current.iconColor}
+
+				flex
+				items-center
+				justify-center
+				`}
+			>
+				{current.icon}
+			</div>
+
+			<div className="flex-1 min-w-0">
+
+				<h3 className="text-[14px] font-semibold text-slate-900">
+				{title}
+				</h3>
+
+				<p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+				{message}
+				</p>
+
+			</div>
+
+			<button
+				onClick={() => toast.dismiss(t.id)}
+				className="
+				text-slate-400
+				hover:text-slate-700
+				transition
+				"
+			>
+				<X size={16} />
+			</button>
+
+			</div>
+
+			<div className="h-[3px] w-full bg-slate-100">
+
+			<div
+				className={`
+				h-full
+				${current.progress}
+
+				animate-[toastbar_4.2s_linear_forwards]
+				`}
+			/>
+
+			</div>
+
+		</div>
+		),
+		{
+		duration: 4200,
+		}
+	);
+	};
+
 	return (
 		<div ref={pageRef} className="min-h-screen bg-gray-100 text-gray-800">
+
+			<Toaster
+			position="top-right"
+			gutter={12}
+			containerStyle={{
+				top: 24,
+				right: 24,
+			}}
+			toastOptions={{
+				removeDelay: 600,
+				style: {
+				background: "transparent",
+				boxShadow: "none",
+				padding: 0,
+				},
+			}}
+			/>
+
 			<Navbar />
 
 			<ContextMenu
