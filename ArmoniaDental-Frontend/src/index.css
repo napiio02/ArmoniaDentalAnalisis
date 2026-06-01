@@ -10,6 +10,18 @@
 	}
 }
 
+@keyframes toastbar {
+
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+
+}
+
 @layer utilities {
 	.btn-secondary:not(.btn-outline) {
 		background-color: #7dd3fc;
