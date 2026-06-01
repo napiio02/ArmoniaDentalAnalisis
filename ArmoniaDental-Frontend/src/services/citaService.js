@@ -18,7 +18,7 @@ async function handleResponse(response) {
   return data;
 }
 
-// Citas
+
 export async function getCitas(params = {}) {
   const query = new URLSearchParams(params).toString();
   const response = await fetch(`${API_URL}${query ? `?${query}` : ""}`, {
@@ -57,7 +57,7 @@ export async function cancelarCita(id) {
   return handleResponse(response);
 }
 
-// Pacientes y usuarios para los selects del formulario
+
 export async function getPacientes() {
   const response = await fetch(PACIENTES_URL, {
     headers: getAuthHeaders(),

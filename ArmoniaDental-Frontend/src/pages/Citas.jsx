@@ -51,6 +51,11 @@ const Citas = () => {
   const [guardando, setGuardando] = useState(false);
   const [mensajeError, setMensajeError] = useState("");
 
+  const mostrarError = (msg, duracion = 4000) => {
+    setMensajeError(msg);
+    setTimeout(() => setMensajeError(""), duracion);
+  };
+
   const [formNueva, setFormNueva] = useState({
     paciente_id: "",
     usuario_id: "",
@@ -86,7 +91,7 @@ const Citas = () => {
           setFormNueva((prev) => ({ ...prev, usuario_id: usuariosData[0]._id }));
         }
       } catch (error) {
-        setMensajeError("Error al cargar los datos: " + error.message);
+        mostrarError("Error al cargar los datos: " + error.message);
       } finally {
         setCargando(false);
       }
@@ -139,7 +144,7 @@ const Citas = () => {
         observaciones: "",
       });
     } catch (error) {
-      setMensajeError(error.message);
+      mostrarError(error.message);
     } finally {
       setGuardando(false);
     }
@@ -175,7 +180,7 @@ const Citas = () => {
       setMostrarModal(false);
       setCitaEditando(null);
     } catch (error) {
-      setMensajeError(error.message);
+      mostrarError(error.message);
     } finally {
       setGuardando(false);
     }
@@ -190,7 +195,7 @@ const Citas = () => {
         prev.map((c) => (c._id === citaId ? { ...c, estado: "Cancelada" } : c))
       );
     } catch (error) {
-      setMensajeError(error.message);
+      mostrarError(error.message);
     }
   };
 
