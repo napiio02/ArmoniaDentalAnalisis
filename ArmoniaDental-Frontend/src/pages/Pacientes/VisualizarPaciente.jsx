@@ -1,213 +1,234 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import Navbar from "../../components/Navbar";
+import { useNavigate, useParams, Link } from "react-router";
 import { PACIENTES } from "../../data/mockData";
-import { ArrowLeft, Pencil } from "lucide-react";
-import { Link } from "react-router";
+
+const getInitials = (nombre = "") =>
+  nombre
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+
+const Campo = ({ label, value, full }) => (
+  <div
+    className={`bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-4 ${full ? "md:col-span-2" : ""}`}
+  >
+    <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-1">
+      {label}
+    </p>
+    <p className="text-sm font-semibold text-[#151c27]">
+      {value || "No registrado"}
+    </p>
+  </div>
+);
 
 const VisualizarPaciente = () => {
-	const navigate = useNavigate();
-	const { id } = useParams();
-	const [paciente, setPaciente] = useState(null);
-	const [cargando, setCargando] = useState(true);
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [paciente, setPaciente] = useState(null);
+  const [cargando, setCargando] = useState(true);
 
-	useEffect(() => {
-		const pacienteEncontrado = PACIENTES.find((p) => p._id === id);
-		setPaciente(pacienteEncontrado || null);
-		setCargando(false);
-	}, [id]);
+  useEffect(() => {
+    setPaciente(PACIENTES.find((p) => p._id === id) || null);
+    setCargando(false);
+  }, [id]);
 
-	const renderListaBadges = (items, badgeClass = "badge-warning") => {
-		if (!items || (Array.isArray(items) && items.length === 0)) {
-			return <span className="text-gray-400">Ninguna</span>;
-		}
+  const renderBadges = (items, color) => {
+    if (!items) return <span className="text-xs text-[#bec8ce]">Ninguna</span>;
+    const arr = Array.isArray(items) ? items : [items];
+    if (arr.length === 0 || arr.includes("Ninguna"))
+      return <span className="text-xs text-[#bec8ce]">Ninguna</span>;
+    return (
+      <div className="flex flex-wrap gap-2">
+        {arr.map((item) => (
+          <span
+            key={item}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${color}`}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
-		if (Array.isArray(items)) {
-			if (items.includes("Ninguna")) {
-				return <span className="text-gray-400">Ninguna</span>;
-			}
+  if (cargando)
+    return (
+      <div className="min-h-screen bg-[#f9f9ff] flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg text-[#006686]" />
+      </div>
+    );
 
-			return (
-				<div className="flex flex-wrap gap-2">
-					{items.map((item) => (
-						<span key={item} className={`badge ${badgeClass} badge-md`}>
-							{item}
-						</span>
-					))}
-				</div>
-			);
-		}
+  if (!paciente)
+    return (
+      <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
+        <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+          <Link
+            to="/pacientes"
+            className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              arrow_back
+            </span>
+          </Link>
+          <span className="text-2xl">ꨄ︎</span>
+          <span className="font-bold text-[#151c27]">Armonía Dental</span>
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-6 py-4 flex items-center gap-3 text-sm text-[#ba1a1a]">
+            <span className="material-symbols-outlined">error</span>
+            No se encontró el paciente solicitado.
+          </div>
+          <button
+            onClick={() => navigate("/pacientes")}
+            className="flex items-center gap-2 text-sm font-semibold text-[#006686] hover:underline"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_back
+            </span>
+            Volver a pacientes
+          </button>
+        </div>
+      </div>
+    );
 
-		return items === "Ninguna" || items === "" ? (
-			<span className="text-gray-400">Ninguna</span>
-		) : (
-			<span className={`badge ${badgeClass} badge-md`}>{items}</span>
-		);
-	};
+  return (
+    <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+        <Link
+          to="/pacientes"
+          className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]"
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            arrow_back
+          </span>
+        </Link>
+        <div className="w-px h-5 bg-[#bec8ce]" />
+        <span className="text-2xl">ꨄ︎</span>
+        <span className="font-bold text-[#151c27]">Armonía Dental</span>
+        <span className="text-[#bec8ce] mx-1">/</span>
+        <Link
+          to="/pacientes"
+          className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
+        >
+          Pacientes
+        </Link>
+        <span className="text-[#bec8ce] mx-1">/</span>
+        <span className="text-sm font-semibold text-[#006686] truncate max-w-[200px]">
+          {paciente.nombre}
+        </span>
+      </header>
 
-	const getEstadoBadge = (activo) => {
-		return activo ? (
-			<span className="badge badge-primary">Activo</span>
-		) : (
-			<span className="badge badge-error">Inactivo</span>
-		);
-	};
+      <div className="flex-1 px-6 py-10">
+        <div className="max-w-3xl mx-auto">
+          {/* Page header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+            <div>
+              <h2 className="text-[28px] font-bold text-[#151c27]">
+                Detalle del Paciente
+              </h2>
+              <p className="text-sm text-[#3f484e] mt-1">
+                Consulte la información general y clínica del paciente
+              </p>
+            </div>
+            <Link
+              to={`/pacientes/editar/${paciente._id}`}
+              className="px-6 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                edit
+              </span>
+              Editar
+            </Link>
+          </div>
 
-	if (cargando) {
-		return (
-			<div>
-				<Navbar />
-				<div className="container mx-auto p-8 text-center">
-					<span className="loading loading-spinner loading-md"></span>
-					<p className="mt-2 text-gray-500">Cargando paciente...</p>
-				</div>
-			</div>
-		);
-	}
+          {/* Card principal */}
+          <div className="bg-white border border-[#bec8ce] rounded-2xl shadow-sm overflow-hidden">
+            {/* Header de la card */}
+            <div className="px-8 py-6 border-b border-[#bec8ce] bg-[#f0f3ff] flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-[#7dd3fc20] border-2 border-[#006686]/20 flex items-center justify-center text-[#006686] font-bold text-xl">
+                  {getInitials(paciente.nombre)}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#151c27]">
+                    {paciente.nombre}
+                  </h3>
+                  <p className="text-xs text-[#3f484e] mt-0.5">
+                    Cédula: {paciente.cedula}
+                  </p>
+                </div>
+              </div>
+              {paciente.activo ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#6df5e120] text-[#006b5f] border border-[#6df5e1]/30">
+                  Activo
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a] border border-[#ba1a1a]/20">
+                  Inactivo
+                </span>
+              )}
+            </div>
 
-	if (!paciente) {
-		return (
-			<div>
-				<Navbar />
-				<div className="container mx-auto p-8">
-					<div className="max-w-3xl mx-auto">
-						<div className="alert alert-error mb-4">
-							<span>No se encontró el paciente solicitado.</span>
-						</div>
+            <div className="p-8 space-y-8">
+              {/* Información personal */}
+              <div>
+                <h4 className="text-sm font-bold text-[#151c27] uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#006686]">
+                    person
+                  </span>
+                  Información personal
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Campo label="Nombre completo" value={paciente.nombre} />
+                  <Campo label="Cédula" value={paciente.cedula} />
+                  <Campo label="Teléfono" value={paciente.telefono} />
+                  <Campo label="Correo electrónico" value={paciente.email} />
+                  <Campo
+                    label="Fecha de nacimiento"
+                    value={paciente.fecha_nacimiento}
+                    full
+                  />
+                </div>
+              </div>
 
-						<button
-							className="btn btn-secondary"
-							onClick={() => navigate("/pacientes")}
-						>
-							<ArrowLeft size={16} />
-							Volver a pacientes
-						</button>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	return (
-		<div>
-			<Navbar />
-			<div className="container mx-auto p-8">
-				<div className="lg:px-8 max-w-4xl mx-auto">
-					<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-						<div>
-							<h2 className="text-3xl font-bold text-gray-800 mb-2">
-								Detalle del Paciente
-							</h2>
-							<p className="text-gray-600">
-								Consulte la información general y clínica del paciente
-							</p>
-						</div>
-
-						<div className="flex gap-2">
-							<button
-								type="button"
-								className="btn btn-ghost"
-								onClick={() => navigate("/pacientes")}
-							>
-								<ArrowLeft size={16} />
-								Volver
-							</button>
-
-							<Link
-								to={`/pacientes/editar/${paciente._id}`}
-								className="btn btn-secondary"
-							>
-								<Pencil size={16} />
-								Editar
-							</Link>
-						</div>
-					</div>
-
-					<div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-						<div className="p-6 border-b border-gray-200 bg-base-100">
-							<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-								<div>
-									<h3 className="text-2xl font-semibold text-gray-800">
-										{paciente.nombre}
-									</h3>
-									<p className="text-sm text-gray-500 mt-1">
-										Cédula: {paciente.cedula}
-									</p>
-								</div>
-								<div>{getEstadoBadge(paciente.activo)}</div>
-							</div>
-						</div>
-
-						<div className="p-6 space-y-8">
-							<div>
-								<h4 className="text-lg font-semibold text-gray-800 mb-4">
-									Información personal
-								</h4>
-
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									<div className="bg-base-100 rounded-lg p-4 border">
-										<p className="text-sm text-gray-500">Nombre completo</p>
-										<p className="font-medium text-gray-800">
-											{paciente.nombre || "No registrado"}
-										</p>
-									</div>
-
-									<div className="bg-base-100 rounded-lg p-4 border">
-										<p className="text-sm text-gray-500">Cédula</p>
-										<p className="font-medium text-gray-800">
-											{paciente.cedula || "No registrada"}
-										</p>
-									</div>
-
-									<div className="bg-base-100 rounded-lg p-4 border">
-										<p className="text-sm text-gray-500">Teléfono</p>
-										<p className="font-medium text-gray-800">
-											{paciente.telefono || "No registrado"}
-										</p>
-									</div>
-
-									<div className="bg-base-100 rounded-lg p-4 border">
-										<p className="text-sm text-gray-500">Correo electrónico</p>
-										<p className="font-medium text-gray-800">
-											{paciente.email || "No registrado"}
-										</p>
-									</div>
-
-									<div className="bg-base-100 rounded-lg p-4 border md:col-span-2">
-										<p className="text-sm text-gray-500">Fecha de nacimiento</p>
-										<p className="font-medium text-gray-800">
-											{paciente.fecha_nacimiento || "No registrada"}
-										</p>
-									</div>
-								</div>
-							</div>
-
-							<div>
-								<h4 className="text-lg font-semibold text-gray-800 mb-4">
-									Información clínica
-								</h4>
-
-								<div className="grid grid-cols-1 gap-4">
-									<div className="bg-base-100 rounded-lg p-4 border">
-										<p className="text-sm text-gray-500 mb-2">Alergias</p>
-										{renderListaBadges(paciente.alergias, "badge-warning")}
-									</div>
-
-									<div className="bg-base-100 rounded-lg p-4 border">
-										<p className="text-sm text-gray-500 mb-2">
-											Enfermedades relevantes
-										</p>
-										{renderListaBadges(paciente.enfermedades, "badge-info")}
-									</div>
-								</div>
-							</div>
-
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	);
+              {/* Información clínica */}
+              <div>
+                <h4 className="text-sm font-bold text-[#151c27] uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#006686]">
+                    medical_information
+                  </span>
+                  Información clínica
+                </h4>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-4">
+                    <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-2">
+                      Alergias
+                    </p>
+                    {renderBadges(
+                      paciente.alergias,
+                      "bg-[#ffddb820] text-[#855300] border-[#855300]/20",
+                    )}
+                  </div>
+                  <div className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-4">
+                    <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-2">
+                      Enfermedades relevantes
+                    </p>
+                    {renderBadges(
+                      paciente.enfermedades,
+                      "bg-[#7dd3fc20] text-[#006686] border-[#006686]/20",
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default VisualizarPaciente;

@@ -1,109 +1,142 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 function RecuperarPass() {
-	const [email, setEmail] = useState("");
-	const [enviado, setEnviado] = useState(false);
-	const [cargando, setCargando] = useState(false);
+  const [email, setEmail] = useState("");
+  const [enviado, setEnviado] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
-	const handleSubmit = (e) => {
-		e.preventDefault();
-		setCargando(true);
-		// Simulación de envío 
-		setTimeout(() => {
-			setCargando(false);
-			setEnviado(true);
-		}, 1000);
-	};
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setCargando(true);
+    setTimeout(() => {
+      setCargando(false);
+      setEnviado(true);
+    }, 1000);
+  };
 
-	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-200 to-emerald-200 relative">
-			<div className="absolute inset-0 backdrop-blur-sm bg-white/10"></div>
+  return (
+    <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex items-center justify-center px-4">
+      {/* Fondo decorativo */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[#7dd3fc]/10" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-[#6df5e1]/10" />
+      </div>
 
-			<div className="card w-full max-w-md bg-white shadow-2xl z-10 mx-4">
-				<div className="card-body">
+      <div className="w-full max-w-md relative z-10">
+        <div className="bg-white border border-[#bec8ce] rounded-2xl shadow-xl p-8">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-3">ꨄ︎</div>
+            <h1 className="text-2xl font-extrabold text-[#151c27]">
+              Armonía Dental
+            </h1>
+            <p className="text-xs text-[#3f484e] mt-1">
+              Sistema de gestión clínica
+            </p>
+          </div>
 
-					{/* Header */}
-					<div className="text-center mb-4">
-						<div className="text-5xl mb-2">ꨄ︎</div>
-						<h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-sky-400">
-							Armonía Dental
-						</h1>
-					</div>
+          {!enviado ? (
+            <>
+              <h2 className="text-lg font-bold text-[#151c27] mb-1">
+                Recuperar contraseña
+              </h2>
+              <p className="text-xs text-[#3f484e] mb-6">
+                Ingresá tu correo y te enviaremos un enlace para restablecer tu
+                contraseña.
+              </p>
 
-					{!enviado ? (
-						<>
-							<h2 className="text-xl font-bold text-gray-700 text-center mb-1">
-								Recuperar contraseña
-							</h2>
-							<p className="text-center text-sm text-gray-500 mb-5">
-								Ingresá tu correo y te enviaremos un enlace para restablecer tu contraseña.
-							</p>
+              <form
+                onSubmit={handleSubmit}
+                autoComplete="off"
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
+                    Correo electrónico
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#3f484e] text-[18px]">
+                      mail
+                    </span>
+                    <input
+                      type="email"
+                      placeholder="correo@armoniadental.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
+                    />
+                  </div>
+                </div>
 
-							<form onSubmit={handleSubmit}>
-								<div className="form-control">
-									<label className="label">
-										<span className="label-text">Correo electrónico</span>
-									</label>
-									<label className="input input-bordered flex items-center gap-2">
-										<Mail className="w-4 h-4 text-gray-400" />
-										<input
-											type="email"
-											placeholder="correo@armoniadental.com"
-											className="grow"
-											value={email}
-											onChange={(e) => setEmail(e.target.value)}
-											required
-										/>
-									</label>
-								</div>
+                <button
+                  type="submit"
+                  disabled={cargando}
+                  className="w-full py-3 bg-[#006686] text-white rounded-full font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
+                >
+                  {cargando ? (
+                    <span className="loading loading-spinner loading-sm" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">
+                        send
+                      </span>
+                      Enviar enlace de recuperación
+                    </>
+                  )}
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 rounded-full bg-[#6df5e120] border border-[#6df5e1]/30 flex items-center justify-center mx-auto mb-4">
+                <span
+                  className="material-symbols-outlined text-[#006b5f] text-[32px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  check_circle
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-[#151c27] mb-2">
+                ¡Correo enviado!
+              </h2>
+              <p className="text-sm text-[#3f484e] mb-2">
+                Si el correo{" "}
+                <span className="font-semibold text-[#151c27]">{email}</span>{" "}
+                está registrado, recibirás un enlace para restablecer tu
+                contraseña.
+              </p>
+              <p className="text-xs text-[#bec8ce] mb-4">
+                Revisá también tu carpeta de spam.
+              </p>
+            </div>
+          )}
 
-								<div className="form-control mt-5">
-									<button
-										type="submit"
-										className="btn btn-secondary"
-										disabled={cargando}
-									>
-										{cargando ? (
-											<span className="loading loading-spinner loading-sm" />
-										) : (
-											"Enviar enlace de recuperación"
-										)}
-									</button>
-								</div>
-							</form>
-						</>
-					) : (
-						/* Pantalla de éxito */
-						<div className="text-center py-4">
-							<CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-							<h2 className="text-xl font-bold text-gray-700 mb-2">
-								¡Correo enviado!
-							</h2>
-							<p className="text-sm text-gray-500 mb-2">
-								Si el correo <span className="font-semibold text-gray-700">{email}</span> está registrado, recibirás un enlace para restablecer tu contraseña.
-							</p>
-							<p className="text-xs text-gray-400 mb-6">
-								Revisá también tu carpeta de spam.
-							</p>
-						</div>
-					)}
+          {/* Divisor */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-[#bec8ce]" />
+            <span className="text-xs text-[#bec8ce]">o</span>
+            <div className="flex-1 h-px bg-[#bec8ce]" />
+          </div>
 
-					{/* Volver al login */}
-					<div className="divider text-xs text-gray-400">o</div>
-					<Link
-						to="/login"
-						className="btn btn-ghost btn-sm gap-2 w-full"
-					>
-						<ArrowLeft className="w-4 h-4" />
-						Volver al inicio de sesión
-					</Link>
+          <Link
+            to="/login"
+            className="w-full flex items-center justify-center gap-2 py-2.5 border border-[#bec8ce] rounded-full text-xs font-semibold text-[#3f484e] hover:bg-[#f0f3ff] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_back
+            </span>
+            Volver al inicio de sesión
+          </Link>
+        </div>
 
-				</div>
-			</div>
-		</div>
-	);
+        <p className="text-center text-xs text-[#3f484e] mt-6">
+          © 2026 Armonía Dental · Todos los derechos reservados
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default RecuperarPass;

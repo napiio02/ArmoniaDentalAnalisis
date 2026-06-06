@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import Navbar from "../../components/Navbar";
-import { Package } from "lucide-react";
+import { useNavigate, Link } from "react-router";
 import { insumoService } from "../../services/insumoService";
 
 const CATEGORIAS = [
@@ -25,41 +23,53 @@ const FORM_INICIAL = {
   fecha_vencimiento: "",
 };
 
+const Label = ({ children, optional }) => (
+  <div className="flex justify-between mb-1.5">
+    <label className="text-xs font-semibold text-[#3f484e] uppercase tracking-wider">
+      {children}
+    </label>
+    {optional && <span className="text-xs text-[#bec8ce]">Opcional</span>}
+  </div>
+);
+
+const inputCls = (error) =>
+  `w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none bg-white text-[#151c27] transition-colors ${
+    error
+      ? "border-[#ba1a1a] focus:border-[#ba1a1a]"
+      : "border-[#bec8ce] focus:border-[#006686]"
+  }`;
+
 const NuevoInsumo = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [exito, setExito] = useState(false);
-  const [error, setError] = useState(null); // para errores generales del formulario
-  const [errores, setErrores] = useState({}); // para validación de campos individuales
+  const [error, setError] = useState(null);
+  const [errores, setErrores] = useState({});
 
   const onChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (errores[e.target.name])
+      setErrores((prev) => ({ ...prev, [e.target.name]: undefined }));
   };
 
   const validar = () => {
-    const nuevosErrores = {};
-
-    if (!formData.nombre.trim())
-      nuevosErrores.nombre = "El nombre es obligatorio";
-    if (!formData.categoria)
-      nuevosErrores.categoria = "La categoría es obligatoria";
+    const e = {};
+    if (!formData.nombre.trim()) e.nombre = "El nombre es obligatorio";
+    if (!formData.categoria) e.categoria = "La categoría es obligatoria";
     if (formData.stock_actual === "")
-      nuevosErrores.stock_actual = "El stock actual es obligatorio";
+      e.stock_actual = "El stock actual es obligatorio";
     if (formData.stock_minimo === "")
-      nuevosErrores.stock_minimo = "El stock mínimo es obligatorio";
-    if (!formData.unidad.trim())
-      nuevosErrores.unidad = "La unidad es obligatoria";
-    if (!formData.proveedor.trim())
-      nuevosErrores.proveedor = "El proveedor es obligatorio";
-
-    setErrores(nuevosErrores);
-    return Object.keys(nuevosErrores).length === 0;
+      e.stock_minimo = "El stock mínimo es obligatorio";
+    if (!formData.unidad.trim()) e.unidad = "La unidad es obligatoria";
+    if (!formData.proveedor.trim()) e.proveedor = "El proveedor es obligatorio";
+    setErrores(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validar()) return; // ← detiene si hay errores
+    if (!validar()) return;
     setGuardando(true);
     setError(null);
     try {
@@ -71,69 +81,94 @@ const NuevoInsumo = () => {
       });
       setExito(true);
       setTimeout(() => navigate("/inventario"), 1500);
-    } catch (err) {
+    } catch {
       setError("Error al guardar el insumo. Intentá de nuevo.");
       setGuardando(false);
     }
   };
 
   return (
-    <div>
-      <Navbar />
-      <div className="container mx-auto p-8">
-        <div className="lg:px-8 max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">
-            Nuevo Insumo
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Complete el formulario para registrar un nuevo insumo médico
-          </p>
+    <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
+      {/* Header simple sin sidebar */}
+      <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+        <Link
+          to="/inventario"
+          className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]"
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            arrow_back
+          </span>
+        </Link>
+        <div className="w-px h-5 bg-[#bec8ce]" />
+        <span className="text-2xl">ꨄ︎</span>
+        <span className="font-bold text-[#151c27]">Armonía Dental</span>
+        <span className="text-[#bec8ce] mx-1">/</span>
+        <Link
+          to="/inventario"
+          className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
+        >
+          Inventario
+        </Link>
+        <span className="text-[#bec8ce] mx-1">/</span>
+        <span className="text-sm font-semibold text-[#006686]">
+          Nuevo Insumo
+        </span>
+      </header>
+
+      {/* Contenido */}
+      <div className="flex-1 flex items-start justify-center px-6 py-10">
+        <div className="w-full max-w-2xl">
+          <div className="mb-8">
+            <h2 className="text-[28px] font-bold text-[#151c27]">
+              Nuevo Insumo
+            </h2>
+            <p className="text-sm text-[#3f484e] mt-1">
+              Complete el formulario para registrar un nuevo insumo médico
+            </p>
+          </div>
 
           {error && (
-            <div className="alert alert-error mb-4">
-              <span>{error}</span>
+            <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-5 py-3 flex items-center gap-3 mb-5 text-sm text-[#ba1a1a]">
+              <span className="material-symbols-outlined text-[18px]">
+                error
+              </span>
+              {error}
             </div>
           )}
 
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <div className="bg-white border border-[#bec8ce] rounded-2xl p-8 shadow-sm">
             <form
-              className="space-y-4"
+              className="space-y-5"
               onSubmit={handleSubmit}
               autoComplete="off"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Nombre */}
-                <div className="form-control md:col-span-2">
-                  <label className="label">
-                    <span className="label-text font-medium">
-                      Nombre del insumo *
-                    </span>
-                  </label>
+                <div className="md:col-span-2">
+                  <Label>Nombre del insumo *</Label>
                   <input
                     type="text"
                     name="nombre"
-                    className={`input input-bordered ${errores.nombre ? "input-error" : ""}`}
                     placeholder="Ej: Guantes de nitrilo"
                     value={formData.nombre}
                     onChange={onChange}
+                    className={inputCls(errores.nombre)}
                   />
                   {errores.nombre && (
-                    <span className="text-error text-sm mt-1">
+                    <p className="text-xs text-[#ba1a1a] mt-1">
                       {errores.nombre}
-                    </span>
+                    </p>
                   )}
                 </div>
 
                 {/* Categoría */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">Categoría *</span>
-                  </label>
+                <div>
+                  <Label>Categoría *</Label>
                   <select
                     name="categoria"
-                    className={`select select-bordered ${errores.categoria ? "select-error" : ""}`}
                     value={formData.categoria}
                     onChange={onChange}
+                    className={inputCls(errores.categoria)}
                   >
                     <option value="">Seleccionar categoría</option>
                     {CATEGORIAS.map((c) => (
@@ -143,114 +178,95 @@ const NuevoInsumo = () => {
                     ))}
                   </select>
                   {errores.categoria && (
-                    <span className="text-error text-sm mt-1">
+                    <p className="text-xs text-[#ba1a1a] mt-1">
                       {errores.categoria}
-                    </span>
+                    </p>
                   )}
                 </div>
 
                 {/* Unidad */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">Unidad *</span>
-                  </label>
+                <div>
+                  <Label>Unidad *</Label>
                   <input
                     type="text"
                     name="unidad"
-                    className={`input input-bordered ${errores.unidad ? "input-error" : ""}`}
                     placeholder="Ej: Cajas, Unidades, Rollos"
                     value={formData.unidad}
                     onChange={onChange}
+                    className={inputCls(errores.unidad)}
                   />
                   {errores.unidad && (
-                    <span className="text-error text-sm mt-1">
+                    <p className="text-xs text-[#ba1a1a] mt-1">
                       {errores.unidad}
-                    </span>
+                    </p>
                   )}
                 </div>
 
                 {/* Stock actual */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">
-                      Stock actual *
-                    </span>
-                  </label>
+                <div>
+                  <Label>Stock actual *</Label>
                   <input
                     type="number"
                     name="stock_actual"
                     min="0"
-                    className={`input input-bordered ${errores.stock_actual ? "input-error" : ""}`}
                     placeholder="0"
                     value={formData.stock_actual}
                     onChange={onChange}
+                    className={inputCls(errores.stock_actual)}
                   />
                   {errores.stock_actual && (
-                    <span className="text-error text-sm mt-1">
+                    <p className="text-xs text-[#ba1a1a] mt-1">
                       {errores.stock_actual}
-                    </span>
+                    </p>
                   )}
                 </div>
 
                 {/* Stock mínimo */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">
-                      Stock mínimo *
-                    </span>
-                  </label>
+                <div>
+                  <Label>Stock mínimo *</Label>
                   <input
                     type="number"
                     name="stock_minimo"
                     min="0"
-                    className={`input input-bordered ${errores.stock_minimo ? "input-error" : ""}`}
                     placeholder="5"
                     value={formData.stock_minimo}
                     onChange={onChange}
+                    className={inputCls(errores.stock_minimo)}
                   />
                   {errores.stock_minimo && (
-                    <span className="text-error text-sm mt-1">
+                    <p className="text-xs text-[#ba1a1a] mt-1">
                       {errores.stock_minimo}
-                    </span>
+                    </p>
                   )}
                 </div>
 
-                {/* Fecha de vencimiento */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">
-                      Fecha de vencimiento
-                    </span>
-                    <span className="label-text-alt text-gray-400">
-                      Opcional
-                    </span>
-                  </label>
+                {/* Fecha vencimiento */}
+                <div>
+                  <Label optional>Fecha de vencimiento</Label>
                   <input
                     type="date"
                     name="fecha_vencimiento"
-                    className="input input-bordered"
                     value={formData.fecha_vencimiento}
                     onChange={onChange}
+                    className={inputCls(false)}
                   />
                 </div>
 
                 {/* Proveedor */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">Proveedor</span>
-                  </label>
+                <div>
+                  <Label>Proveedor *</Label>
                   <input
                     type="text"
                     name="proveedor"
-                    className="input input-bordered"
                     placeholder="Ej: Dental Plus"
                     value={formData.proveedor}
                     onChange={onChange}
+                    className={inputCls(errores.proveedor)}
                   />
                   {errores.proveedor && (
-                    <span className="text-error text-sm mt-1">
+                    <p className="text-xs text-[#ba1a1a] mt-1">
                       {errores.proveedor}
-                    </span>
+                    </p>
                   )}
                 </div>
               </div>
@@ -258,20 +274,25 @@ const NuevoInsumo = () => {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  className="btn btn-ghost"
                   onClick={() => navigate("/inventario")}
+                  className="px-5 py-2.5 text-xs font-semibold text-[#3f484e] bg-[#f0f3ff] border border-[#bec8ce] rounded-full hover:bg-[#dce2f3] transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-secondary"
                   disabled={guardando}
+                  className="px-6 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-60"
                 >
                   {guardando ? (
                     <span className="loading loading-spinner loading-xs" />
                   ) : (
-                    "Guardar Insumo"
+                    <>
+                      <span className="material-symbols-outlined text-[16px]">
+                        check
+                      </span>
+                      Guardar Insumo
+                    </>
                   )}
                 </button>
               </div>
@@ -280,26 +301,33 @@ const NuevoInsumo = () => {
         </div>
       </div>
 
-      {/* Toast de registrado */}
+      {/* Toast éxito */}
       {exito && (
-        <div className="toast toast-bottom toast-end z-50 mr-4 mb-4">
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-xl px-6 py-5 flex items-center gap-4 min-w-[320px] max-w-[420px]">
-            <div className="bg-green-100 text-green-600 p-3 rounded-xl">
-              <Package size={22} />
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="bg-white border border-[#bec8ce] rounded-2xl shadow-xl px-6 py-5 flex items-center gap-4 min-w-[320px]">
+            <div className="bg-[#6df5e120] p-3 rounded-xl">
+              <span
+                className="material-symbols-outlined text-[#006b5f]"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                check_circle
+              </span>
             </div>
             <div className="flex-1">
-              <p className="text-base font-semibold text-gray-800">
+              <p className="text-sm font-semibold text-[#151c27]">
                 Insumo registrado correctamente
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs text-[#3f484e] mt-0.5">
                 La información fue guardada exitosamente
               </p>
             </div>
             <button
               onClick={() => setExito(false)}
-              className="text-gray-400 hover:text-gray-600 transition"
+              className="text-[#bec8ce] hover:text-[#3f484e] transition-colors"
             >
-              ✕
+              <span className="material-symbols-outlined text-[18px]">
+                close
+              </span>
             </button>
           </div>
         </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
-import Navbar from "../../components/Navbar";
-import { AlertTriangle, ArrowLeft, Save, X } from "lucide-react";
+import { useNavigate, useParams, Link } from "react-router";
 import { insumoService } from "../../services/insumoService";
+
+const inputCls = "w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]";
 
 const EditarInsumo = () => {
 	const { id } = useParams();
@@ -12,32 +12,23 @@ const EditarInsumo = () => {
 	const [cargando, setCargando] = useState(true);
 	const [guardando, setGuardando] = useState(false);
 	const [error, setError] = useState(null);
-	const [formData, setFormData] = useState({
-		stock_actual: "",
-		stock_minimo: "",
-	});
+	const [formData, setFormData] = useState({ stock_actual: "", stock_minimo: "" });
 
-	// ── Cargar insumo por ID ──
 	useEffect(() => {
 		const fetchInsumo = async () => {
 			try {
 				const { data } = await insumoService.getById(id);
 				setInsumoOriginal(data);
-				setFormData({
-					stock_actual: data.stock_actual,
-					stock_minimo: data.stock_minimo,
-				});
-			} catch (err) {
+				setFormData({ stock_actual: data.stock_actual, stock_minimo: data.stock_minimo });
+			} catch {
 				setError("No se encontró el insumo.");
 			} finally {
 				setCargando(false);
 			}
 		};
-
 		fetchInsumo();
 	}, [id]);
 
-	// ── Guardar cambios ──
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setGuardando(true);
@@ -47,136 +38,135 @@ const EditarInsumo = () => {
 				stock_minimo: Number(formData.stock_minimo),
 			});
 			navigate("/inventario");
-		} catch (err) {
+		} catch {
 			setError("Error al guardar los cambios.");
 			setGuardando(false);
 		}
 	};
 
-	const stockBajo =
-		Number(formData.stock_actual) <= Number(formData.stock_minimo);
+	const stockBajo = Number(formData.stock_actual) <= Number(formData.stock_minimo);
 
-	// ── Estados de carga y error ──
-	if (cargando) {
-		return (
-			<div>
-				<Navbar />
-				<div className="flex justify-center items-center h-64">
-					<span className="loading loading-spinner loading-lg text-primary" />
-				</div>
+	// ── Cargando ──
+	if (cargando) return (
+		<div className="min-h-screen bg-[#f9f9ff] flex flex-col">
+			<header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+				<span className="text-2xl">ꨄ︎</span>
+				<span className="font-bold text-[#151c27]">Armonía Dental</span>
+			</header>
+			<div className="flex-1 flex items-center justify-center">
+				<span className="loading loading-spinner loading-lg text-[#006686]" />
 			</div>
-		);
-	}
+		</div>
+	);
 
-	if (error || !insumoOriginal) {
-		return (
-			<div>
-				<Navbar />
-				<div className="container mx-auto p-8">
-					<div className="alert alert-error max-w-md">
-						<span>{error || "Insumo no encontrado."}</span>
-					</div>
-					<button
-						className="btn btn-ghost mt-4 gap-2"
-						onClick={() => navigate("/inventario")}
-					>
-						<ArrowLeft size={16} />
-						Volver al inventario
-					</button>
+	// ── Error / no encontrado ──
+	if (error || !insumoOriginal) return (
+		<div className="min-h-screen bg-[#f9f9ff] flex flex-col">
+			<header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+				<span className="text-2xl">ꨄ︎</span>
+				<span className="font-bold text-[#151c27]">Armonía Dental</span>
+			</header>
+			<div className="flex-1 flex flex-col items-center justify-center gap-4">
+				<div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-6 py-4 flex items-center gap-3 text-sm text-[#ba1a1a]">
+					<span className="material-symbols-outlined">error</span>
+					{error || "Insumo no encontrado."}
 				</div>
+				<button onClick={() => navigate("/inventario")}
+					className="flex items-center gap-2 text-sm font-semibold text-[#006686] hover:underline">
+					<span className="material-symbols-outlined text-[18px]">arrow_back</span>
+					Volver al inventario
+				</button>
 			</div>
-		);
-	}
+		</div>
+	);
 
 	return (
-		<div>
-			<Navbar />
-			<div className="container mx-auto p-8">
-				<div className="lg:px-8 max-w-lg mx-auto">
-					<h2 className="text-3xl font-bold text-gray-800 mb-2">Editar Insumo</h2>
-					<p className="text-gray-600 mb-6">
-						Solo se puede modificar el stock actual y el stock mínimo
-					</p>
+		<div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
 
-					<div className="bg-white rounded-2xl shadow-md p-6 border border-gray-200">
-						<div className="flex justify-between items-center mb-4">
-							<h3 className="font-bold text-lg">Editar stock</h3>
-							<button
-								className="btn btn-ghost btn-sm"
-								onClick={() => navigate("/inventario")}
-							>
-								<X className="w-4 h-4" />
-							</button>
-						</div>
+			{/* Header */}
+			<header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+				<Link to="/inventario"
+					className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]">
+					<span className="material-symbols-outlined text-[20px]">arrow_back</span>
+				</Link>
+				<div className="w-px h-5 bg-[#bec8ce]" />
+				<span className="text-2xl">ꨄ︎</span>
+				<span className="font-bold text-[#151c27]">Armonía Dental</span>
+				<span className="text-[#bec8ce] mx-1">/</span>
+				<Link to="/inventario" className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors">Inventario</Link>
+				<span className="text-[#bec8ce] mx-1">/</span>
+				<span className="text-sm font-semibold text-[#006686]">Editar Insumo</span>
+			</header>
+
+			{/* Contenido */}
+			<div className="flex-1 flex items-start justify-center px-6 py-10">
+				<div className="w-full max-w-md">
+
+					<div className="mb-8">
+						<h2 className="text-[28px] font-bold text-[#151c27]">Editar Insumo</h2>
+						<p className="text-sm text-[#3f484e] mt-1">Solo se puede modificar el stock actual y el stock mínimo</p>
+					</div>
+
+					<div className="bg-white border border-[#bec8ce] rounded-2xl p-8 shadow-sm">
 
 						{/* Info solo lectura */}
-						<div className="bg-gray-50 rounded-lg p-3 mb-4">
-							<p className="font-semibold text-gray-800">{insumoOriginal.nombre}</p>
-							<p className="text-sm text-gray-500">
-								{insumoOriginal.codigo} · {insumoOriginal.categoria}
-							</p>
+						<div className="bg-[#f0f3ff] rounded-xl p-4 mb-6 flex items-center gap-3">
+							<div className="w-10 h-10 rounded-full bg-[#7dd3fc20] border border-[#006686]/20 flex items-center justify-center text-[#006686]">
+								<span className="material-symbols-outlined text-[20px]">inventory_2</span>
+							</div>
+							<div>
+								<p className="font-semibold text-[#151c27] text-sm">{insumoOriginal.nombre}</p>
+								<p className="text-xs text-[#3f484e]">{insumoOriginal.codigo} · {insumoOriginal.categoria}</p>
+							</div>
 						</div>
 
-						<form className="space-y-3" onSubmit={handleSubmit}>
-							<div className="grid grid-cols-2 gap-3">
-								<div className="form-control">
-									<label className="label">
-										<span className="label-text">Stock actual *</span>
+						<form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
+							<div className="grid grid-cols-2 gap-4">
+								<div>
+									<label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
+										Stock actual *
 									</label>
-									<input
-										type="number"
-										min="0"
-										className="input input-bordered"
+									<input type="number" min="0"
 										value={formData.stock_actual}
-										onChange={(e) =>
-											setFormData((p) => ({ ...p, stock_actual: e.target.value }))
-										}
-										required
-									/>
+										onChange={(e) => setFormData((p) => ({ ...p, stock_actual: e.target.value }))}
+										required className={inputCls} />
 								</div>
-								<div className="form-control">
-									<label className="label">
-										<span className="label-text">Stock mínimo *</span>
+								<div>
+									<label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
+										Stock mínimo *
 									</label>
-									<input
-										type="number"
-										min="0"
-										className="input input-bordered"
+									<input type="number" min="0"
 										value={formData.stock_minimo}
-										onChange={(e) =>
-											setFormData((p) => ({ ...p, stock_minimo: e.target.value }))
-										}
-										required
-									/>
+										onChange={(e) => setFormData((p) => ({ ...p, stock_minimo: e.target.value }))}
+										required className={inputCls} />
 								</div>
 							</div>
 
 							{stockBajo && (
-								<div className="alert alert-warning py-2">
-									<AlertTriangle className="w-4 h-4" />
-									<span className="text-sm">
-										El stock actual sigue siendo menor o igual al mínimo.
-									</span>
+								<div className="bg-[#ffddb820] border border-[#855300]/20 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-[#855300]">
+									<span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+									El stock actual sigue siendo menor o igual al mínimo.
+								</div>
+							)}
+
+							{error && (
+								<div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-[#ba1a1a]">
+									<span className="material-symbols-outlined text-[18px]">error</span>
+									{error}
 								</div>
 							)}
 
 							<div className="flex justify-end gap-3 pt-2">
-								<button
-									type="button"
-									className="btn btn-ghost"
-									onClick={() => navigate("/inventario")}
-								>
+								<button type="button" onClick={() => navigate("/inventario")}
+									className="px-5 py-2.5 text-xs font-semibold text-[#3f484e] bg-[#f0f3ff] border border-[#bec8ce] rounded-full hover:bg-[#dce2f3] transition-colors">
 									Cancelar
 								</button>
-								<button
-									type="submit"
-									className="btn btn-secondary"
-									disabled={guardando}
-								>
+								<button type="submit" disabled={guardando}
+									className="px-6 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-60">
 									{guardando ? (
 										<span className="loading loading-spinner loading-xs" />
 									) : (
-										<><Save size={15} /> Guardar cambios</>
+										<><span className="material-symbols-outlined text-[16px]">save</span>Guardar cambios</>
 									)}
 								</button>
 							</div>
