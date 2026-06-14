@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:3000/api/pacientes";
+const VERSION = "v1";
+
+const API_URL = `http://localhost:3000/${VERSION}/pacientes`;
 
 function getAuthHeaders() {
 	const token = localStorage.getItem("token");

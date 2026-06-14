@@ -1,5 +1,10 @@
 import { obtenerPacientesConExpediente } from "../controllers/PacienteController.js";
 
 export const PacientesRoutes = (app) => {
-  app.get("/api/pacientes", obtenerPacientesConExpediente);
+  const version = process.env.VERSION || "v1";
+
+  app.get(
+    `/${version}/pacientes`,
+    obtenerPacientesConExpediente
+  );
 };

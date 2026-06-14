@@ -7,6 +7,7 @@ import {
   cancelarCita,
   getPacientes,
   getUsuarios,
+  getDisponibilidad,
 } from "../services/citaService";
 
 const DURACIONES = {
@@ -67,6 +68,9 @@ const Citas = () => {
   const [mostrarPasadas, setMostrarPasadas] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensajeError, setMensajeError] = useState("");
+  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [citaEditando, setCitaEditando] = useState(null);
@@ -92,6 +96,8 @@ const Citas = () => {
     setTimeout(() => setMensajeError(""), 4000);
   };
 
+  
+
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -113,6 +119,32 @@ const Citas = () => {
     };
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    const cargarDisponibilidad = async () => {
+      if (!fechaSeleccionada || !formNueva.tipo) {
+        setHorariosDisponibles([]);
+        return;
+      }
+
+      try {
+        setCargandoHorarios(true);
+
+        const data = await getDisponibilidad(
+          fechaSeleccionada,
+          formNueva.tipo
+        );
+
+        setHorariosDisponibles(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setCargandoHorarios(false);
+      }
+    };
+
+    cargarDisponibilidad();
+  }, [fechaSeleccionada, formNueva.tipo]);
 
   const formatearFecha = (f) =>
     new Date(f).toLocaleString("es-CR", {
@@ -138,11 +170,19 @@ const Citas = () => {
 
   const handleCrear = async (e) => {
     e.preventDefault();
+
+    if (!formNueva.fecha_hora) {
+      mostrarError("Debes seleccionar un horario disponible.");
+      return;
+    }
+
     setGuardando(true);
     setMensajeError("");
+
     try {
       const nueva = await createCita(formNueva);
       setCitas((p) => [...p, nueva]);
+
       setFormNueva({
         paciente_id: "",
         usuario_id: formNueva.usuario_id,
@@ -151,6 +191,9 @@ const Citas = () => {
         motivo: "",
         observaciones: "",
       });
+
+      setFechaSeleccionada("");
+      setHorariosDisponibles([]);
     } catch (err) {
       mostrarError(err.message);
     } finally {
@@ -343,32 +386,114 @@ const Citas = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Fecha y hora *</Label>
-                    <input
-                      type="datetime-local"
-                      name="fecha_hora"
-                      value={formNueva.fecha_hora}
-                      onChange={(e) =>
-                        setFormNueva((p) => ({
-                          ...p,
-                          fecha_hora: e.target.value,
-                        }))
-                      }
-                      min={getFechaMinima()}
-                      required
-                      className={inputCls}
-                    />
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Fecha *</Label>
+
+                      <input
+                        type="date"
+                        value={fechaSeleccionada}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => {
+                          setFechaSeleccionada(e.target.value);
+
+                          setFormNueva((p) => ({
+                            ...p,
+                            fecha_hora: "",
+                          }));
+                        }}
+                        className={inputCls}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Duración estimada</Label>
+
+                      <input
+                        type="text"
+                        value={`${DURACIONES[formNueva.tipo] || 30} minutos`}
+                        disabled
+                        className={`${inputCls} bg-[#f0f3ff] cursor-not-allowed`}
+                      />
+                    </div>
                   </div>
+
                   <div>
-                    <Label>Duración estimada</Label>
-                    <input
-                      type="text"
-                      value={`${DURACIONES[formNueva.tipo] || 30} minutos`}
-                      disabled
-                      className={`${inputCls} bg-[#f0f3ff] cursor-not-allowed`}
-                    />
+                    <Label>Horarios disponibles *</Label>
+
+                    {!fechaSeleccionada ? (
+                      <div className="rounded-lg border border-dashed border-[#bec8ce] bg-[#f9f9ff] px-4 py-4 text-sm text-[#3f484e]">
+                        Selecciona una fecha para ver los horarios disponibles.
+                      </div>
+                    ) : cargandoHorarios ? (
+                      <div className="rounded-lg border border-[#bec8ce] bg-[#f9f9ff] py-5 text-center">
+                        <span className="loading loading-spinner loading-md text-[#006686]" />
+                      </div>
+                    ) : horariosDisponibles.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-[#bec8ce] bg-[#f9f9ff] px-4 py-4 text-sm text-[#3f484e]">
+                        No hay horarios disponibles para esta fecha.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1">
+                        {horariosDisponibles.map((slot) => {
+                          const hora = new Date(slot.fecha_hora).toLocaleTimeString("es-CR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          });
+
+                          const seleccionado =
+                            new Date(formNueva.fecha_hora).getTime() ===
+                            new Date(slot.fecha_hora).getTime();
+
+                          return (
+                            <button
+                              key={slot.fecha_hora}
+                              type="button"
+                              disabled={!slot.disponible}
+                              onClick={() =>
+                                setFormNueva((p) => ({
+                                  ...p,
+                                  fecha_hora: slot.fecha_hora,
+                                }))
+                              }
+                              className={`
+                                rounded-lg border px-3 py-2 text-xs font-semibold transition-all
+
+                                ${
+                                  seleccionado
+                                    ? "border-[#006686] bg-[#006686] text-white shadow-sm"
+                                    : ""
+                                }
+
+                                ${
+                                  !slot.disponible
+                                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 opacity-70"
+                                    : !seleccionado
+                                      ? "border-[#bec8ce] bg-white text-[#3f484e] hover:border-[#006686] hover:bg-[#f0f3ff] hover:text-[#006686]"
+                                      : ""
+                                }
+                              `}
+                            >
+                              {hora}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {formNueva.fecha_hora && (
+                      <p className="mt-2 text-xs text-[#006686] font-semibold">
+                        Hora seleccionada:{" "}
+                        {new Date(formNueva.fecha_hora).toLocaleTimeString("es-CR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </p>
+                    )}
                   </div>
                 </div>
 

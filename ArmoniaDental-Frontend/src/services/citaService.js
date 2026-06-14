@@ -1,6 +1,8 @@
-const API_URL = "http://localhost:3000/api/citas";
-const PACIENTES_URL = "http://localhost:3000/api/pacientes";
-const USUARIOS_URL = "http://localhost:3000/v1/users/list";
+const VERSION = "v1";
+
+const API_URL = `http://localhost:3000/${VERSION}/citas`;
+const PACIENTES_URL = `http://localhost:3000/${VERSION}/pacientes`;
+const USUARIOS_URL = `http://localhost:3000/${VERSION}/users/list`;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -47,6 +49,24 @@ export async function updateCita(id, datos) {
   });
   return handleResponse(response);
 }
+
+export const getDisponibilidad = async (fecha, tipo) => {
+  const response = await fetch(
+    `${API_URL}/disponibilidad?fecha=${fecha}&tipo=${encodeURIComponent(tipo)}`,
+    {
+      headers: getAuthHeaders(),
+      credentials: "include",
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Error obteniendo disponibilidad");
+  }
+
+  return data;
+};
 
 export async function cancelarCita(id) {
   const response = await fetch(`${API_URL}/${id}/cancelar`, {
