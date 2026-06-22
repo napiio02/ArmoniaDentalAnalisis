@@ -5,12 +5,13 @@ import cookieParser from "cookie-parser";
 
 import connectDB from "./database/DatabaseConnection.js";
 
-import { UsersRoutes } from "./routes/UsersRoutes.js";
+import { UsersRoutes } from "./routes/UsuariosRoutes.js";
 import { RolesRoutes } from "./routes/RolesRoutes.js";
 import { InsumosRoutes } from "./routes/InsumosRoutes.js";
 import { OdontogramaRoutes } from "./routes/Odontograma/OdontogramaRoutes.js";
 import { PacientesRoutes } from "./routes/PacientesRoutes.js";
 import { CitasRoutes } from "./routes/CitasRoutes.js"; 
+import { AuthRoutes } from "./routes/AuthRoutes.js";
 
 dotenv.config();
 
@@ -27,12 +28,14 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 
+AuthRoutes(app);
 UsersRoutes(app);
 RolesRoutes(app);
 InsumosRoutes(app);
 OdontogramaRoutes(app);
 PacientesRoutes(app);
 CitasRoutes(app);
+
 
 app.get("/", (req, res) => {
   res.json({

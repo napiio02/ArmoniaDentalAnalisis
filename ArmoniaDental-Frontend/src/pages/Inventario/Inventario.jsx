@@ -11,7 +11,7 @@ const CATEGORIAS = [
 	"Cirugía", "Instrumental", "Prevención", "Ortodoncia", "Diagnóstico",
 ];
 
-// ─── Inventario ────────────────────────────────────────────────
+// ─── Inventario ─────
 const Inventario = () => {
 	const [insumos, setInsumos] = useState([]);
 	const [cargando, setCargando] = useState(true);
@@ -20,7 +20,7 @@ const Inventario = () => {
 	const [categoriaFiltro, setCategoriaFiltro] = useState("");
 	const [estadoFiltro, setEstadoFiltro] = useState("");
 	const [paginaActual, setPaginaActual] = useState(1);
-	const insumosPorPagina = 15;
+	const insumosPorPagina = 10;
 
 	useEffect(() => {
 		cargarInsumos();
@@ -186,15 +186,11 @@ const Inventario = () => {
 												<td className="px-5 py-4 text-sm text-[#151c27] font-mono">{insumo.codigo}</td>
 												<td className="px-5 py-4 text-sm font-semibold text-[#151c27]">{insumo.nombre}</td>
 												<td className="px-5 py-4 text-sm text-[#3f484e]">{insumo.categoria}</td>
-												<td className="px-5 py-4 text-right">
-													<span className={`text-sm ${getStockColor(insumo)}`}>{insumo.stock_actual}</span>
-												</td>
-												<td className="px-5 py-4 text-sm text-[#3f484e] text-right">{insumo.stock_minimo}</td>
+												<td className="px-5 py-4 text-sm text-[#3f484e]"><span className={`text-sm ${getStockColor(insumo)}`}>{insumo.stock_actual}</span></td>
+												<td className="px-5 py-4 text-sm text-[#3f484e]">{insumo.stock_minimo}</td>
 												<td className="px-5 py-4 text-sm text-[#3f484e]">{insumo.unidad}</td>
 												<td className="px-5 py-4 text-sm text-[#3f484e]">{insumo.proveedor || "—"}</td>
-												<td className="px-5 py-4 text-sm text-[#3f484e]">
-													{formatVencimiento(insumo.fecha_vencimiento) || <span className="text-[#bec8ce]">—</span>}
-												</td>
+												<td className="px-5 py-4 text-sm text-[#3f484e]">{formatVencimiento(insumo.fecha_vencimiento) || <span className="text-[#bec8ce]">—</span>}</td>
 												<td className="px-5 py-4">
 													{insumo.activo ? (
 														<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#6df5e120] text-[#006b5f] border border-[#6df5e1]/30">Activo</span>
@@ -208,6 +204,14 @@ const Inventario = () => {
 															className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-all" title="Editar">
 															<span className="material-symbols-outlined text-[18px]">edit</span>
 														</Link>
+														<Link to={`/inventario-entrada/${insumo._id}`}
+                                                            className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-all" title="Registrar entrada">
+                                                            <span className="material-symbols-outlined text-[18px]">move_to_inbox</span>
+                                                        </Link>
+														<Link to={`/inventario-salida/${insumo._id}`}
+                                                            className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#ba1a1a] hover:text-[#ba1a1a] transition-all" title="Registrar salida">
+                                                            <span className="material-symbols-outlined text-[18px]">outbox</span>
+                                                        </Link>
 														<button onClick={() => toggleActivo(insumo._id)}
 															className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-all"
 															title={insumo.activo ? "Desactivar" : "Activar"}>

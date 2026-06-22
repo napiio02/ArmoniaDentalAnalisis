@@ -1,52 +1,71 @@
 import { Link, useNavigate } from "react-router";
 import { useState } from "react";
 
+import { iniciarSesion } from "../services/authService";
+
 function Login() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: "", password: "" });
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
-  const onChange = (e) =>
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const onChange = (e) => {
+    const { name, value } = e.target;
 
-  const handleSubmit = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (error) {
+      setError("");
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError("");
     setCargando(true);
 
-    setTimeout(() => {
-      const { email, password } = formData;
+    try {
+      const resultado = await iniciarSesion({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
 
-      if (email === "admin@armoniadental.com" && password === "1234") {
-        localStorage.setItem("token", "demo-token-armonia-dental");
-        localStorage.setItem(
-          "usuario",
-          JSON.stringify({
-            _id: "u4",
-            nombre: "Admin Sistema",
-            email,
-            rol: "Admin",
-          }),
-        );
-        navigate("/");
-      } else if (email === "laura@armoniadental.com" && password === "1234") {
-        localStorage.setItem("token", "demo-token-armonia-dental");
-        localStorage.setItem(
-          "usuario",
-          JSON.stringify({
-            _id: "u1",
-            nombre: "Laura Ureña Rodríguez",
-            email,
-            rol: "Dentista",
-          }),
-        );
-        navigate("/");
-      } else {
-        setError("Credenciales inválidas. Verifique su correo y contraseña.");
-      }
+      /*
+       * Guardamos únicamente información visual del usuario.
+       * El JWT permanece protegido en la cookie HttpOnly.
+       */
+      localStorage.setItem(
+        "usuario",
+        JSON.stringify(resultado.data.usuario)
+      );
+
+      navigate("/", { replace: true });
+    } catch (error) {
+      setError(
+        error.message ||
+          "No fue posible iniciar sesión. Verifique sus credenciales."
+      );
+    } finally {
       setCargando(false);
-    }, 600);
+    }
+  };
+
+  const colocarCredencialesPrueba = () => {
+    setFormData({
+      email: "laura@armoniadental.com",
+      password: "Laura1234!",
+    });
+
+    setError("");
   };
 
   return (
@@ -63,9 +82,11 @@ function Login() {
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="text-5xl mb-3">ꨄ︎</div>
+
             <h1 className="text-2xl font-extrabold text-[#151c27]">
               Armonía Dental
             </h1>
+
             <p className="text-xs text-[#3f484e] mt-1">
               Sistema de gestión clínica
             </p>
@@ -74,17 +95,19 @@ function Login() {
           <h2 className="text-lg font-bold text-[#151c27] mb-1">
             Iniciar Sesión
           </h2>
+
           <p className="text-xs text-[#3f484e] mb-6">
             Ingrese su correo y contraseña para acceder al sistema
           </p>
 
-          {/* Error */}
+          {/* Mensaje de error */}
           {error && (
             <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-[#ba1a1a] mb-5">
               <span className="material-symbols-outlined text-[18px]">
                 error
               </span>
-              {error}
+
+              <span>{error}</span>
             </div>
           )}
 
@@ -96,30 +119,41 @@ function Login() {
               </span>
               Credenciales de prueba
             </p>
+
             <p className="text-xs text-[#3f484e] font-mono">
-              admin@armoniadental.com
+              laura@armoniadental.com
             </p>
-            <p className="text-xs text-[#3f484e] font-mono">1234</p>
+
+            <p className="text-xs text-[#3f484e] font-mono">
+              Laura1234!
+            </p>
+
+            <button
+              type="button"
+              onClick={colocarCredencialesPrueba}
+              className="mt-2 text-xs font-semibold text-[#006686] hover:underline"
+            >
+              Usar credenciales de prueba
+            </button>
           </div>
 
           {/* Formulario */}
-          <form
-            onSubmit={handleSubmit}
-            autoComplete="off"
-            className="space-y-4"
-          >
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                 Correo electrónico
               </label>
+
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={onChange}
                 placeholder="correo@armoniadental.com"
+                autoComplete="email"
                 required
-                className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
+                disabled={cargando}
+                className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27] disabled:opacity-60"
               />
             </div>
 
@@ -128,6 +162,7 @@ function Login() {
                 <label className="text-xs font-semibold text-[#3f484e] uppercase tracking-wider">
                   Contraseña
                 </label>
+
                 <Link
                   to="/recuperar-password"
                   className="text-xs text-[#006686] hover:underline italic"
@@ -135,14 +170,17 @@ function Login() {
                   ¿Olvidaste la contraseña?
                 </Link>
               </div>
+
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={onChange}
                 placeholder="Ingrese su contraseña"
+                autoComplete="current-password"
                 required
-                className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
+                disabled={cargando}
+                className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27] disabled:opacity-60"
               />
             </div>
 
@@ -152,7 +190,10 @@ function Login() {
               className="w-full py-3 bg-[#006686] text-white rounded-full font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
             >
               {cargando ? (
-                <span className="loading loading-spinner loading-sm" />
+                <>
+                  <span className="loading loading-spinner loading-sm" />
+                  Ingresando...
+                </>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[18px]">
