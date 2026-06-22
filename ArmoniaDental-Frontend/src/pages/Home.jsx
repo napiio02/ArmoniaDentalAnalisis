@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { getCitas } from "../services/citaService";
 import Sidebar from "../components/Sidebar";
 
-// ─── Home ──────────────────────────────────────────────────────
+// ─── Home ────
 const Home = () => {
   const [citasHoy, setCitasHoy] = useState([]);
   const [citasMes, setCitasMes] = useState(0);

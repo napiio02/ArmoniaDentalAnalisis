@@ -20,6 +20,8 @@ import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
 import Odontograma from "./pages/Odontograma/Odontograma";
 import RecuperarPass from "./pages/RecuperarPass";
+import RegistrarEntrada from "./pages/Inventario/RegistrarEntrada";
+import RegistrarSalida from "./pages/Inventario/RegistrarSalida";
 
 const ProtectedRoute = ({ children }) => {
   const [estadoSesion, setEstadoSesion] = useState("cargando");
@@ -35,10 +37,7 @@ const ProtectedRoute = ({ children }) => {
           return;
         }
 
-        localStorage.setItem(
-          "usuario",
-          JSON.stringify(resultado.data.usuario)
-        );
+        localStorage.setItem("usuario", JSON.stringify(resultado.data.usuario));
 
         setEstadoSesion("autenticado");
       } catch (error) {
@@ -64,9 +63,7 @@ const ProtectedRoute = ({ children }) => {
         <div className="text-center">
           <span className="loading loading-spinner loading-lg text-[#006686]" />
 
-          <p className="text-sm text-[#3f484e] mt-3">
-            Verificando sesión...
-          </p>
+          <p className="text-sm text-[#3f484e] mt-3">Verificando sesión...</p>
         </div>
       </div>
     );
@@ -86,10 +83,7 @@ const App = () => {
         {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
 
-        <Route
-          path="/recuperar-password"
-          element={<RecuperarPass />}
-        />
+        <Route path="/recuperar-password" element={<RecuperarPass />} />
 
         {/* Rutas privadas */}
         <Route
@@ -178,6 +172,24 @@ const App = () => {
           element={
             <ProtectedRoute>
               <EditarInsumo />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventario-entrada/:id"
+          element={
+            <ProtectedRoute>
+              <RegistrarEntrada />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventario-salida/:id"
+          element={
+            <ProtectedRoute>
+              <RegistrarSalida />
             </ProtectedRoute>
           }
         />

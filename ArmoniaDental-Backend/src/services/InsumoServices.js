@@ -1,4 +1,5 @@
 import Insumo from "../models/InsumoModel.js";
+import MovimientoInsumo from "../models/MovimientoInsumoModel.js";
 
 const generarCodigo = async () => {
   const ultimoInsumo = await Insumo.findOne({
@@ -56,5 +57,62 @@ export const toggleActivoInsumo = async (id) => {
   const insumo = await Insumo.findById(id);
   insumo.activo = !insumo.activo;
   await insumo.save();
+  return insumo;
+};
+
+export const registrarEntradaInsumo = async (id, cantidad, fecha) => {
+  const cantidadNum = Number(cantidad);
+
+  if (!cantidadNum || cantidadNum <= 0 || isNaN(cantidadNum)) {
+    throw new Error("La cantidad debe ser un número mayor a 0.");
+  }
+
+  const insumo = await Insumo.findById(id);
+  if (!insumo) return null;
+
+  insumo.stock_actual += cantidadNum;
+  await insumo.save();
+
+  await MovimientoInsumo.create({
+    insumo_id: insumo._id,
+    tipo: "entrada",
+    cantidad: cantidadNum,
+    fecha: fecha || new Date(),
+    stock_resultante: insumo.stock_actual,
+  });
+
+  return insumo;
+};
+
+export const getMovimientosPorInsumo = async (insumoId) => {
+  return await MovimientoInsumo.find({ insumo_id: insumoId })
+    .sort({ fecha: -1 });
+};
+
+export const registrarSalidaInsumo = async (id, cantidad, fecha) => {
+  const cantidadNum = Number(cantidad);
+
+  if (!cantidadNum || cantidadNum <= 0 || isNaN(cantidadNum)) {
+    throw new Error("La cantidad debe ser un número mayor a 0.");
+  }
+
+  const insumo = await Insumo.findById(id);
+  if (!insumo) return null;
+
+  if (cantidadNum > insumo.stock_actual) {
+    throw new Error(`Stock insuficiente. Disponible: ${insumo.stock_actual} ${insumo.unidad}.`);
+  }
+
+  insumo.stock_actual -= cantidadNum;
+  await insumo.save();
+
+  await MovimientoInsumo.create({
+    insumo_id: insumo._id,
+    tipo: "salida",
+    cantidad: cantidadNum,
+    fecha: fecha || new Date(),
+    stock_resultante: insumo.stock_actual,
+  });
+
   return insumo;
 };
