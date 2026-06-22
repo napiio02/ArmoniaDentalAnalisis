@@ -3,6 +3,8 @@ import {
   login,
   logout,
   obtenerSesion,
+  solicitarRecuperacion,
+  restablecerContrasena,
 } from "../controllers/AuthController.js";
 
 import { verifyToken } from "../middlewares/verifyToken.js";
@@ -10,11 +12,26 @@ import { verifyToken } from "../middlewares/verifyToken.js";
 export const AuthRoutes = (app) => {
   const version = process.env.VERSION || "v1";
 
-  // Rutas públicas
+  // Rutas públicas de autenticación
   app.post(`/${version}/auth/registro`, registrarAsistente);
   app.post(`/${version}/auth/login`, login);
   app.post(`/${version}/auth/logout`, logout);
 
-  // Ruta protegida
-  app.get(`/${version}/auth/me`, verifyToken, obtenerSesion);
+  // Rutas públicas de recuperación de contraseña
+  app.post(
+    `/${version}/auth/recuperar-password`,
+    solicitarRecuperacion
+  );
+
+  app.post(
+    `/${version}/auth/restablecer-password`,
+    restablecerContrasena
+  );
+
+  // Ruta protegida para consultar la sesión actual
+  app.get(
+    `/${version}/auth/me`,
+    verifyToken,
+    obtenerSesion
+  );
 };

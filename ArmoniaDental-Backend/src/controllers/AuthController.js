@@ -1,6 +1,8 @@
 import {
   completarRegistroAsistente,
   iniciarSesion,
+  solicitarRecuperacionPassword,
+  restablecerPassword,
 } from "../services/AuthService.js";
 
 const COOKIE_NAME = "auth_token";
@@ -37,7 +39,8 @@ export const registrarAsistente = async (req, res) => {
 
     return res.status(200).json({
       ok: true,
-      message: "Registro completado correctamente. Ya puede iniciar sesión.",
+      message:
+        "Registro completado correctamente. Ya puede iniciar sesión.",
       data: {
         usuario,
       },
@@ -77,6 +80,68 @@ export const login = async (req, res) => {
       res,
       error,
       "Ocurrió un error al iniciar sesión."
+    );
+  }
+};
+
+/*
+ * Solicita el envío de un correo para recuperar
+ * la contraseña.
+ *
+ * La respuesta siempre es genérica para evitar revelar
+ * si un correo está registrado o no.
+ */
+export const solicitarRecuperacion = async (req, res) => {
+  try {
+    await solicitarRecuperacionPassword(req.body);
+
+    return res.status(200).json({
+      ok: true,
+      message:
+        "Si el correo está registrado, recibirá un enlace para restablecer su contraseña.",
+      data: null,
+    });
+  } catch (error) {
+    return responderError(
+      res,
+      error,
+      "Ocurrió un error al solicitar la recuperación de contraseña."
+    );
+  }
+};
+
+/*
+ * Cambia la contraseña utilizando el token enviado
+ * al correo electrónico del usuario.
+ */
+export const restablecerContrasena = async (req, res) => {
+  try {
+    await restablecerPassword(req.body);
+
+    /*
+     * Por seguridad, eliminamos cualquier sesión activa
+     * después de cambiar la contraseña.
+     */
+    const opcionesCookie = obtenerOpcionesCookie();
+
+    res.clearCookie(COOKIE_NAME, {
+      httpOnly: opcionesCookie.httpOnly,
+      secure: opcionesCookie.secure,
+      sameSite: opcionesCookie.sameSite,
+      path: opcionesCookie.path,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      message:
+        "Contraseña restablecida correctamente. Ya puede iniciar sesión.",
+      data: null,
+    });
+  } catch (error) {
+    return responderError(
+      res,
+      error,
+      "Ocurrió un error al restablecer la contraseña."
     );
   }
 };

@@ -19,9 +19,10 @@ import Comprobantes from "./pages/Comprobantes";
 import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
 import Odontograma from "./pages/Odontograma/Odontograma";
-import RecuperarPass from "./pages/RecuperarPass";
 import RegistrarEntrada from "./pages/Inventario/RegistrarEntrada";
 import RegistrarSalida from "./pages/Inventario/RegistrarSalida";
+import RecuperarPass from "./pages/RecuperarPass";
+import RestablecerPass from "./pages/RestablecerPass";
 
 const ProtectedRoute = ({ children }) => {
   const [estadoSesion, setEstadoSesion] = useState("cargando");
@@ -237,6 +238,11 @@ const App = () => {
               <Odontograma />
             </ProtectedRoute>
           }
+        />
+
+        <Route
+          path="/restablecer-password"
+          element={<RestablecerPass />}
         />
 
         {/* Ruta desconocida */}
