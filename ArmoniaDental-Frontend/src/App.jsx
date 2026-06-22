@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Route, Routes, Navigate } from "react-router";
+
+import { obtenerSesion } from "./services/authService";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -20,8 +22,61 @@ import Odontograma from "./pages/Odontograma/Odontograma";
 import RecuperarPass from "./pages/RecuperarPass";
 
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem("token");
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const [estadoSesion, setEstadoSesion] = useState("cargando");
+
+  useEffect(() => {
+    let componenteActivo = true;
+
+    const validarSesion = async () => {
+      try {
+        const resultado = await obtenerSesion();
+
+        if (!componenteActivo) {
+          return;
+        }
+
+        localStorage.setItem(
+          "usuario",
+          JSON.stringify(resultado.data.usuario)
+        );
+
+        setEstadoSesion("autenticado");
+      } catch (error) {
+        if (!componenteActivo) {
+          return;
+        }
+
+        localStorage.removeItem("usuario");
+        setEstadoSesion("no-autenticado");
+      }
+    };
+
+    validarSesion();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, []);
+
+  if (estadoSesion === "cargando") {
+    return (
+      <div className="min-h-screen bg-[#f9f9ff] flex items-center justify-center">
+        <div className="text-center">
+          <span className="loading loading-spinner loading-lg text-[#006686]" />
+
+          <p className="text-sm text-[#3f484e] mt-3">
+            Verificando sesión...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (estadoSesion === "no-autenticado") {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 };
 
 const App = () => {
@@ -31,7 +86,10 @@ const App = () => {
         {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
 
-        <Route path="/recuperar-password" element={<RecuperarPass />} />
+        <Route
+          path="/recuperar-password"
+          element={<RecuperarPass />}
+        />
 
         {/* Rutas privadas */}
         <Route
@@ -42,6 +100,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/pacientes"
           element={
@@ -50,6 +109,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/pacientes-nuevo"
           element={
@@ -58,6 +118,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/pacientes/:id"
           element={
@@ -66,6 +127,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/pacientes/editar/:id"
           element={
@@ -74,6 +136,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/expedientes"
           element={
@@ -82,6 +145,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/citas"
           element={
@@ -90,26 +154,25 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        {
-          <Route
-            path="/inventario"
-            element={
-              <ProtectedRoute>
-                <Inventario />
-              </ProtectedRoute>
-            }
-          />
-        }
-        {
-          <Route
-            path="/inventario-nuevo"
-            element={
-              <ProtectedRoute>
-                <NuevoInsumo />
-              </ProtectedRoute>
-            }
-          />
-        }
+
+        <Route
+          path="/inventario"
+          element={
+            <ProtectedRoute>
+              <Inventario />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventario-nuevo"
+          element={
+            <ProtectedRoute>
+              <NuevoInsumo />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/inventario-editar/:id"
           element={
@@ -118,6 +181,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/control-marcas"
           element={
@@ -126,16 +190,16 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        {
-          <Route
-            path="/comprobantes"
-            element={
-              <ProtectedRoute>
-                <Comprobantes />
-              </ProtectedRoute>
-            }
-          />
-        }
+
+        <Route
+          path="/comprobantes"
+          element={
+            <ProtectedRoute>
+              <Comprobantes />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/reportes"
           element={
@@ -144,6 +208,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/usuarios"
           element={
@@ -152,6 +217,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/odontograma"
           element={
@@ -160,6 +226,9 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* Ruta desconocida */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
