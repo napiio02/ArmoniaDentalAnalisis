@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { PACIENTES } from "../../data/mockData";
+import { obtenerPacientePorId } from "../../services/pacienteService";
 
 const getInitials = (nombre = "") =>
   nombre
@@ -23,15 +23,34 @@ const Campo = ({ label, value, full }) => (
   </div>
 );
 
+const formatearFecha = (fecha) => {
+  if (!fecha) return null;
+  return new Date(
+    new Date(fecha).toISOString().split("T")[0] + "T12:00:00"
+  ).toLocaleDateString("es-CR", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
 const VisualizarPaciente = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [paciente, setPaciente] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setPaciente(PACIENTES.find((p) => p._id === id) || null);
-    setCargando(false);
+    const fetchPaciente = async () => {
+      try {
+        setCargando(true);
+        setError(null);
+        const respuesta = await obtenerPacientePorId(id);
+        setPaciente(respuesta.data);
+      } catch (err) {
+        setError(err.message || "No se encontró el paciente solicitado.");
+      } finally {
+        setCargando(false);
+      }
+    };
+    fetchPaciente();
   }, [id]);
 
   const renderBadges = (items, color) => {
@@ -60,7 +79,7 @@ const VisualizarPaciente = () => {
       </div>
     );
 
-  if (!paciente)
+  if (error || !paciente)
     return (
       <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
         <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
@@ -78,7 +97,7 @@ const VisualizarPaciente = () => {
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-6 py-4 flex items-center gap-3 text-sm text-[#ba1a1a]">
             <span className="material-symbols-outlined">error</span>
-            No se encontró el paciente solicitado.
+            {error || "No se encontró el paciente solicitado."}
           </div>
           <button
             onClick={() => navigate("/pacientes")}
@@ -157,7 +176,7 @@ const VisualizarPaciente = () => {
                     {paciente.nombre}
                   </h3>
                   <p className="text-xs text-[#3f484e] mt-0.5">
-                    Cédula: {paciente.cedula}
+                    Cédula: {paciente.cedula || "No registrada"}
                   </p>
                 </div>
               </div>
@@ -185,10 +204,10 @@ const VisualizarPaciente = () => {
                   <Campo label="Nombre completo" value={paciente.nombre} />
                   <Campo label="Cédula" value={paciente.cedula} />
                   <Campo label="Teléfono" value={paciente.telefono} />
-                  <Campo label="Correo electrónico" value={paciente.email} />
+                  <Campo label="Correo electrónico" value={paciente.correo} />
                   <Campo
                     label="Fecha de nacimiento"
-                    value={paciente.fecha_nacimiento}
+                    value={formatearFecha(paciente.fecha_nacimiento)}
                     full
                   />
                 </div>

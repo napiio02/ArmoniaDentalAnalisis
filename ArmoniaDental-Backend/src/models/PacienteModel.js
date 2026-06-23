@@ -33,10 +33,12 @@ const pacienteSchema = new mongoose.Schema(
       default: null,
     },
     alergias: {
-      type: String,
-      trim: true,
-      default: "",
-      maxlength: 1000,
+      type: [String],
+      default: [],
+    },
+    enfermedades: {
+      type: [String],
+      default: [],
     },
     activo: {
       type: Boolean,
@@ -47,7 +49,7 @@ const pacienteSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "pacientes",
-  }
+  },
 );
 
 const PacienteModel = mongoose.model("Paciente", pacienteSchema);
