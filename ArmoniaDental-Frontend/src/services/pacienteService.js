@@ -59,3 +59,20 @@ export async function obtenerPacientePorId(id) {
 
   return data;
 }
+
+// Función para Expedientes
+export async function obtenerExpedientesPorPaciente(pacienteId) {
+  const response = await fetch(`${API_URL}/${pacienteId}/expedientes`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "No se pudieron obtener los expedientes.");
+  }
+
+  return data;
+}

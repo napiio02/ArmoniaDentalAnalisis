@@ -12,6 +12,8 @@ import { OdontogramaRoutes } from "./routes/Odontograma/OdontogramaRoutes.js";
 import { PacientesRoutes } from "./routes/PacientesRoutes.js";
 import { CitasRoutes } from "./routes/CitasRoutes.js"; 
 import { AuthRoutes } from "./routes/AuthRoutes.js";
+import { DocumentosExpedienteRoutes } from "./routes/DocumentosExpedienteRoutes.js";
+import { ExpedientesRoutes } from "./routes/ExpedientesRoutes.js";
 
 dotenv.config();
 
@@ -35,6 +37,8 @@ InsumosRoutes(app);
 OdontogramaRoutes(app);
 PacientesRoutes(app);
 CitasRoutes(app);
+DocumentosExpedienteRoutes(app);
+ExpedientesRoutes(app);
 
 
 app.get("/", (req, res) => {

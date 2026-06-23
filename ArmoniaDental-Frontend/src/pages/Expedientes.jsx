@@ -1,6 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import { PACIENTES, EXPEDIENTES } from "../data/mockData";
+import ModalSubirDocumento from "../components/ModalSubirDocumento";
+import ModalConfirmarEliminar from "../components/ModalConfirmarEliminar";
+import {
+  obtenerPacientesConExpediente,
+  obtenerPacientePorId,
+  obtenerExpedientesPorPaciente,
+} from "../services/pacienteService";
+import {
+  obtenerDocumentosPorExpediente,
+  getUrlDescarga,
+  getUrlVer,
+  eliminarDocumento,
+} from "../services/documentoExpedienteService";
+import VisorPDF from "../components/VisorPDF";
 
 const getInitials = (nombre = "") =>
   nombre
@@ -10,22 +23,191 @@ const getInitials = (nombre = "") =>
     .join("")
     .toUpperCase();
 
+const getIconoFormato = (formato = "") => {
+  if (formato === "pdf") return "picture_as_pdf";
+  if (["doc", "docx"].includes(formato)) return "description";
+  if (["jpg", "jpeg", "png"].includes(formato)) return "image";
+  return "draft";
+};
+
+const formatearFechaSubida = (fecha) =>
+  new Date(fecha).toLocaleDateString("es-CR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return null;
+  return new Date(
+    new Date(fecha).toISOString().split("T")[0] + "T12:00:00",
+  ).toLocaleDateString("es-CR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const renderBadges = (items, color) => {
+  if (!items) return <span className="text-xs text-[#bec8ce]">Ninguna</span>;
+  const arr = Array.isArray(items) ? items : [items];
+  if (arr.length === 0 || arr.includes("Ninguna"))
+    return <span className="text-xs text-[#bec8ce]">Ninguna</span>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {arr.map((item) => (
+        <span
+          key={item}
+          className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${color}`}
+        >
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+};
+
 const Expedientes = () => {
+  // ── Pacientes (listado lateral) ──
+  const [pacientes, setPacientes] = useState([]);
+  const [cargandoPacientes, setCargandoPacientes] = useState(true);
+  const [errorPacientes, setErrorPacientes] = useState(null);
+
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [pacientesMostrados, setPacientesMostrados] = useState(5);
 
-  const pacientesFiltrados = PACIENTES.filter((p) => {
+  // ── Detalle completo del paciente (incluye alergias/enfermedades) ──
+  const [detallePaciente, setDetallePaciente] = useState(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+
+  // ── Atenciones (historial) ──
+  const [atenciones, setAtenciones] = useState([]);
+  const [cargandoAtenciones, setCargandoAtenciones] = useState(false);
+  const [errorAtenciones, setErrorAtenciones] = useState(null);
+
+  // ── Documentos ──
+  const [documentos, setDocumentos] = useState([]);
+  const [cargandoDocs, setCargandoDocs] = useState(false);
+  const [errorDocs, setErrorDocs] = useState(null);
+  const [mostrarModalSubida, setMostrarModalSubida] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState(null);
+
+  // ── Cargar pacientes al montar ──
+  useEffect(() => {
+    cargarPacientes();
+  }, []);
+
+  const cargarPacientes = async () => {
+    try {
+      setCargandoPacientes(true);
+      setErrorPacientes(null);
+      const respuesta = await obtenerPacientesConExpediente();
+      setPacientes(Array.isArray(respuesta?.data) ? respuesta.data : []);
+    } catch (err) {
+      setErrorPacientes(err.message || "No se pudieron cargar los pacientes.");
+      setPacientes([]);
+    } finally {
+      setCargandoPacientes(false);
+    }
+  };
+
+  const pacientesFiltrados = pacientes.filter((p) => {
     const t = busqueda.toLowerCase();
-    return p.nombre.toLowerCase().includes(t) || p.cedula.includes(t);
+    return p.nombre?.toLowerCase().includes(t) || p.cedula?.includes(busqueda);
   });
 
   const pacientesAMostrar = pacientesFiltrados.slice(0, pacientesMostrados);
   const hayMas = pacientesFiltrados.length > pacientesMostrados;
 
-  const expedientesPaciente = pacienteSeleccionado
-    ? EXPEDIENTES.filter((e) => e.paciente_id === pacienteSeleccionado._id)
-    : [];
+  // ── Cargar detalle completo (alergias, enfermedades, etc.) ──
+  useEffect(() => {
+    const cargarDetalle = async () => {
+      if (!pacienteSeleccionado?._id) {
+        setDetallePaciente(null);
+        return;
+      }
+      try {
+        setCargandoDetalle(true);
+        const respuesta = await obtenerPacientePorId(pacienteSeleccionado._id);
+        setDetallePaciente(respuesta.data);
+      } catch {
+        setDetallePaciente(null);
+      } finally {
+        setCargandoDetalle(false);
+      }
+    };
+    cargarDetalle();
+  }, [pacienteSeleccionado]);
+
+  // ── Cargar atenciones (historial) ──
+  useEffect(() => {
+    const cargarAtenciones = async () => {
+      if (!pacienteSeleccionado?._id) {
+        setAtenciones([]);
+        return;
+      }
+      try {
+        setCargandoAtenciones(true);
+        setErrorAtenciones(null);
+        const respuesta = await obtenerExpedientesPorPaciente(
+          pacienteSeleccionado._id,
+        );
+        setAtenciones(respuesta.data || []);
+      } catch (err) {
+        setErrorAtenciones(err.message || "No se pudo cargar el historial.");
+        setAtenciones([]);
+      } finally {
+        setCargandoAtenciones(false);
+      }
+    };
+    cargarAtenciones();
+  }, [pacienteSeleccionado]);
+
+  // ── Cargar documentos ──
+  useEffect(() => {
+    const cargarDocumentos = async () => {
+      if (!pacienteSeleccionado?.expediente_id) {
+        setDocumentos([]);
+        return;
+      }
+      try {
+        setCargandoDocs(true);
+        setErrorDocs(null);
+        const respuesta = await obtenerDocumentosPorExpediente(
+          pacienteSeleccionado.expediente_id,
+        );
+        setDocumentos(respuesta.data || []);
+      } catch (err) {
+        setErrorDocs(err.message || "No se pudieron cargar los documentos.");
+      } finally {
+        setCargandoDocs(false);
+      }
+    };
+    cargarDocumentos();
+  }, [pacienteSeleccionado]);
+
+  const handleDocumentoSubido = (nuevoDocumento) => {
+    setDocumentos((prev) => [nuevoDocumento, ...prev]);
+  };
+
+  const [docAEliminar, setDocAEliminar] = useState(null);
+
+  const confirmarEliminarDocumento = async () => {
+    if (!docAEliminar) return;
+    try {
+      setEliminandoId(docAEliminar);
+      await eliminarDocumento(docAEliminar);
+      setDocumentos((prev) => prev.filter((d) => d._id !== docAEliminar));
+    } catch (err) {
+      alert(err.message || "No se pudo eliminar el documento.");
+    } finally {
+      setEliminandoId(null);
+      setDocAEliminar(null);
+    }
+  };
+
+  const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
@@ -71,7 +253,26 @@ const Expedientes = () => {
                   />
                 </div>
 
-                {pacientesAMostrar.length === 0 ? (
+                {cargandoPacientes ? (
+                  <div className="flex justify-center py-10">
+                    <span className="loading loading-spinner loading-md text-[#006686]" />
+                  </div>
+                ) : errorPacientes ? (
+                  <div className="text-center py-8">
+                    <span className="material-symbols-outlined text-3xl text-[#ba1a1a] block mb-2">
+                      error
+                    </span>
+                    <p className="text-sm text-[#ba1a1a] mb-2">
+                      {errorPacientes}
+                    </p>
+                    <button
+                      onClick={cargarPacientes}
+                      className="text-xs font-semibold text-[#006686] underline"
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                ) : pacientesAMostrar.length === 0 ? (
                   <div className="text-center py-10">
                     <span className="material-symbols-outlined text-4xl text-[#bec8ce] block mb-2">
                       person_search
@@ -108,17 +309,8 @@ const Expedientes = () => {
                               )}
                             </div>
                             <p className="text-xs text-[#3f484e]">
-                              Cédula: {paciente.cedula}
+                              Cédula: {paciente.cedula || "No registrada"}
                             </p>
-                            {paciente.alergias &&
-                              paciente.alergias !== "Ninguna" && (
-                                <p className="text-[10px] text-[#855300] font-semibold mt-0.5">
-                                  ⚠{" "}
-                                  {Array.isArray(paciente.alergias)
-                                    ? paciente.alergias[0]
-                                    : paciente.alergias}
-                                </p>
-                              )}
                           </div>
                         </div>
                       </button>
@@ -170,8 +362,8 @@ const Expedientes = () => {
                             {pacienteSeleccionado.nombre}
                           </h3>
                           <p className="text-xs text-[#3f484e]">
-                            Cédula: {pacienteSeleccionado.cedula} · Tel:{" "}
-                            {pacienteSeleccionado.telefono}
+                            Cédula:{" "}
+                            {pacienteSeleccionado.cedula || "No registrada"}
                           </p>
                         </div>
                       </div>
@@ -186,52 +378,188 @@ const Expedientes = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        {
-                          label: "Fecha de nacimiento",
-                          value: new Date(
-                            pacienteSeleccionado.fecha_nacimiento,
-                          ).toLocaleDateString("es-CR"),
-                        },
-                        {
-                          label: "Correo",
-                          value: pacienteSeleccionado.email || "—",
-                        },
-                        {
-                          label: "Alergias",
-                          value: Array.isArray(pacienteSeleccionado.alergias)
-                            ? pacienteSeleccionado.alergias.join(", ")
-                            : pacienteSeleccionado.alergias,
-                          warn: pacienteSeleccionado.alergias !== "Ninguna",
-                        },
-                        {
-                          label: "Enfermedades",
-                          value: Array.isArray(
-                            pacienteSeleccionado.enfermedades,
-                          )
-                            ? pacienteSeleccionado.enfermedades.join(", ")
-                            : pacienteSeleccionado.enfermedades,
-                        },
-                      ].map((item) => (
-                        <div
-                          key={item.label}
-                          className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-3"
-                        >
-                          <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-1">
-                            {item.label}
-                          </p>
-                          <p
-                            className={`text-xs font-semibold ${item.warn ? "text-[#855300]" : "text-[#151c27]"}`}
-                          >
-                            {item.value}
-                          </p>
+                    {cargandoDetalle ? (
+                      <div className="flex justify-center py-4">
+                        <span className="loading loading-spinner loading-sm text-[#006686]" />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                          {[
+                            {
+                              label: "Teléfono",
+                              value: detallePaciente?.telefono || "—",
+                            },
+                            {
+                              label: "Correo",
+                              value: detallePaciente?.correo || "—",
+                            },
+                            {
+                              label: "Fecha de nacimiento",
+                              value:
+                                formatearFecha(
+                                  detallePaciente?.fecha_nacimiento,
+                                ) || "—",
+                            },
+                          ].map((item) => (
+                            <div
+                              key={item.label}
+                              className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-3"
+                            >
+                              <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-1">
+                                {item.label}
+                              </p>
+                              <p className="text-xs font-semibold text-[#151c27]">
+                                {item.value}
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-3">
+                            <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-2">
+                              Alergias
+                            </p>
+                            {renderBadges(
+                              detallePaciente?.alergias,
+                              "bg-[#ffddb820] text-[#855300] border-[#855300]/20",
+                            )}
+                          </div>
+                          <div className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-3">
+                            <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-2">
+                              Enfermedades relevantes
+                            </p>
+                            {renderBadges(
+                              detallePaciente?.enfermedades,
+                              "bg-[#7dd3fc20] text-[#006686] border-[#006686]/20",
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  {/* Historial */}
+                  {/* ── Documentos del expediente ── */}
+                  <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm">
+                    <div className="flex justify-between items-center mb-5">
+                      <h3 className="font-semibold text-[#151c27] flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[#006686] text-[20px]">
+                          folder_open
+                        </span>
+                        Documentos
+                      </h3>
+                      <button
+                        onClick={() => setMostrarModalSubida(true)}
+                        disabled={!pacienteSeleccionado.expediente_id}
+                        className="px-4 py-2 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-40"
+                        title={
+                          !pacienteSeleccionado.expediente_id
+                            ? "Este paciente no tiene expediente activo"
+                            : ""
+                        }
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          add
+                        </span>
+                        Añadir documento
+                      </button>
+                    </div>
+
+                    {cargandoDocs ? (
+                      <div className="flex justify-center py-8">
+                        <span className="loading loading-spinner loading-md text-[#006686]" />
+                      </div>
+                    ) : errorDocs ? (
+                      <div className="flex items-center justify-center gap-2 py-6 text-sm text-[#ba1a1a]">
+                        <span className="material-symbols-outlined text-[18px]">
+                          error
+                        </span>
+                        {errorDocs}
+                      </div>
+                    ) : documentos.length === 0 ? (
+                      <div className="text-center py-10">
+                        <span className="material-symbols-outlined text-4xl text-[#bec8ce] block mb-2">
+                          description
+                        </span>
+                        <p className="text-sm text-[#3f484e]">
+                          No hay documentos adjuntos en este expediente
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {documentos.map((doc) => (
+                          <div
+                            key={doc._id}
+                            className="flex items-center gap-3 border border-[#bec8ce] rounded-xl p-3 hover:border-[#006686]/30 hover:shadow-sm transition-all"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-[#f0f3ff] flex items-center justify-center text-[#006686] flex-shrink-0">
+                              <span className="material-symbols-outlined text-[20px]">
+                                {getIconoFormato(doc.formato)}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {doc.formato === "pdf" ? (
+                                <button
+                                  onClick={() => setPdfSeleccionado(doc)}
+                                  className="text-sm font-semibold text-[
+                              #151c27] truncate text-left hover:text-[
+                              #006686] hover:underline"
+                                >
+                                  {" "}
+                                  {doc.nombre_original}{" "}
+                                </button>
+                              ) : (
+                                <p
+                                  className="text-sm font-semibold text-[
+                              #151c27] truncate"
+                                >
+                                  {doc.nombre_original}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#dce2f3] text-[#3f484e]">
+                                  {doc.tipo}
+                                </span>
+                                <span className="text-[10px] text-[#3f484e]">
+                                  {formatearFechaSubida(
+                                    doc.fecha_subida || doc.createdAt,
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <a
+                                href={getUrlDescarga(doc._id)}
+                                className="p-1.5 rounded text-[#3f484e] hover:bg-[#f0f3ff] hover:text-[#006686] transition-colors"
+                                title="Descargar"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">
+                                  download
+                                </span>
+                              </a>
+                              <button
+                                onClick={() => setDocAEliminar(doc._id)}
+                                disabled={eliminandoId === doc._id}
+                                className="p-1.5 rounded text-[#3f484e] hover:bg-[#ffdad6]/40 hover:text-[#ba1a1a] transition-colors disabled:opacity-40"
+                                title="Eliminar"
+                              >
+                                {eliminandoId === doc._id ? (
+                                  <span className="loading loading-spinner loading-xs" />
+                                ) : (
+                                  <span className="material-symbols-outlined text-[18px]">
+                                    delete
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Historial de atenciones */}
                   <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm">
                     <h3 className="font-semibold text-[#151c27] mb-5 flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#006686] text-[20px]">
@@ -240,7 +568,18 @@ const Expedientes = () => {
                       Historial de Atenciones
                     </h3>
 
-                    {expedientesPaciente.length === 0 ? (
+                    {cargandoAtenciones ? (
+                      <div className="flex justify-center py-10">
+                        <span className="loading loading-spinner loading-md text-[#006686]" />
+                      </div>
+                    ) : errorAtenciones ? (
+                      <div className="flex items-center justify-center gap-2 py-6 text-sm text-[#ba1a1a]">
+                        <span className="material-symbols-outlined text-[18px]">
+                          error
+                        </span>
+                        {errorAtenciones}
+                      </div>
+                    ) : atenciones.length === 0 ? (
                       <div className="text-center py-12">
                         <span className="material-symbols-outlined text-5xl text-[#bec8ce] block mb-3">
                           folder_open
@@ -251,65 +590,41 @@ const Expedientes = () => {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {expedientesPaciente.map((exp) => (
+                        {atenciones.map((exp) => (
                           <div
                             key={exp._id}
                             className="border border-[#bec8ce] rounded-xl p-4 hover:shadow-sm hover:border-[#006686]/30 transition-all"
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#dce2f3] text-[#3f484e] border border-[#bec8ce]">
-                                  {exp.tipo}
-                                </span>
+                                {exp.tipo && (
+                                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#dce2f3] text-[#3f484e] border border-[#bec8ce]">
+                                    {exp.tipo}
+                                  </span>
+                                )}
                                 <span className="text-xs text-[#3f484e]">
-                                  {new Date(exp.fecha).toLocaleDateString(
-                                    "es-CR",
-                                    {
-                                      day: "2-digit",
-                                      month: "long",
-                                      year: "numeric",
-                                    },
-                                  )}
+                                  {formatearFecha(exp.fecha) || "Sin fecha"}
                                 </span>
                               </div>
-                              <span className="text-xs text-[#3f484e] flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">
-                                  stethoscope
-                                </span>
-                                Dr(a). {exp.doctor}
-                              </span>
                             </div>
-                            <p className="text-sm text-[#151c27] mb-2">
-                              {exp.descripcion}
-                            </p>
-                            <p className="text-sm font-semibold text-[#006686]">
-                              Tratamiento: {exp.tratamiento}
-                            </p>
+                            {exp.descripcion && (
+                              <p className="text-sm text-[#151c27] mb-2">
+                                {exp.descripcion}
+                              </p>
+                            )}
+                            {exp.tratamiento && (
+                              <p className="text-sm font-semibold text-[#006686]">
+                                Tratamiento: {exp.tratamiento}
+                              </p>
+                            )}
                             {exp.proximo_control && (
                               <p className="text-xs text-[#3f484e] mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">
                                   event
                                 </span>
                                 Próximo control:{" "}
-                                {new Date(
-                                  exp.proximo_control,
-                                ).toLocaleDateString("es-CR")}
+                                {formatearFecha(exp.proximo_control)}
                               </p>
-                            )}
-                            {exp.adjuntos?.length > 0 && (
-                              <div className="mt-2 flex gap-2 flex-wrap">
-                                {exp.adjuntos.map((a) => (
-                                  <span
-                                    key={a}
-                                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#bec8ce] text-[#3f484e] flex items-center gap-1"
-                                  >
-                                    <span className="material-symbols-outlined text-[12px]">
-                                      attach_file
-                                    </span>
-                                    {a}
-                                  </span>
-                                ))}
-                              </div>
                             )}
                           </div>
                         ))}
@@ -334,6 +649,35 @@ const Expedientes = () => {
           </div>
         </div>
       </main>
+
+      {/* Modal de subida de documentos */}
+      {mostrarModalSubida && pacienteSeleccionado && (
+        <ModalSubirDocumento
+          expedienteId={pacienteSeleccionado.expediente_id}
+          pacienteId={pacienteSeleccionado._id}
+          onClose={() => setMostrarModalSubida(false)}
+          onSubido={handleDocumentoSubido}
+        />
+      )}
+
+      {/* Visor de PDF con anotaciones */}
+      {pdfSeleccionado && (
+        <VisorPDF
+          documento={pdfSeleccionado}
+          urlVer={getUrlVer(pdfSeleccionado._id)}
+          urlDescarga={getUrlDescarga(pdfSeleccionado._id)}
+          onClose={() => setPdfSeleccionado(null)}
+        />
+      )}
+
+      <ModalConfirmarEliminar
+        open={!!docAEliminar}
+        titulo="Eliminar documento"
+        mensaje="¿Seguro que deseas eliminar este documento? Esta acción no se puede deshacer."
+        eliminando={!!eliminandoId}
+        onConfirmar={confirmarEliminarDocumento}
+        onCancelar={() => setDocAEliminar(null)}
+      />
     </div>
   );
 };
