@@ -7,6 +7,7 @@ import {
   guardarAnotaciones,
   eliminarDocumento,
 } from "../controllers/DocumentoExpedienteController.js";
+import { descargarDocumentoAnotado } from "../controllers/DocumentoExpedienteController.js";
 
 export const DocumentosExpedienteRoutes = (app) => {
   const version = process.env.VERSION || "v1";
@@ -17,4 +18,5 @@ export const DocumentosExpedienteRoutes = (app) => {
   app.get(`/${version}/documentos/:id/ver`, verDocumento);
   app.patch(`/${version}/documentos/:id/anotaciones`, guardarAnotaciones);
   app.delete(`/${version}/documentos/:id`, eliminarDocumento);
+  app.post(`/${version}/documentos/:id/descargar-anotado`, descargarDocumentoAnotado);
 };

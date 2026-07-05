@@ -209,6 +209,14 @@ const Expedientes = () => {
 
   const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
 
+  const handleAnotacionesGuardadas = (documentoId, nuevasAnotaciones) => {
+    setDocumentos((prev) =>
+      prev.map((d) =>
+        d._id === documentoId ? { ...d, anotaciones: nuevasAnotaciones } : d,
+      ),
+    );
+  };
+
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <Sidebar activeItem="expedientes" />
@@ -499,21 +507,17 @@ const Expedientes = () => {
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              {doc.formato === "pdf" ? (
+                              {["pdf", "jpg", "jpeg", "png"].includes(
+                                doc.formato,
+                              ) ? (
                                 <button
                                   onClick={() => setPdfSeleccionado(doc)}
-                                  className="text-sm font-semibold text-[
-                              #151c27] truncate text-left hover:text-[
-                              #006686] hover:underline"
+                                  className="text-sm font-semibold text-[#151c27] text-left hover:text-[#006686] hover:underline w-full truncate block"
                                 >
-                                  {" "}
-                                  {doc.nombre_original}{" "}
+                                  {doc.nombre_original}
                                 </button>
                               ) : (
-                                <p
-                                  className="text-sm font-semibold text-[
-                              #151c27] truncate"
-                                >
+                                <p className="text-sm font-semibold text-[#151c27] truncate w-full">
                                   {doc.nombre_original}
                                 </p>
                               )}
@@ -667,6 +671,7 @@ const Expedientes = () => {
           urlVer={getUrlVer(pdfSeleccionado._id)}
           urlDescarga={getUrlDescarga(pdfSeleccionado._id)}
           onClose={() => setPdfSeleccionado(null)}
+          onAnotacionesGuardadas={handleAnotacionesGuardadas}
         />
       )}
 

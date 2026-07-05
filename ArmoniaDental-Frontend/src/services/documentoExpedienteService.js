@@ -84,3 +84,28 @@ export async function eliminarDocumento(documentoId) {
 
   return data;
 }
+
+export async function descargarPdfAnotado(documentoId, anotaciones, nombreOriginal) {
+  const response = await fetch(`${API_URL}/documentos/${documentoId}/descargar-anotado`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    credentials: "include",
+    body: JSON.stringify({ anotaciones }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.message || "No se pudo generar el PDF anotado.");
+  }
+
+  // Convertir la respuesta binaria a un blob y disparar la descarga
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreOriginal
+  ? nombreOriginal.replace(".pdf", "_anotado.pdf")
+  : "documento_anotado.pdf";
+  a.click();
+  URL.revokeObjectURL(url);
+}

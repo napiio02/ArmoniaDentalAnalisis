@@ -6,6 +6,42 @@ import {
   guardarAnotacionesService,
   eliminarDocumentoService,
 } from "../services/DocumentoExpedienteService.js";
+import { generarPdfAnotadoService } from "../services/DocumentoExpedienteService.js";
+
+export async function descargarDocumentoAnotado(req, res) {
+  try {
+    const { id } = req.params;
+    const { anotaciones } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ ok: false, message: "Documento no válido." });
+    }
+
+    const pdfBuffer = await generarPdfAnotadoService(id, anotaciones || []);
+
+    if (!pdfBuffer) {
+      return res.status(404).json({ ok: false, message: "Documento no encontrado." });
+    }
+
+    const documento = await (await import("../models/DocumentoExpedienteModel.js")).default.findById(id);
+    const nombreDescarga = documento.nombre_original;
+
+    res.set({
+  "Content-Type": "application/pdf",
+  "Content-Disposition": `attachment; filename="${encodeURIComponent(nombreDescarga)}"; filename*=UTF-8''${encodeURIComponent(nombreDescarga)}`,
+  "Content-Length": pdfBuffer.length,
+});
+
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error al generar PDF anotado:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al generar el PDF anotado.",
+      error: error.message,
+    });
+  }
+}
 
 export async function subirDocumento(req, res) {
   try {

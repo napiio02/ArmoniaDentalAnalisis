@@ -47,11 +47,6 @@ const documentoExpedienteSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    subido_por: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Usuario",
-      default: null,
-    },
     anotaciones: {
       type: [mongoose.Schema.Types.Mixed],
       default: [],
