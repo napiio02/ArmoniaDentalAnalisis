@@ -5,6 +5,7 @@ import {
   updateCita,
   cancelarCita,
   getDisponibilidad,
+  getCitasAtendidasPorPaciente,
 } from "../controllers/CitasController.js";
 
 export const CitasRoutes = (app) => {
@@ -17,6 +18,11 @@ export const CitasRoutes = (app) => {
   app.get(`/${version}/citas/:id`, getCitaById);
 
   app.post(`/${version}/citas`, createCita);
+
   app.put(`/${version}/citas/:id`, updateCita);
+
   app.patch(`/${version}/citas/:id/cancelar`, cancelarCita);
+
+  app.get(`/${version}/pacientes/:paciente_id/citas-atendidas`, getCitasAtendidasPorPaciente);
 };
+

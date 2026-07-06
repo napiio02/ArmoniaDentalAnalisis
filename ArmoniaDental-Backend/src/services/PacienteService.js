@@ -43,6 +43,15 @@ export async function crearPacienteService(datos) {
     enfermedades: datos.enfermedades || [],
   });
 
+  // Crear expediente inicial automáticamente
+  await ExpedienteModel.create({
+    paciente_id: nuevoPaciente._id,
+    fecha: new Date(),
+    tipo: "Control general",
+    descripcion: "Expediente clínico activo del paciente.",
+    activo: true,
+  });
+
   return nuevoPaciente;
 }
 

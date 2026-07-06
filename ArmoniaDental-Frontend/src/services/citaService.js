@@ -97,3 +97,14 @@ export async function getUsuarios() {
   if (!response.ok) throw new Error(data.message || "No se pudo obtener el usuario");
   return Array.isArray(data) ? data : data.data ?? []; 
 }
+
+export const getCitasAtendidasPorPaciente = async (pacienteId) => {
+  const response = await fetch(
+    `http://localhost:3000/${VERSION}/pacientes/${pacienteId}/citas-atendidas`,
+    {
+      headers: getAuthHeaders(),
+      credentials: "include",
+    }
+  );
+  return handleResponse(response);
+};

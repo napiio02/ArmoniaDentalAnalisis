@@ -218,3 +218,12 @@ export const cancelarCitaService = async (id) => {
 
   return cita;
 }
+
+export const getCitasAtendidasPorPacienteService = async (paciente_id) => {
+  return await CitaModel.find({
+    paciente_id,
+    estado: "Atendida",
+  })
+    .sort({ fecha_hora: -1 })
+    .lean();
+};

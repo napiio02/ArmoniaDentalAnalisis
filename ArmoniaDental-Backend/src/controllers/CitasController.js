@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import {
   obtenerCitasService,
   obtenerDisponibilidadService,
@@ -5,6 +6,7 @@ import {
   crearCitaService,
   actualizarCitaService,
   cancelarCitaService,
+  getCitasAtendidasPorPacienteService,
 } from "../services/CitasServices.js";
 
 const responderError = (res, error, mensajeDefault) => {
@@ -78,5 +80,22 @@ export const cancelarCita = async (req, res) => {
     });
   } catch (error) {
     return responderError(res, error, "Error al cancelar la cita");
+  }
+};
+
+export const getCitasAtendidasPorPaciente = async (req, res) => {
+  try {
+    const { paciente_id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(paciente_id)) {
+      return res.status(404).json({ ok: false, message: "Paciente no válido." });
+    }
+    const citas = await getCitasAtendidasPorPacienteService(paciente_id);
+    return res.status(200).json({
+      ok: true,
+      message: "Citas obtenidas correctamente.",
+      data: citas,
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, message: error.message });
   }
 };

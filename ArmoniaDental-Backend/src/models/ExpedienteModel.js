@@ -34,10 +34,6 @@ const expedienteSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    adjuntos: {
-      type: [String],
-      default: [],
-    },
     activo: {
       type: Boolean,
       default: true,

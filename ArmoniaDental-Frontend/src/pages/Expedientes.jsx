@@ -7,6 +7,7 @@ import {
   obtenerPacientePorId,
   obtenerExpedientesPorPaciente,
 } from "../services/pacienteService";
+import { getCitasAtendidasPorPaciente } from "../services/citaService";
 import {
   obtenerDocumentosPorExpediente,
   getUrlDescarga,
@@ -68,23 +69,25 @@ const renderBadges = (items, color) => {
 };
 
 const Expedientes = () => {
-  // ── Pacientes (listado lateral) ──
+  // ── Pacientes ──
   const [pacientes, setPacientes] = useState([]);
   const [cargandoPacientes, setCargandoPacientes] = useState(true);
   const [errorPacientes, setErrorPacientes] = useState(null);
-
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [pacientesMostrados, setPacientesMostrados] = useState(5);
 
-  // ── Detalle completo del paciente (incluye alergias/enfermedades) ──
+  // ── Detalle completo del paciente ──
   const [detallePaciente, setDetallePaciente] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
-  // ── Atenciones (historial) ──
+  // ── Atenciones (historial de expedientes) ──
   const [atenciones, setAtenciones] = useState([]);
   const [cargandoAtenciones, setCargandoAtenciones] = useState(false);
   const [errorAtenciones, setErrorAtenciones] = useState(null);
+
+  // ── Citas atendidas ──
+  const [citasAtendidas, setCitasAtendidas] = useState([]);
 
   // ── Documentos ──
   const [documentos, setDocumentos] = useState([]);
@@ -92,6 +95,8 @@ const Expedientes = () => {
   const [errorDocs, setErrorDocs] = useState(null);
   const [mostrarModalSubida, setMostrarModalSubida] = useState(false);
   const [eliminandoId, setEliminandoId] = useState(null);
+  const [docAEliminar, setDocAEliminar] = useState(null);
+  const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
 
   // ── Cargar pacientes al montar ──
   useEffect(() => {
@@ -120,7 +125,7 @@ const Expedientes = () => {
   const pacientesAMostrar = pacientesFiltrados.slice(0, pacientesMostrados);
   const hayMas = pacientesFiltrados.length > pacientesMostrados;
 
-  // ── Cargar detalle completo (alergias, enfermedades, etc.) ──
+  // ── Cargar detalle completo ──
   useEffect(() => {
     const cargarDetalle = async () => {
       if (!pacienteSeleccionado?._id) {
@@ -140,7 +145,7 @@ const Expedientes = () => {
     cargarDetalle();
   }, [pacienteSeleccionado]);
 
-  // ── Cargar atenciones (historial) ──
+  // ── Cargar atenciones ──
   useEffect(() => {
     const cargarAtenciones = async () => {
       if (!pacienteSeleccionado?._id) {
@@ -162,6 +167,25 @@ const Expedientes = () => {
       }
     };
     cargarAtenciones();
+  }, [pacienteSeleccionado]);
+
+  // ── Cargar citas atendidas ──
+  useEffect(() => {
+    const cargarCitasAtendidas = async () => {
+      if (!pacienteSeleccionado?._id) {
+        setCitasAtendidas([]);
+        return;
+      }
+      try {
+        const respuesta = await getCitasAtendidasPorPaciente(
+          pacienteSeleccionado._id,
+        );
+        setCitasAtendidas(respuesta.data || []);
+      } catch {
+        setCitasAtendidas([]);
+      }
+    };
+    cargarCitasAtendidas();
   }, [pacienteSeleccionado]);
 
   // ── Cargar documentos ──
@@ -191,7 +215,13 @@ const Expedientes = () => {
     setDocumentos((prev) => [nuevoDocumento, ...prev]);
   };
 
-  const [docAEliminar, setDocAEliminar] = useState(null);
+  const handleAnotacionesGuardadas = (documentoId, nuevasAnotaciones) => {
+    setDocumentos((prev) =>
+      prev.map((d) =>
+        d._id === documentoId ? { ...d, anotaciones: nuevasAnotaciones } : d,
+      ),
+    );
+  };
 
   const confirmarEliminarDocumento = async () => {
     if (!docAEliminar) return;
@@ -207,15 +237,19 @@ const Expedientes = () => {
     }
   };
 
-  const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
-
-  const handleAnotacionesGuardadas = (documentoId, nuevasAnotaciones) => {
-    setDocumentos((prev) =>
-      prev.map((d) =>
-        d._id === documentoId ? { ...d, anotaciones: nuevasAnotaciones } : d,
-      ),
-    );
-  };
+  // ── Historial completo mezclado y ordenado ──
+  const historialCompleto = [
+    ...atenciones.map((a) => ({ ...a, _fuente: "expediente" })),
+    ...citasAtendidas.map((c) => ({
+      _id: c._id,
+      _fuente: "cita",
+      fecha: c.fecha_hora,
+      tipo: c.tipo,
+      descripcion: c.motivo, 
+      tratamiento: null,
+      proximo_control: null,
+    })),
+  ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
@@ -223,7 +257,6 @@ const Expedientes = () => {
 
       <main className="flex-1 h-screen overflow-y-auto p-8">
         <div className="max-w-screen-2xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
             <h2 className="text-[28px] font-bold leading-[36px] text-[#151c27]">
               Expediente Clínico
@@ -247,7 +280,6 @@ const Expedientes = () => {
                   </span>
                 </h3>
 
-                {/* Buscador */}
                 <div className="relative mb-4">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#3f484e] text-[18px]">
                     search
@@ -423,7 +455,6 @@ const Expedientes = () => {
                             </div>
                           ))}
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-3">
                             <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-2">
@@ -448,7 +479,7 @@ const Expedientes = () => {
                     )}
                   </div>
 
-                  {/* ── Documentos del expediente ── */}
+                  {/* ── Documentos ── */}
                   <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm">
                     <div className="flex justify-between items-center mb-5">
                       <h3 className="font-semibold text-[#151c27] flex items-center gap-2">
@@ -563,7 +594,7 @@ const Expedientes = () => {
                     )}
                   </div>
 
-                  {/* Historial de atenciones */}
+                  {/* ── Historial de atenciones ── */}
                   <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm">
                     <h3 className="font-semibold text-[#151c27] mb-5 flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#006686] text-[20px]">
@@ -583,7 +614,7 @@ const Expedientes = () => {
                         </span>
                         {errorAtenciones}
                       </div>
-                    ) : atenciones.length === 0 ? (
+                    ) : historialCompleto.length === 0 ? (
                       <div className="text-center py-12">
                         <span className="material-symbols-outlined text-5xl text-[#bec8ce] block mb-3">
                           folder_open
@@ -594,40 +625,45 @@ const Expedientes = () => {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {atenciones.map((exp) => (
+                        {historialCompleto.map((item) => (
                           <div
-                            key={exp._id}
+                            key={item._id}
                             className="border border-[#bec8ce] rounded-xl p-4 hover:shadow-sm hover:border-[#006686]/30 transition-all"
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                {exp.tipo && (
+                                {item.tipo && (
                                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#dce2f3] text-[#3f484e] border border-[#bec8ce]">
-                                    {exp.tipo}
+                                    {item.tipo}
+                                  </span>
+                                )}
+                                {item._fuente === "cita" && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#7dd3fc20] text-[#006686] border border-[#006686]/20">
+                                    Cita
                                   </span>
                                 )}
                                 <span className="text-xs text-[#3f484e]">
-                                  {formatearFecha(exp.fecha) || "Sin fecha"}
+                                  {formatearFecha(item.fecha) || "Sin fecha"}
                                 </span>
                               </div>
                             </div>
-                            {exp.descripcion && (
+                            {item.descripcion && (
                               <p className="text-sm text-[#151c27] mb-2">
-                                {exp.descripcion}
+                                {item.descripcion}
                               </p>
                             )}
-                            {exp.tratamiento && (
+                            {item.tratamiento && (
                               <p className="text-sm font-semibold text-[#006686]">
-                                Tratamiento: {exp.tratamiento}
+                                Tratamiento: {item.tratamiento}
                               </p>
                             )}
-                            {exp.proximo_control && (
+                            {item.proximo_control && (
                               <p className="text-xs text-[#3f484e] mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">
                                   event
                                 </span>
                                 Próximo control:{" "}
-                                {formatearFecha(exp.proximo_control)}
+                                {formatearFecha(item.proximo_control)}
                               </p>
                             )}
                           </div>
@@ -654,7 +690,6 @@ const Expedientes = () => {
         </div>
       </main>
 
-      {/* Modal de subida de documentos */}
       {mostrarModalSubida && pacienteSeleccionado && (
         <ModalSubirDocumento
           expedienteId={pacienteSeleccionado.expediente_id}
@@ -664,7 +699,6 @@ const Expedientes = () => {
         />
       )}
 
-      {/* Visor de PDF con anotaciones */}
       {pdfSeleccionado && (
         <VisorPDF
           documento={pdfSeleccionado}
