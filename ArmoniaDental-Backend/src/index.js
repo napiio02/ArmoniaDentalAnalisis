@@ -14,6 +14,7 @@ import { CitasRoutes } from "./routes/CitasRoutes.js";
 import { AuthRoutes } from "./routes/AuthRoutes.js";
 import { DocumentosExpedienteRoutes } from "./routes/DocumentosExpedienteRoutes.js";
 import { ExpedientesRoutes } from "./routes/ExpedientesRoutes.js";
+import { HistoriaClinicaRoutes } from "./routes/HistoriaClinicaRoutes.js";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ PacientesRoutes(app);
 CitasRoutes(app);
 DocumentosExpedienteRoutes(app);
 ExpedientesRoutes(app);
+HistoriaClinicaRoutes(app);
 
 
 app.get("/", (req, res) => {
