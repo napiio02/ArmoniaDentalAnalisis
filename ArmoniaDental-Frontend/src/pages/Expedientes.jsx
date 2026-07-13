@@ -6,6 +6,7 @@ import {
   obtenerPacientesConExpediente,
   obtenerPacientePorId,
   obtenerExpedientesPorPaciente,
+  obtenerHistoriaClinica,
 } from "../services/pacienteService";
 import { getCitasAtendidasPorPaciente } from "../services/citaService";
 import {
@@ -15,6 +16,8 @@ import {
   eliminarDocumento,
 } from "../services/documentoExpedienteService";
 import VisorPDF from "../components/VisorPDF";
+import ModalHistoriaClinica from "../components/ModalHistoriaClinica";
+import FichaHistoriaClinica from "../components/FichaHistoriaClinica";
 
 const getInitials = (nombre = "") =>
   nombre
@@ -88,6 +91,11 @@ const Expedientes = () => {
 
   // ── Citas atendidas ──
   const [citasAtendidas, setCitasAtendidas] = useState([]);
+
+  // ── Historia clínica ──
+  const [historiaClinica, setHistoriaClinica] = useState(null);
+  const [cargandoHistoria, setCargandoHistoria] = useState(false);
+  const [mostrarModalHistoria, setMostrarModalHistoria] = useState(false);
 
   // ── Documentos ──
   const [documentos, setDocumentos] = useState([]);
@@ -187,6 +195,31 @@ const Expedientes = () => {
     };
     cargarCitasAtendidas();
   }, [pacienteSeleccionado]);
+
+  // ── Cargar historia clínica ──
+  useEffect(() => {
+    const cargarHistoria = async () => {
+      if (!pacienteSeleccionado?._id) {
+        setHistoriaClinica(null);
+        return;
+      }
+      try {
+        setCargandoHistoria(true);
+        const respuesta = await obtenerHistoriaClinica(pacienteSeleccionado._id);
+        setHistoriaClinica(respuesta.data || null);
+      } catch {
+        setHistoriaClinica(null);
+      } finally {
+        setCargandoHistoria(false);
+      }
+    };
+    cargarHistoria();
+  }, [pacienteSeleccionado]);
+
+  const handleHistoriaGuardada = (nuevaHistoria) => {
+    setHistoriaClinica(nuevaHistoria);
+    setMostrarModalHistoria(false);
+  };
 
   // ── Cargar documentos ──
   useEffect(() => {
@@ -479,6 +512,19 @@ const Expedientes = () => {
                     )}
                   </div>
 
+                  {/* ── Historia clínica ── */}
+                  {cargandoHistoria ? (
+                    <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm flex justify-center py-8">
+                      <span className="loading loading-spinner loading-md text-[#006686]" />
+                    </div>
+                  ) : (
+                    <FichaHistoriaClinica
+                      historia={historiaClinica}
+                      onEditar={() => setMostrarModalHistoria(true)}
+                      onRegistrar={() => setMostrarModalHistoria(true)}
+                    />
+                  )}
+
                   {/* ── Documentos ── */}
                   <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm">
                     <div className="flex justify-between items-center mb-5">
@@ -689,6 +735,15 @@ const Expedientes = () => {
           </div>
         </div>
       </main>
+
+      {mostrarModalHistoria && pacienteSeleccionado && (
+        <ModalHistoriaClinica
+          pacienteId={pacienteSeleccionado._id}
+          historiaExistente={historiaClinica}
+          onClose={() => setMostrarModalHistoria(false)}
+          onGuardado={handleHistoriaGuardada}
+        />
+      )}
 
       {mostrarModalSubida && pacienteSeleccionado && (
         <ModalSubirDocumento

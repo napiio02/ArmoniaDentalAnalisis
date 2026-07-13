@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { crearPaciente } from "../../services/pacienteService";
+import ModalHistoriaClinica from "../../components/ModalHistoriaClinica";
 
 const ALERGIAS = [
   "Penicilina", "Látex", "Anestesia", "Ibuprofeno",
@@ -51,6 +52,8 @@ const NuevoPaciente = () => {
   const [errores, setErrores] = useState({});
   const [alergiaSeleccionada, setAlergiaSeleccionada] = useState("");
   const [enfermedadSeleccionada, setEnfermedadSeleccionada] = useState("");
+  const [pacienteCreadoId, setPacienteCreadoId] = useState(null);
+  const [mostrarHistoriaClinica, setMostrarHistoriaClinica] = useState(false);
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -112,13 +115,20 @@ const NuevoPaciente = () => {
     setGuardando(true);
     setError(null);
     try {
-      await crearPaciente(formData);
-      setExito(true);
-      setTimeout(() => navigate("/pacientes"), 1500);
+      const respuesta = await crearPaciente(formData);
+      setGuardando(false);
+      setPacienteCreadoId(respuesta.data._id);
+      setMostrarHistoriaClinica(true);
     } catch (err) {
       setError(err.message || "Error al guardar el paciente. Intentá de nuevo.");
       setGuardando(false);
     }
+  };
+
+  const cerrarHistoriaClinica = () => {
+    setMostrarHistoriaClinica(false);
+    setExito(true);
+    setTimeout(() => navigate("/pacientes"), 1500);
   };
 
   return (
@@ -287,6 +297,14 @@ const NuevoPaciente = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal historia clínica */}
+      {mostrarHistoriaClinica && pacienteCreadoId && (
+        <ModalHistoriaClinica
+          pacienteId={pacienteCreadoId}
+          onClose={cerrarHistoriaClinica}
+        />
+      )}
 
       {/* Toast éxito */}
       {exito && (
