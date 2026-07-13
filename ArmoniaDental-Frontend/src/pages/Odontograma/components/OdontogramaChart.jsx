@@ -22,58 +22,92 @@ import {
    CÍRCULO DE CARAS
 ========================================================= */
 function ObtCircle({ num, tooth, onFaceClick, small }) {
-	const size = small ? 28 : 38;
+	const size = small ? 30 : 40;
+	const clipId = `odontograma-face-clip-${num}`;
+	const marks = tooth?.marks || [];
+	const strokeColor = "#49628f";
+
+	const separators = [
+		{ x1: 7.27, y1: 7.27, x2: 13, y2: 13 },
+		{ x1: 32.73, y1: 7.27, x2: 27, y2: 13 },
+		{ x1: 7.27, y1: 32.73, x2: 13, y2: 27 },
+		{ x1: 32.73, y1: 32.73, x2: 27, y2: 27 },
+	];
 
 	return (
-		<svg width={size} height={size} viewBox="0 0 40 40" className="block">
+		<svg
+			width={size}
+			height={size}
+			viewBox="0 0 40 40"
+			role="img"
+			aria-label={`Vista de caras de la pieza ${num}`}
+			className="block select-none"
+			style={{ overflow: "visible" }}
+		>
 			<defs>
-				<clipPath id={`clip-${num}`}>
-					<circle cx="20" cy="20" r="17" />
+				<clipPath id={clipId}>
+					<circle cx="20" cy="20" r="18" />
 				</clipPath>
 			</defs>
 
+			{/* Fondo limpio, con la misma paleta azul de las piezas anatómicas. */}
 			<circle
 				cx="20"
 				cy="20"
 				r="18"
 				fill="#ffffff"
-				stroke="#d1d5db"
-				strokeWidth="1"
+				pointerEvents="none"
 			/>
 
+			{/*
+			 * Se conservan exactamente las cinco áreas originales y su evento
+			 * onFaceClick. Únicamente cambia la presentación visual.
+			 */}
 			{Object.entries(CIRCLE_FACES).map(([face, path]) => {
-				const color = getFaceColor(tooth.marks, face);
+				const color = getFaceColor(marks, face);
 
 				return (
 					<path
 						key={face}
 						d={path}
-						fill={color || "transparent"}
-						stroke="#9ca3af"
-						strokeWidth="0.6"
-						clipPath={`url(#clip-${num})`}
-						onClick={(e) => {
-							e.stopPropagation();
-							onFaceClick(num, face);
+						fill={color || "#ffffff"}
+						clipPath={`url(#${clipId})`}
+						onClick={(event) => {
+							event.stopPropagation();
+							onFaceClick?.(num, face);
 						}}
-						className="cursor-pointer"
+						className="cursor-pointer transition-opacity duration-150 hover:opacity-80"
 					/>
 				);
 			})}
 
+			{/* Divisiones internas sin las líneas que antes sobresalían del círculo. */}
+			<g
+				fill="none"
+				stroke={strokeColor}
+				strokeWidth="1.15"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				pointerEvents="none"
+			>
+				<rect x="13" y="13" width="14" height="14" rx="0.8" />
+
+				{separators.map((line, index) => (
+					<line key={index} {...line} />
+				))}
+			</g>
+
+			{/* Contorno final más definido, igual al azul de ToothSVG. */}
 			<circle
 				cx="20"
 				cy="20"
 				r="18"
 				fill="none"
-				stroke="#6b7280"
-				strokeWidth="1.3"
+				stroke={strokeColor}
+				strokeWidth="1.55"
+				vectorEffect="non-scaling-stroke"
+				pointerEvents="none"
 			/>
-
-			<line x1="3" y1="3" x2="13" y2="13" stroke="#9ca3af" strokeWidth="0.6" />
-			<line x1="37" y1="3" x2="27" y2="13" stroke="#9ca3af" strokeWidth="0.6" />
-			<line x1="3" y1="37" x2="13" y2="27" stroke="#9ca3af" strokeWidth="0.6" />
-			<line x1="37" y1="37" x2="27" y2="27" stroke="#9ca3af" strokeWidth="0.6" />
 		</svg>
 	);
 }

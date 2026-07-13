@@ -628,18 +628,98 @@ export default function Odontograma() {
     setToothMenu((p) => ({ ...p, open: false }));
   }
 
-  function handleResetAll() {
-    setTeeth(buildBlankTeeth());
-    setSelectedTooth(null);
-    setNotasGenerales("");
-    setPendingEvents([]);
-    setHasUnsavedChanges(false);
-    showToast({
-      type: "success",
-      title: "Odontograma restablecido",
-      message: "Se eliminaron registros, observaciones y cambios pendientes.",
-    });
+
+
+  async function handleResetAll() {
+    if (!pacienteId) {
+      showToast({
+        type: "error",
+        title: "Paciente no seleccionado",
+        message:
+          "Debes seleccionar un paciente antes de restablecer el odontograma.",
+      });
+      return;
+    }
+
+    if (!selectedPatient?.expediente_id) {
+      showToast({
+        type: "error",
+        title: "Paciente sin expediente",
+        message:
+          "El paciente seleccionado no tiene expediente clínico asociado.",
+      });
+      return;
+    }
+
+    const confirmar = window.confirm(
+      "¿Deseas vaciar completamente el odontograma?\n\n" +
+        "Se eliminarán todos los registros y observaciones actuales de las piezas."
+    );
+
+    if (!confirmar) return;
+
+    const dientesVacios = buildBlankTeeth();
+
+    try {
+      setGuardando(true);
+      setErrorOdontograma("");
+
+      const payload = buildOdontogramaPayload({
+        pacienteId,
+        expedienteId: selectedPatient.expediente_id,
+        dentadura,
+        teeth: dientesVacios,
+        notasGenerales: "",
+        pendingEvents: [],
+      });
+
+      await guardarOdontograma(payload);
+
+      setTeeth(dientesVacios);
+      setSelectedTooth(null);
+      setNotasGenerales("");
+      setPendingEvents([]);
+      setHasUnsavedChanges(false);
+      setFaceActionId("");
+
+      setContextMenu((prev) => ({
+        ...prev,
+        open: false,
+        toothNumber: null,
+      }));
+
+      setToothMenu((prev) => ({
+        ...prev,
+        open: false,
+        toothNumber: null,
+      }));
+
+      setObservationModal({
+        open: false,
+        toothNumber: null,
+      });
+
+      showToast({
+        type: "success",
+        title: "Odontograma restablecido",
+        message:
+          "Los registros y observaciones actuales fueron eliminados correctamente.",
+      });
+    } catch (error) {
+      setErrorOdontograma(error.message);
+
+      showToast({
+        type: "error",
+        title: "Error al restablecer",
+        message:
+          error.message ||
+          "No se pudo vaciar el odontograma. Inténtalo nuevamente.",
+      });
+    } finally {
+      setGuardando(false);
+    }
   }
+
 
   async function handleSaveGeneral() {
     if (!pacienteId) {
