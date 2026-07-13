@@ -1,68 +1,98 @@
-import { useEffect, useMemo, useState } from "react";
-import { MARCAS, USUARIOS } from "../data/mockData";
+import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { obtenerSesion } from "../services/authService";
+import { listarUsuarios } from "../services/usuarioService";
+import {
+  obtenerMarcas,
+  obtenerResumenMarcas,
+  obtenerJornadaActiva,
+  obtenerMarcasPendientes,
+  iniciarJornada as iniciarJornadaApi,
+  finalizarJornada as finalizarJornadaApi,
+  crearMarcaManual,
+  justificarMarca as justificarMarcaApi,
+  aprobarMarca as aprobarMarcaApi,
+  rechazarMarca as rechazarMarcaApi,
+} from "../services/marcaService";
 
-const USUARIO_LOGUEADO_ID = "u1"; // Temporal: luego reemplazar por el usuario real del token/login
+const ROL_CON_VISIBILIDAD_TOTAL = "Dentista";
 
 const hoyISO = () => new Date().toISOString().split("T")[0];
 
-const horaActual = () =>
-  new Date().toLocaleTimeString("es-CR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
 const formatearDuracion = (ms) => {
   if (!ms || ms < 0) return "00h 00m";
-
   const totalMinutos = Math.floor(ms / 60000);
   const horas = Math.floor(totalMinutos / 60);
   const minutos = totalMinutos % 60;
-
-  return `${String(horas).padStart(2, "0")}h ${String(minutos).padStart(
-    2,
-    "0",
-  )}m`;
+  return `${String(horas).padStart(2, "0")}h ${String(minutos).padStart(2, "0")}m`;
 };
 
 const calcularHoras = (entrada, salida) => {
   if (!entrada || !salida) return 0;
-
   const [eh, em] = entrada.split(":").map(Number);
   const [sh, sm] = salida.split(":").map(Number);
-
   const mins = sh * 60 + sm - (eh * 60 + em);
-
   if (mins <= 0) return 0;
-
   return Math.round((mins / 60) * 100) / 100;
 };
 
-const ControlMarcas = () => {
-  const usuarioLogueado = USUARIOS.find((u) => u._id === USUARIO_LOGUEADO_ID);
-  const usuarioActivoId = usuarioLogueado?._id || "";
+// AJUSTA: tus controllers pueden responder el objeto/array directo, o envuelto
+// en { data }. Este helper soporta ambos para que no truene si cambia.
+const extraerDatos = (resultado, fallback) => {
+  if (resultado === null || resultado === undefined) return fallback;
+  if (Array.isArray(resultado)) return resultado;
+  if (resultado.data !== undefined) return resultado.data;
+  return resultado;
+};
 
-  const [marcas, setMarcas] = useState(
-    MARCAS.map((m) => ({
-      ...m,
-      estado: m.estado || "Completa",
-      tipo_registro: m.tipo_registro || "Manual",
-      justificacion: m.justificacion || null,
-    })),
-  );
+// AJUSTA: forma real de /auth/me. Cubre { usuario }, { user } y el objeto plano.
+const normalizarUsuario = (raw) => {
+  const u = raw?.usuario || raw?.user || raw;
+  if (!u) return null;
+
+  return {
+    _id: u._id || u.id,
+    nombre: u.nombre,
+    rol: u.rol_id?.nombre || u.rol?.nombre || u.rol || null,
+  };
+};
+
+// El usuario_id que viene poblado en las marcas trae rol_id.nombre, no rol.
+const nombreRolDe = (usuarioObj) =>
+  usuarioObj?.rol_id?.nombre || usuarioObj?.rol?.nombre || usuarioObj?.rol || "—";
+
+const ControlMarcas = () => {
+  const [usuarioLogueado, setUsuarioLogueado] = useState(null);
+  const [cargandoSesion, setCargandoSesion] = useState(true);
+
+  const usuarioActivoId = usuarioLogueado?._id || "";
+  const puedeVerTodo = usuarioLogueado?.rol === ROL_CON_VISIBILIDAD_TOTAL;
+
+  const [usuarios, setUsuarios] = useState([]);
+  const [marcas, setMarcas] = useState([]);
+  const [resumen, setResumen] = useState({
+    enJornada: 0,
+    horasHoy: 0,
+    marcasHoy: 0,
+    marcasManuales: 0,
+    porEmpleado: [],
+  });
+  const [jornadaActiva, setJornadaActiva] = useState(null);
+  const [pendientes, setPendientes] = useState([]);
+
+  const [cargandoMarcas, setCargandoMarcas] = useState(true);
+  const [cargandoAccion, setCargandoAccion] = useState(false);
 
   const [filtroFecha, setFiltroFecha] = useState("");
   const [filtroUsuario, setFiltroUsuario] = useState("");
+
   const [mostrarModal, setMostrarModal] = useState(false);
-  const [mostrarModalJustificacion, setMostrarModalJustificacion] =
-    useState(false);
+  const [mostrarModalJustificacion, setMostrarModalJustificacion] = useState(false);
   const [marcaJustificando, setMarcaJustificando] = useState(null);
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-  const [jornadasActivas, setJornadasActivas] = useState({});
   const [ahora, setAhora] = useState(new Date());
 
   const [formNueva, setFormNueva] = useState({
@@ -79,91 +109,125 @@ const ControlMarcas = () => {
     motivo: "",
   });
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAhora(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const jornadaActual = usuarioActivoId
-    ? jornadasActivas[usuarioActivoId]
-    : null;
-
-  const tiempoActivoMs = jornadaActual
-    ? ahora.getTime() - new Date(jornadaActual.inicio_at).getTime()
-    : 0;
-
   const mostrarError = (mensaje) => {
     setError(mensaje);
     setTimeout(() => setError(""), 3500);
   };
 
-  const iniciarJornada = () => {
-    if (!usuarioLogueado) {
-      mostrarError("No se pudo identificar el usuario en sesión.");
-      return;
-    }
+  // --- Sesión ---
+  useEffect(() => {
+    (async () => {
+      try {
+        const resultado = await obtenerSesion();
+        const datos = extraerDatos(resultado, null); // { usuario: {...} }
+        setUsuarioLogueado(normalizarUsuario(datos));
+      } catch (err) {
+        mostrarError("No se pudo cargar la sesión. Inicia sesión de nuevo.");
+      } finally {
+        setCargandoSesion(false);
+      }
+    })();
+  }, []);
 
-    if (jornadasActivas[usuarioLogueado._id]) {
+  useEffect(() => {
+    if (!usuarioLogueado || puedeVerTodo) return;
+    setFiltroUsuario(usuarioActivoId);
+    setFormNueva((p) => ({ ...p, usuario_id: usuarioActivoId }));
+  }, [usuarioLogueado, puedeVerTodo, usuarioActivoId]);
+
+  // Timer del "tiempo activo"
+  useEffect(() => {
+    const interval = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const cargarMarcasYResumen = useCallback(async () => {
+    if (!usuarioLogueado) return;
+    setCargandoMarcas(true);
+
+    try {
+      const [resMarcas, resResumen, resJornada] = await Promise.all([
+        obtenerMarcas({
+          fecha: filtroFecha || undefined,
+          usuario_id: puedeVerTodo ? filtroUsuario || undefined : usuarioActivoId,
+        }),
+        obtenerResumenMarcas(),
+        obtenerJornadaActiva(),
+      ]);
+
+      setMarcas(extraerDatos(resMarcas, []));
+      setResumen(
+        extraerDatos(resResumen, {
+          enJornada: 0,
+          horasHoy: 0,
+          marcasHoy: 0,
+          marcasManuales: 0,
+          porEmpleado: [],
+        }),
+      );
+      setJornadaActiva(extraerDatos(resJornada, null));
+
+      if (puedeVerTodo) {
+        const resPendientes = await obtenerMarcasPendientes();
+        setPendientes(extraerDatos(resPendientes, []));
+      }
+    } catch (err) {
+      mostrarError(err.message || "No se pudieron cargar las marcas.");
+    } finally {
+      setCargandoMarcas(false);
+    }
+  }, [usuarioLogueado, puedeVerTodo, filtroFecha, filtroUsuario, usuarioActivoId]);
+
+  useEffect(() => {
+    cargarMarcasYResumen();
+  }, [cargarMarcasYResumen]);
+
+  useEffect(() => {
+    if (!puedeVerTodo) return;
+    (async () => {
+      try {
+        const resultado = await listarUsuarios();
+        setUsuarios(extraerDatos(resultado, []));
+      } catch (err) {
+        mostrarError("No se pudo cargar la lista de empleados.");
+      }
+    })();
+  }, [puedeVerTodo]);
+
+  const tiempoActivoMs = jornadaActiva
+    ? ahora.getTime() - new Date(jornadaActiva.inicio_at).getTime()
+    : 0;
+
+  const iniciarJornada = async () => {
+    if (jornadaActiva) {
       mostrarError("Ya tienes una jornada activa.");
       return;
     }
-
-    setJornadasActivas((prev) => ({
-      ...prev,
-      [usuarioLogueado._id]: {
-        usuario_id: {
-          _id: usuarioLogueado._id,
-          nombre: usuarioLogueado.nombre,
-          rol: usuarioLogueado.rol,
-        },
-        fecha: hoyISO(),
-        inicio_at: new Date().toISOString(),
-        hora_entrada: horaActual(),
-      },
-    }));
+    setCargandoAccion(true);
+    try {
+      await iniciarJornadaApi();
+      await cargarMarcasYResumen();
+    } catch (err) {
+      mostrarError(err.message || "No se pudo iniciar la jornada.");
+    } finally {
+      setCargandoAccion(false);
+    }
   };
 
-  const finalizarJornada = () => {
-    if (!usuarioLogueado || !jornadaActual) {
+  const finalizarJornada = async () => {
+    if (!jornadaActiva) {
       mostrarError("No tienes una jornada activa.");
       return;
     }
-
-    const ahoraFin = new Date();
-    const salida = horaActual();
-
-    const horas =
-      Math.round(
-        ((ahoraFin.getTime() - new Date(jornadaActual.inicio_at).getTime()) /
-          3600000) *
-          100,
-      ) / 100;
-
-    const nuevaMarca = {
-      _id: `m${Date.now()}`,
-      usuario_id: jornadaActual.usuario_id,
-      fecha: jornadaActual.fecha,
-      inicio_at: jornadaActual.inicio_at,
-      fin_at: ahoraFin.toISOString(),
-      hora_entrada: jornadaActual.hora_entrada,
-      hora_salida: salida,
-      horas_trabajadas: horas,
-      observaciones: "Jornada registrada automáticamente.",
-      estado: "Completa",
-      tipo_registro: "Automático",
-      justificacion: null,
-    };
-
-    setMarcas((prev) => [nuevaMarca, ...prev]);
-
-    setJornadasActivas((prev) => {
-      const copia = { ...prev };
-      delete copia[usuarioLogueado._id];
-      return copia;
-    });
+    setCargandoAccion(true);
+    try {
+      await finalizarJornadaApi();
+      await cargarMarcasYResumen();
+    } catch (err) {
+      mostrarError(err.message || "No se pudo finalizar la jornada.");
+    } finally {
+      setCargandoAccion(false);
+    }
   };
 
   const abrirJustificacion = (marca) => {
@@ -171,164 +235,101 @@ const ControlMarcas = () => {
       mostrarError("No puedes justificar marcas de otro usuario.");
       return;
     }
-
     setMarcaJustificando(marca);
-
     setFormJustificacion({
-      tipo: !marca.hora_salida
-        ? "Olvidó marcar salida"
-        : "Corrección de marca",
+      tipo: !marca.hora_salida ? "Olvidó marcar salida" : "Corrección de marca",
       hora_sugerida: marca.hora_salida || "",
       motivo: "",
     });
-
     setMostrarModalJustificacion(true);
   };
 
-  const guardarJustificacion = (e) => {
+  const guardarJustificacion = async (e) => {
     e.preventDefault();
-
     if (!formJustificacion.motivo.trim()) {
       mostrarError("Debes indicar el motivo de la justificación.");
       return;
     }
-
-    setMarcas((prev) =>
-      prev.map((m) =>
-        m._id === marcaJustificando._id
-          ? {
-              ...m,
-              estado: "Justificada pendiente",
-              justificacion: {
-                tipo: formJustificacion.tipo,
-                hora_sugerida: formJustificacion.hora_sugerida || "",
-                motivo: formJustificacion.motivo,
-                fecha: new Date().toISOString(),
-              },
-              observaciones: formJustificacion.motivo,
-            }
-          : m,
-      ),
-    );
-
-    setMostrarModalJustificacion(false);
-    setMarcaJustificando(null);
-
-    setFormJustificacion({
-      tipo: "Olvidó marcar salida",
-      hora_sugerida: "",
-      motivo: "",
-    });
+    setGuardando(true);
+    try {
+      await justificarMarcaApi(marcaJustificando._id, formJustificacion);
+      setMostrarModalJustificacion(false);
+      setMarcaJustificando(null);
+      setFormJustificacion({ tipo: "Olvidó marcar salida", hora_sugerida: "", motivo: "" });
+      await cargarMarcasYResumen();
+    } catch (err) {
+      mostrarError(err.message || "No se pudo guardar la justificación.");
+    } finally {
+      setGuardando(false);
+    }
   };
 
-  const marcasFiltradas = useMemo(() => {
-    return marcas.filter((m) => {
-      if (filtroFecha && m.fecha !== filtroFecha) return false;
-      if (filtroUsuario && m.usuario_id._id !== filtroUsuario) return false;
-      return true;
-    });
-  }, [marcas, filtroFecha, filtroUsuario]);
-
-  const resumenGeneral = useMemo(() => {
-    const hoy = hoyISO();
-
-    const marcasHoy = marcas.filter((m) => m.fecha === hoy);
-    const horasHoy = marcasHoy.reduce(
-      (acc, m) => acc + (m.horas_trabajadas || 0),
-      0,
-    );
-
-    return {
-      enJornada: Object.keys(jornadasActivas).length,
-      horasHoy,
-      marcasHoy: marcasHoy.length,
-      marcasManuales: marcas.filter((m) => m.tipo_registro === "Manual").length,
-    };
-  }, [marcas, jornadasActivas]);
-
-  const resumenPorEmpleado = useMemo(() => {
-    const resumen = {};
-
-    marcas.forEach((m) => {
-      const id = m.usuario_id._id;
-
-      if (!resumen[id]) {
-        resumen[id] = {
-          nombre: m.usuario_id.nombre,
-          rol: m.usuario_id.rol,
-          totalHoras: 0,
-          diasTrabajados: 0,
-        };
-      }
-
-      resumen[id].totalHoras += m.horas_trabajadas || 0;
-      resumen[id].diasTrabajados += 1;
-    });
-
-    return Object.values(resumen);
-  }, [marcas]);
-
-  const handleGuardarManual = (e) => {
+  const handleGuardarManual = async (e) => {
     e.preventDefault();
+    const usuarioIdObjetivo = puedeVerTodo ? formNueva.usuario_id : usuarioActivoId;
 
-    const usuario = USUARIOS.find((u) => u._id === formNueva.usuario_id);
-
-    if (!usuario) {
+    if (!usuarioIdObjetivo) {
       mostrarError("Debes seleccionar un empleado.");
       return;
     }
 
     const horas = calcularHoras(formNueva.hora_entrada, formNueva.hora_salida);
-
     if (horas <= 0) {
       mostrarError("La hora de salida debe ser mayor a la hora de entrada.");
       return;
     }
-
     if (!formNueva.observaciones.trim()) {
       mostrarError("Las marcas manuales requieren una observación.");
       return;
     }
 
     setGuardando(true);
-
-    setTimeout(() => {
-      const nueva = {
-        _id: `m${Date.now()}`,
-        usuario_id: {
-          _id: usuario._id,
-          nombre: usuario.nombre,
-          rol: usuario.rol,
-        },
-        fecha: formNueva.fecha,
-        hora_entrada: formNueva.hora_entrada,
-        hora_salida: formNueva.hora_salida,
-        horas_trabajadas: horas,
-        observaciones: formNueva.observaciones,
-        estado: "Pendiente aprobación",
-        tipo_registro: "Manual",
-        justificacion: {
-          tipo: "Marca manual",
-          hora_sugerida: "",
-          motivo: formNueva.observaciones,
-          fecha: new Date().toISOString(),
-        },
-      };
-
-      setMarcas((prev) => [nueva, ...prev]);
-
+    try {
+      await crearMarcaManual({ ...formNueva, usuario_id: usuarioIdObjetivo });
       setFormNueva({
-        usuario_id: "",
+        usuario_id: puedeVerTodo ? "" : usuarioActivoId,
         fecha: hoyISO(),
         hora_entrada: "",
         hora_salida: "",
         observaciones: "",
       });
-
       setMostrarModal(false);
+      await cargarMarcasYResumen();
+    } catch (err) {
+      mostrarError(err.message || "No se pudo guardar la marca manual.");
+    } finally {
       setGuardando(false);
-    }, 500);
+    }
   };
+
+  const resolverPendiente = async (id, accion) => {
+    setCargandoAccion(true);
+    try {
+      if (accion === "aprobar") await aprobarMarcaApi(id);
+      else await rechazarMarcaApi(id);
+      await cargarMarcasYResumen();
+    } catch (err) {
+      mostrarError(err.message || "No se pudo actualizar la marca.");
+    } finally {
+      setCargandoAccion(false);
+    }
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroFecha("");
+    if (puedeVerTodo) setFiltroUsuario("");
+  };
+
+  if (cargandoSesion) {
+    return (
+      <div className="flex overflow-hidden h-screen bg-[#f9f9ff]">
+        <Sidebar activeItem="control-marcas" />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-[#3f484e]">Cargando sesión…</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
@@ -342,7 +343,9 @@ const ControlMarcas = () => {
                 Control de Marcas
               </h2>
               <p className="text-sm text-[#3f484e] mt-1">
-                Registro automático de entrada, salida y horas trabajadas.
+                {puedeVerTodo
+                  ? "Registro automático de entrada, salida y horas trabajadas de todo el personal."
+                  : "Registro automático de tu entrada, salida y horas trabajadas."}
               </p>
             </div>
 
@@ -350,18 +353,14 @@ const ControlMarcas = () => {
               onClick={() => setMostrarModal(true)}
               className="px-6 py-2.5 bg-white border border-[#bec8ce] text-[#3f484e] rounded-full text-xs font-semibold hover:border-[#006686] hover:text-[#006686] transition-colors flex items-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">
-                edit
-              </span>
+              <span className="material-symbols-outlined text-[18px]">edit</span>
               Agregar marca manual
             </button>
           </div>
 
           {error && (
             <div className="mb-5 rounded-xl border border-[#ba1a1a]/30 bg-[#ffdad6] px-5 py-3 text-sm text-[#ba1a1a] flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">
-                error
-              </span>
+              <span className="material-symbols-outlined text-[18px]">error</span>
               {error}
             </div>
           )}
@@ -370,9 +369,7 @@ const ControlMarcas = () => {
             <div className="bg-white border border-[#bec8ce] rounded-2xl p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="text-base font-bold text-[#151c27]">
-                    Mi jornada
-                  </h3>
+                  <h3 className="text-base font-bold text-[#151c27]">Mi jornada</h3>
                   <p className="text-xs text-[#3f484e] mt-1">
                     Marca entrada y salida del usuario en sesión.
                   </p>
@@ -380,12 +377,12 @@ const ControlMarcas = () => {
 
                 <span
                   className={`px-3 py-1 rounded-full text-[11px] font-semibold border ${
-                    jornadaActual
+                    jornadaActiva
                       ? "bg-[#6df5e120] text-[#006b5f] border-[#6df5e1]/40"
                       : "bg-[#dce2f3] text-[#3f484e] border-[#bec8ce]"
                   }`}
                 >
-                  {jornadaActual ? "Activa" : "Sin jornada"}
+                  {jornadaActiva ? "Activa" : "Sin jornada"}
                 </span>
               </div>
 
@@ -393,44 +390,30 @@ const ControlMarcas = () => {
                 <p className="text-[11px] font-semibold text-[#3f484e] uppercase tracking-wider">
                   Usuario en sesión
                 </p>
-
                 <p className="mt-1 text-sm font-bold text-[#151c27]">
                   {usuarioLogueado?.nombre || "Usuario no identificado"}
                 </p>
-
-                <p className="text-xs text-[#3f484e]">
-                  {usuarioLogueado?.rol || "Sin rol"}
-                </p>
+                <p className="text-xs text-[#3f484e]">{usuarioLogueado?.rol || "Sin rol"}</p>
               </div>
 
               <div className="rounded-2xl bg-[#f0f3ff] border border-[#bec8ce]/60 p-4 mb-4">
                 <p className="text-[11px] font-semibold text-[#3f484e] uppercase tracking-wider">
                   Tiempo activo
                 </p>
-
                 <p className="text-3xl font-bold text-[#151c27] tracking-tight mt-1">
-                  {jornadaActual
-                    ? formatearDuracion(tiempoActivoMs)
-                    : "00h 00m"}
+                  {jornadaActiva ? formatearDuracion(tiempoActivoMs) : "00h 00m"}
                 </p>
 
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-white rounded-xl p-3 border border-[#bec8ce]/50">
-                    <p className="text-[10px] uppercase font-semibold text-[#3f484e]">
-                      Entrada
-                    </p>
+                    <p className="text-[10px] uppercase font-semibold text-[#3f484e]">Entrada</p>
                     <p className="font-mono font-bold text-[#151c27]">
-                      {jornadaActual?.hora_entrada || "—"}
+                      {jornadaActiva?.hora_entrada || "—"}
                     </p>
                   </div>
-
                   <div className="bg-white rounded-xl p-3 border border-[#bec8ce]/50">
-                    <p className="text-[10px] uppercase font-semibold text-[#3f484e]">
-                      Fecha
-                    </p>
-                    <p className="font-bold text-[#151c27]">
-                      {jornadaActual?.fecha || hoyISO()}
-                    </p>
+                    <p className="text-[10px] uppercase font-semibold text-[#3f484e]">Fecha</p>
+                    <p className="font-bold text-[#151c27]">{jornadaActiva?.fecha || hoyISO()}</p>
                   </div>
                 </div>
               </div>
@@ -439,24 +422,19 @@ const ControlMarcas = () => {
                 <button
                   type="button"
                   onClick={iniciarJornada}
-                  disabled={!usuarioActivoId || Boolean(jornadaActual)}
+                  disabled={!usuarioActivoId || Boolean(jornadaActiva) || cargandoAccion}
                   className="px-4 py-2.5 rounded-full text-xs font-semibold bg-[#006686] text-white hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    play_arrow
-                  </span>
+                  <span className="material-symbols-outlined text-[16px]">play_arrow</span>
                   Iniciar
                 </button>
-
                 <button
                   type="button"
                   onClick={finalizarJornada}
-                  disabled={!jornadaActual}
+                  disabled={!jornadaActiva || cargandoAccion}
                   className="px-4 py-2.5 rounded-full text-xs font-semibold bg-[#ba1a1a] text-white hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    stop
-                  </span>
+                  <span className="material-symbols-outlined text-[16px]">stop</span>
                   Finalizar
                 </button>
               </div>
@@ -464,81 +442,64 @@ const ControlMarcas = () => {
 
             <div className="bg-white border border-[#bec8ce] rounded-2xl p-5 shadow-sm">
               <h3 className="text-base font-bold text-[#151c27] mb-4">
-                Resumen del día
+                {puedeVerTodo ? "Resumen del día" : "Mi resumen del día"}
               </h3>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-[#f0f3ff] p-4">
                   <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
-                    En jornada
+                    {puedeVerTodo ? "En jornada" : "Mi jornada"}
                   </p>
-                  <p className="text-2xl font-bold text-[#151c27] mt-1">
-                    {resumenGeneral.enJornada}
-                  </p>
+                  <p className="text-2xl font-bold text-[#151c27] mt-1">{resumen.enJornada}</p>
                 </div>
-
                 <div className="rounded-xl bg-[#f0f3ff] p-4">
                   <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
                     Horas hoy
                   </p>
                   <p className="text-2xl font-bold text-[#151c27] mt-1">
-                    {resumenGeneral.horasHoy.toFixed(1)}h
+                    {resumen.horasHoy.toFixed(1)}h
                   </p>
                 </div>
-
                 <div className="rounded-xl bg-[#f0f3ff] p-4">
                   <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
                     Marcas hoy
                   </p>
-                  <p className="text-2xl font-bold text-[#151c27] mt-1">
-                    {resumenGeneral.marcasHoy}
-                  </p>
+                  <p className="text-2xl font-bold text-[#151c27] mt-1">{resumen.marcasHoy}</p>
                 </div>
-
                 <div className="rounded-xl bg-[#f0f3ff] p-4">
                   <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
                     Manuales
                   </p>
-                  <p className="text-2xl font-bold text-[#151c27] mt-1">
-                    {resumenGeneral.marcasManuales}
-                  </p>
+                  <p className="text-2xl font-bold text-[#151c27] mt-1">{resumen.marcasManuales}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white border border-[#bec8ce] rounded-2xl p-5 shadow-sm">
               <h3 className="text-base font-bold text-[#151c27] mb-4">
-                Resumen por empleado
+                {puedeVerTodo ? "Resumen por empleado" : "Mi resumen"}
               </h3>
-
               <div className="space-y-3">
-                {resumenPorEmpleado.map((emp) => (
+                {resumen.porEmpleado.map((emp) => (
                   <div
-                    key={emp.nombre}
+                    key={emp.usuario_id || emp.nombre}
                     className="flex items-center justify-between gap-4 rounded-xl border border-[#bec8ce]/60 bg-[#f9f9ff] p-3"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-[#7dd3fc20] border border-[#006686]/20 flex items-center justify-center text-[#006686] font-bold text-sm flex-shrink-0">
                         {emp.nombre.charAt(0)}
                       </div>
-
                       <div className="min-w-0">
                         <p className="font-semibold text-[#151c27] text-sm truncate">
                           {emp.nombre}
                         </p>
-                        <p className="text-[11px] text-[#3f484e]">
-                          {emp.rol}
-                        </p>
+                        <p className="text-[11px] text-[#3f484e]">{emp.rol}</p>
                       </div>
                     </div>
-
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-bold text-[#151c27]">
                         {emp.totalHoras.toFixed(1)}h
                       </p>
-                      <p className="text-[11px] text-[#3f484e]">
-                        {emp.diasTrabajados} días
-                      </p>
+                      <p className="text-[11px] text-[#3f484e]">{emp.diasTrabajados} días</p>
                     </div>
                   </div>
                 ))}
@@ -546,12 +507,54 @@ const ControlMarcas = () => {
             </div>
           </div>
 
+          {puedeVerTodo && pendientes.length > 0 && (
+            <div className="bg-white border border-[#bec8ce] rounded-2xl p-5 shadow-sm mb-6">
+              <h3 className="text-base font-bold text-[#151c27] mb-4">
+                Pendientes de aprobación ({pendientes.length})
+              </h3>
+              <div className="space-y-3">
+                {pendientes.map((p) => (
+                  <div
+                    key={p._id}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border border-[#bec8ce]/60 bg-[#f9f9ff] p-4"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[#151c27]">
+                        {p.usuario_id.nombre}{" "}
+                        <span className="font-normal text-[#3f484e]">
+                          · {p.fecha} · {p.tipo_registro}
+                        </span>
+                      </p>
+                      <p className="text-xs text-[#3f484e] mt-1">
+                        {p.observaciones || p.justificacion?.motivo}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => resolverPendiente(p._id, "rechazar")}
+                        disabled={cargandoAccion}
+                        className="px-4 py-2 rounded-full border border-[#ba1a1a]/40 text-[#ba1a1a] text-xs font-semibold hover:bg-[#ffdad6] transition-colors disabled:opacity-50"
+                      >
+                        Rechazar
+                      </button>
+                      <button
+                        onClick={() => resolverPendiente(p._id, "aprobar")}
+                        disabled={cargandoAccion}
+                        className="px-4 py-2 rounded-full bg-[#006686] text-white text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                      >
+                        Aprobar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-[#bec8ce] rounded-xl p-4 mb-5">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2 text-[#3f484e]">
-                <span className="material-symbols-outlined text-[18px]">
-                  filter_list
-                </span>
+                <span className="material-symbols-outlined text-[18px]">filter_list</span>
                 <span className="text-sm font-semibold">Filtrar:</span>
               </div>
 
@@ -562,30 +565,27 @@ const ControlMarcas = () => {
                 className="px-3 py-2 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
               />
 
-              <select
-                value={filtroUsuario}
-                onChange={(e) => setFiltroUsuario(e.target.value)}
-                className="px-3 py-2 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
-              >
-                <option value="">Todos los empleados</option>
-                {USUARIOS.map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.nombre}
-                  </option>
-                ))}
-              </select>
+              {puedeVerTodo && (
+                <select
+                  value={filtroUsuario}
+                  onChange={(e) => setFiltroUsuario(e.target.value)}
+                  className="px-3 py-2 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
+                >
+                  <option value="">Todos los empleados</option>
+                  {usuarios.map((u) => (
+                    <option key={u._id} value={u._id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </select>
+              )}
 
-              {(filtroFecha || filtroUsuario) && (
+              {(filtroFecha || (puedeVerTodo && filtroUsuario)) && (
                 <button
-                  onClick={() => {
-                    setFiltroFecha("");
-                    setFiltroUsuario("");
-                  }}
+                  onClick={limpiarFiltros}
                   className="px-4 py-2 text-xs font-semibold text-[#3f484e] hover:bg-[#f0f3ff] rounded-lg transition-colors flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    close
-                  </span>
+                  <span className="material-symbols-outlined text-[16px]">close</span>
                   Limpiar
                 </button>
               )}
@@ -594,7 +594,11 @@ const ControlMarcas = () => {
 
           <div className="bg-white border border-[#bec8ce] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              {marcasFiltradas.length === 0 ? (
+              {cargandoMarcas ? (
+                <div className="text-center py-16">
+                  <p className="text-sm text-[#3f484e]">Cargando marcas…</p>
+                </div>
+              ) : marcas.length === 0 ? (
                 <div className="text-center py-16">
                   <span className="material-symbols-outlined text-5xl text-[#bec8ce] block mb-3">
                     schedule
@@ -609,8 +613,7 @@ const ControlMarcas = () => {
                     <tr className="bg-[#f0f3ff] border-b border-[#bec8ce]">
                       {[
                         "#",
-                        "Empleado",
-                        "Rol",
+                        ...(puedeVerTodo ? ["Empleado", "Rol"] : []),
                         "Fecha",
                         "Entrada",
                         "Salida",
@@ -631,56 +634,50 @@ const ControlMarcas = () => {
                   </thead>
 
                   <tbody className="divide-y divide-[#bec8ce]/40">
-                    {marcasFiltradas.map((marca, index) => (
-                      <tr
-                        key={marca._id}
-                        className="hover:bg-[#e7eefe]/30 transition-colors"
-                      >
-                        <td className="px-5 py-4 text-sm text-[#3f484e]">
-                          {index + 1}
-                        </td>
+                    {marcas.map((marca, index) => (
+                      <tr key={marca._id} className="hover:bg-[#e7eefe]/30 transition-colors">
+                        <td className="px-5 py-4 text-sm text-[#3f484e]">{index + 1}</td>
 
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-[#7dd3fc20] flex items-center justify-center text-[#006686] font-bold text-xs flex-shrink-0">
-                              {marca.usuario_id.nombre.charAt(0)}
-                            </div>
-                            <span className="text-sm font-semibold text-[#151c27]">
-                              {marca.usuario_id.nombre}
-                            </span>
-                          </div>
-                        </td>
-
-                        <td className="px-5 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#dce2f3] text-[#3f484e] border border-[#bec8ce]">
-                            {marca.usuario_id.rol}
-                          </span>
-                        </td>
+                        {puedeVerTodo && (
+                          <>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-[#7dd3fc20] flex items-center justify-center text-[#006686] font-bold text-xs flex-shrink-0">
+                                  {marca.usuario_id.nombre.charAt(0)}
+                                </div>
+                                <span className="text-sm font-semibold text-[#151c27]">
+                                  {marca.usuario_id.nombre}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#dce2f3] text-[#3f484e] border border-[#bec8ce]">
+                                {nombreRolDe(marca.usuario_id)}
+                              </span>
+                            </td>
+                          </>
+                        )}
 
                         <td className="px-5 py-4 text-sm text-[#3f484e]">
-                          {new Date(
-                            marca.fecha + "T12:00:00",
-                          ).toLocaleDateString("es-CR", {
-                            weekday: "short",
-                            day: "2-digit",
-                            month: "short",
-                          })}
+                          {marca.fecha
+                            ? new Date(marca.fecha + "T12:00:00").toLocaleDateString("es-CR", {
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "short",
+                              })
+                            : "—"}
                         </td>
-
                         <td className="px-5 py-4 font-mono text-sm text-[#151c27]">
                           {marca.hora_entrada || "—"}
                         </td>
-
                         <td className="px-5 py-4 font-mono text-sm text-[#151c27]">
                           {marca.hora_salida || "—"}
                         </td>
-
                         <td className="px-5 py-4">
                           <span className="text-sm font-bold text-[#006686]">
                             {(marca.horas_trabajadas || 0).toFixed(2)}h
                           </span>
                         </td>
-
                         <td className="px-5 py-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
@@ -692,24 +689,23 @@ const ControlMarcas = () => {
                             {marca.tipo_registro || "Manual"}
                           </span>
                         </td>
-
                         <td className="px-5 py-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                               marca.estado === "Pendiente aprobación" ||
                               marca.estado === "Justificada pendiente"
                                 ? "bg-[#ffddb820] text-[#855300] border-[#855300]/20"
-                                : "bg-[#6df5e120] text-[#006b5f] border-[#6df5e1]/40"
+                                : marca.estado === "Rechazada"
+                                  ? "bg-[#ffdad6] text-[#ba1a1a] border-[#ba1a1a]/20"
+                                  : "bg-[#6df5e120] text-[#006b5f] border-[#6df5e1]/40"
                             }`}
                           >
                             {marca.estado || "Completa"}
                           </span>
                         </td>
-
                         <td className="px-5 py-4 text-sm text-[#3f484e] max-w-[260px]">
                           {marca.observaciones || "—"}
                         </td>
-
                         <td className="px-5 py-4">
                           {marca.usuario_id._id === usuarioActivoId ? (
                             <button
@@ -720,9 +716,7 @@ const ControlMarcas = () => {
                               Justificar
                             </button>
                           ) : (
-                            <span className="text-xs text-[#9ca3af]">
-                              No permitido
-                            </span>
+                            <span className="text-xs text-[#9ca3af]">No permitido</span>
                           )}
                         </td>
                       </tr>
@@ -740,64 +734,56 @@ const ControlMarcas = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-lg font-bold text-[#151c27]">
-                  Agregar marca manual
-                </h3>
+                <h3 className="text-lg font-bold text-[#151c27]">Agregar marca manual</h3>
                 <p className="text-sm text-[#3f484e] mt-1">
-                  Úsalo solo si un administrador debe registrar una jornada
-                  completa.
+                  {puedeVerTodo
+                    ? "Úsalo solo si un administrador debe registrar una jornada completa."
+                    : "Registra manualmente una jornada tuya que no se marcó a tiempo."}
                 </p>
               </div>
-
               <button
                 type="button"
                 onClick={() => setMostrarModal(false)}
                 className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]"
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  close
-                </span>
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            <form
-              className="space-y-4"
-              onSubmit={handleGuardarManual}
-              autoComplete="off"
-            >
+            <form className="space-y-4" onSubmit={handleGuardarManual} autoComplete="off">
               <div>
                 <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                   Empleado *
                 </label>
-
-                <select
-                  value={formNueva.usuario_id}
-                  onChange={(e) =>
-                    setFormNueva((p) => ({ ...p, usuario_id: e.target.value }))
-                  }
-                  required
-                  className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
-                >
-                  <option value="">Seleccionar empleado</option>
-                  {USUARIOS.filter((u) => u.activo).map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.nombre} ({u.rol})
-                    </option>
-                  ))}
-                </select>
+                {puedeVerTodo ? (
+                  <select
+                    value={formNueva.usuario_id}
+                    onChange={(e) => setFormNueva((p) => ({ ...p, usuario_id: e.target.value }))}
+                    required
+                    className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
+                  >
+                    <option value="">Seleccionar empleado</option>
+                    {usuarios.filter((u) => u.activo).map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.nombre} ({nombreRolDe(u)})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm bg-[#f0f3ff] text-[#151c27]">
+                    {usuarioLogueado?.nombre} ({usuarioLogueado?.rol})
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                   Fecha *
                 </label>
-
                 <input
                   type="date"
                   value={formNueva.fecha}
-                  onChange={(e) =>
-                    setFormNueva((p) => ({ ...p, fecha: e.target.value }))
-                  }
+                  onChange={(e) => setFormNueva((p) => ({ ...p, fecha: e.target.value }))}
                   required
                   className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white"
                 />
@@ -808,34 +794,25 @@ const ControlMarcas = () => {
                   <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                     Hora entrada *
                   </label>
-
                   <input
                     type="time"
                     value={formNueva.hora_entrada}
                     onChange={(e) =>
-                      setFormNueva((p) => ({
-                        ...p,
-                        hora_entrada: e.target.value,
-                      }))
+                      setFormNueva((p) => ({ ...p, hora_entrada: e.target.value }))
                     }
                     required
                     className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                     Hora salida *
                   </label>
-
                   <input
                     type="time"
                     value={formNueva.hora_salida}
                     onChange={(e) =>
-                      setFormNueva((p) => ({
-                        ...p,
-                        hora_salida: e.target.value,
-                      }))
+                      setFormNueva((p) => ({ ...p, hora_salida: e.target.value }))
                     }
                     required
                     className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white"
@@ -845,16 +822,10 @@ const ControlMarcas = () => {
 
               {formNueva.hora_entrada && formNueva.hora_salida && (
                 <div className="bg-[#7dd3fc20] border border-[#006686]/20 rounded-lg p-3 flex items-center gap-2 text-sm text-[#006686]">
-                  <span className="material-symbols-outlined text-[18px]">
-                    timer
-                  </span>
+                  <span className="material-symbols-outlined text-[18px]">timer</span>
                   Horas calculadas:{" "}
                   <strong>
-                    {calcularHoras(
-                      formNueva.hora_entrada,
-                      formNueva.hora_salida,
-                    ).toFixed(2)}{" "}
-                    horas
+                    {calcularHoras(formNueva.hora_entrada, formNueva.hora_salida).toFixed(2)} horas
                   </strong>
                 </div>
               )}
@@ -863,15 +834,11 @@ const ControlMarcas = () => {
                 <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                   Justificación *
                 </label>
-
                 <textarea
                   placeholder="Ej: Se registra manualmente porque el empleado olvidó marcar la jornada completa."
                   value={formNueva.observaciones}
                   onChange={(e) =>
-                    setFormNueva((p) => ({
-                      ...p,
-                      observaciones: e.target.value,
-                    }))
+                    setFormNueva((p) => ({ ...p, observaciones: e.target.value }))
                   }
                   required
                   rows={3}
@@ -887,7 +854,6 @@ const ControlMarcas = () => {
                 >
                   Cancelar
                 </button>
-
                 <button
                   type="submit"
                   disabled={guardando}
@@ -897,9 +863,7 @@ const ControlMarcas = () => {
                     <span className="loading loading-spinner loading-xs" />
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-[16px]">
-                        check
-                      </span>
+                      <span className="material-symbols-outlined text-[16px]">check</span>
                       Guardar solicitud
                     </>
                   )}
@@ -915,22 +879,17 @@ const ControlMarcas = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="text-lg font-bold text-[#151c27]">
-                  Justificar marca
-                </h3>
+                <h3 className="text-lg font-bold text-[#151c27]">Justificar marca</h3>
                 <p className="text-sm text-[#3f484e] mt-1">
                   Registra el motivo por el cual esta marca necesita revisión.
                 </p>
               </div>
-
               <button
                 type="button"
                 onClick={() => setMostrarModalJustificacion(false)}
                 className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]"
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  close
-                </span>
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
@@ -949,14 +908,10 @@ const ControlMarcas = () => {
                 <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                   Tipo de justificación *
                 </label>
-
                 <select
                   value={formJustificacion.tipo}
                   onChange={(e) =>
-                    setFormJustificacion((p) => ({
-                      ...p,
-                      tipo: e.target.value,
-                    }))
+                    setFormJustificacion((p) => ({ ...p, tipo: e.target.value }))
                   }
                   className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27]"
                 >
@@ -974,15 +929,11 @@ const ControlMarcas = () => {
                 <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                   Hora sugerida
                 </label>
-
                 <input
                   type="time"
                   value={formJustificacion.hora_sugerida}
                   onChange={(e) =>
-                    setFormJustificacion((p) => ({
-                      ...p,
-                      hora_sugerida: e.target.value,
-                    }))
+                    setFormJustificacion((p) => ({ ...p, hora_sugerida: e.target.value }))
                   }
                   className="w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white"
                 />
@@ -992,14 +943,10 @@ const ControlMarcas = () => {
                 <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
                   Motivo *
                 </label>
-
                 <textarea
                   value={formJustificacion.motivo}
                   onChange={(e) =>
-                    setFormJustificacion((p) => ({
-                      ...p,
-                      motivo: e.target.value,
-                    }))
+                    setFormJustificacion((p) => ({ ...p, motivo: e.target.value }))
                   }
                   placeholder="Ej: La asistente olvidó marcar salida porque estaba atendiendo una emergencia."
                   required
@@ -1016,14 +963,12 @@ const ControlMarcas = () => {
                 >
                   Cancelar
                 </button>
-
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+                  disabled={guardando}
+                  className="px-6 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-60"
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    check
-                  </span>
+                  <span className="material-symbols-outlined text-[16px]">check</span>
                   Guardar justificación
                 </button>
               </div>

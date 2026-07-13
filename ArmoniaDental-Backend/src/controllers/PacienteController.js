@@ -1,4 +1,4 @@
-import { obtenerPacientesConExpedienteService, crearPacienteService, obtenerPacientePorIdService,} from "../services/PacienteService.js";
+import { obtenerPacientesConExpedienteService, crearPacienteService, obtenerPacientePorIdService, actualizarPacientes } from "../services/PacienteService.js";
 
 
 export async function obtenerPacientesConExpediente(req, res) {
@@ -72,6 +72,30 @@ export async function obtenerPacientePorId(req, res) {
     return res.status(500).json({
       ok: false,
       message: "Ocurrió un error al obtener el paciente.",
+      error: error.message,
+    });
+  }
+  
+}
+
+export async function actualizarPaciente(req, res) {
+  try {
+    const { id } = req.params;
+    const datos = req.body;
+
+    const pacienteActualizado = await actualizarPacientes(id, datos);
+
+    return res.status(200).json({
+      ok: true,
+      message: "Paciente actualizado correctamente.",
+      data: pacienteActualizado,
+    });
+  }
+  catch (error) {
+    console.error("Error al actualizar paciente:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Ocurrió un error al actualizar el paciente.",
       error: error.message,
     });
   }

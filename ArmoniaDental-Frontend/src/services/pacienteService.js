@@ -60,6 +60,25 @@ export async function obtenerPacientePorId(id) {
   return data;
 }
 
+export async function actualizarPaciente(id, datos) {
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    credentials: "include",
+    body: JSON.stringify(datos),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "No se pudo actualizar el paciente.");
+  }
+
+  return data;
+}
+
+
+
 export async function crearHistoriaClinica(pacienteId, datos) {
   const response = await fetch(`${API_URL}/${pacienteId}/historia-clinica`, {
     method: "POST",

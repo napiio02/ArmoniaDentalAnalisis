@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { COMPROBANTES, PACIENTES, USUARIOS } from "../data/mockData";
+import { COMPROBANTES, PACIENTES } from "../data/mockData";
 
 const TIPOS = ["Incapacidad", "Justificación laboral"];
 

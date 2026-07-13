@@ -79,3 +79,25 @@ export async function obtenerPacientePorIdService(id) {
     expediente_id: expediente?._id || "",
   };
 }
+
+export async function actualizarPacientes(id, datos) {
+
+  const paciente = await PacienteModel.findById(id);
+  if (!paciente) {
+    const error = new Error("Paciente no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  paciente.nombre = datos.nombre || paciente.nombre;
+  paciente.cedula = datos.cedula || paciente.cedula;
+  paciente.telefono = datos.telefono || paciente.telefono;
+  paciente.correo = datos.email || paciente.correo;
+  paciente.fecha_nacimiento = datos.fecha_nacimiento || paciente.fecha_nacimiento;
+  paciente.alergias = datos.alergias || paciente.alergias;
+  paciente.enfermedades = datos.enfermedades || paciente.enfermedades;
+
+  await paciente.save();
+
+  return paciente;
+}
