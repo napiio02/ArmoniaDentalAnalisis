@@ -106,8 +106,14 @@ const Expedientes = () => {
   const [docAEliminar, setDocAEliminar] = useState(null);
   const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
 
-  // ── Toast de Error para Docuemntos Loocales ──
+  // ── Toast de Error para Docuemntos Locales ──
   const [toastError, setToastError] = useState(null);
+
+  // ── Toast Error ──
+  const mostrarToastError = (mensaje) => {
+    setToastError(mensaje);
+    setTimeout(() => setToastError(null), 3500);
+  };
 
   // ── Cargar pacientes al montar ──
   useEffect(() => {
@@ -288,12 +294,6 @@ const Expedientes = () => {
       proximo_control: null,
     })),
   ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-  // ── Toast Error ──
-  const mostrarToastError = (mensaje) => {
-    setToastError(mensaje);
-    setTimeout(() => setToastError(null), 3500);
-  };
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
@@ -643,27 +643,35 @@ const Expedientes = () => {
                               <button
                                 onClick={async () => {
                                   try {
+                                    const token = localStorage.getItem("token");
+                                    const headers = token
+                                      ? { Authorization: `Bearer ${token}` }
+                                      : {};
                                     const response = await fetch(
-                                      getUrlDescarga(doc._id),
+                                      getUrlVer(doc._id),
+                                      {
+                                        credentials: "include",
+                                        headers,
+                                      },
                                     );
                                     if (!response.ok) {
-                                      const data = await response.json();
-                                      mostrarToastError(
-                                        data.message ||
+                                      try {
+                                        const data = await response.json();
+                                        mostrarToastError(
+                                          data.message ||
+                                            "El archivo no se encuentra en el servidor.",
+                                        );
+                                      } catch {
+                                        mostrarToastError(
                                           "El archivo no se encuentra en el servidor.",
-                                      );
+                                        );
+                                      }
                                       return;
                                     }
-                                    const blob = await response.blob();
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = doc.nombre_original;
-                                    a.click();
-                                    URL.revokeObjectURL(url);
+                                    setPdfSeleccionado(doc);
                                   } catch {
                                     mostrarToastError(
-                                      "No se pudo descargar el archivo.",
+                                      "No se pudo acceder al archivo.",
                                     );
                                   }
                                 }}
@@ -827,6 +835,31 @@ const Expedientes = () => {
         onConfirmar={confirmarEliminarDocumento}
         onCancelar={() => setDocAEliminar(null)}
       />
+      {toastError && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="bg-white border border-[#ba1a1a]/30 rounded-2xl shadow-xl px-6 py-5 flex items-center gap-4 min-w-[320px]">
+            <div className="bg-[#ffdad6] p-3 rounded-xl flex-shrink-0">
+              <span className="material-symbols-outlined text-[#ba1a1a]">
+                error
+              </span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[#151c27]">
+                Archivo no disponible
+              </p>
+              <p className="text-xs text-[#3f484e] mt-0.5">{toastError}</p>
+            </div>
+            <button
+              onClick={() => setToastError(null)}
+              className="text-[#bec8ce] hover:text-[#3f484e] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                close
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
