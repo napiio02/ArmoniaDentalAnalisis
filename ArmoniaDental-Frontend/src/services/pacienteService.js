@@ -128,3 +128,14 @@ export async function obtenerExpedientesPorPaciente(pacienteId) {
 
   return data;
 }
+
+export async function toggleActivoPaciente(id) {
+  const response = await fetch(`${API_URL}/${id}/status`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "No se pudo cambiar el estado.");
+  return data;
+}

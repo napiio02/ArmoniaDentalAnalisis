@@ -8,6 +8,7 @@ import {
   cancelarCitaService,
   getCitasAtendidasPorPacienteService,
 } from "../services/CitasServices.js";
+import CitaModel from "../models/CitaModel.js";
 
 const responderError = (res, error, mensajeDefault) => {
   console.error(mensajeDefault, error);
@@ -95,6 +96,27 @@ export const getCitasAtendidasPorPaciente = async (req, res) => {
       message: "Citas obtenidas correctamente.",
       data: citas,
     });
+  } catch (error) {
+    return res.status(500).json({ ok: false, message: error.message });
+  }
+};
+
+export const getActividadReciente = async (req, res) => {
+  try {
+    const citas = await CitaModel.find()
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .populate("paciente_id", "nombre")
+      .lean();
+
+    const actividad = citas.map((c) => ({
+      tipo: "cita",
+      descripcion: `Cita de ${c.tipo} — ${c.estado}`,
+      paciente: c.paciente_id?.nombre || "Paciente",
+      fecha: c.updatedAt,
+    }));
+
+    return res.status(200).json({ ok: true, data: actividad });
   } catch (error) {
     return res.status(500).json({ ok: false, message: error.message });
   }

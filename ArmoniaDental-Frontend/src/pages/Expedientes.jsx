@@ -106,6 +106,9 @@ const Expedientes = () => {
   const [docAEliminar, setDocAEliminar] = useState(null);
   const [pdfSeleccionado, setPdfSeleccionado] = useState(null);
 
+  // ── Toast de Error para Docuemntos Loocales ──
+  const [toastError, setToastError] = useState(null);
+
   // ── Cargar pacientes al montar ──
   useEffect(() => {
     cargarPacientes();
@@ -205,7 +208,9 @@ const Expedientes = () => {
       }
       try {
         setCargandoHistoria(true);
-        const respuesta = await obtenerHistoriaClinica(pacienteSeleccionado._id);
+        const respuesta = await obtenerHistoriaClinica(
+          pacienteSeleccionado._id,
+        );
         setHistoriaClinica(respuesta.data || null);
       } catch {
         setHistoriaClinica(null);
@@ -278,11 +283,17 @@ const Expedientes = () => {
       _fuente: "cita",
       fecha: c.fecha_hora,
       tipo: c.tipo,
-      descripcion: c.motivo, 
+      descripcion: c.motivo,
       tratamiento: null,
       proximo_control: null,
     })),
   ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+  // ── Toast Error ──
+  const mostrarToastError = (mensaje) => {
+    setToastError(mensaje);
+    setTimeout(() => setToastError(null), 3500);
+  };
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
@@ -588,7 +599,26 @@ const Expedientes = () => {
                                 doc.formato,
                               ) ? (
                                 <button
-                                  onClick={() => setPdfSeleccionado(doc)}
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(
+                                        getUrlVer(doc._id),
+                                      );
+                                      if (!response.ok) {
+                                        const data = await response.json();
+                                        mostrarToastError(
+                                          data.message ||
+                                            "El archivo no se encuentra en el servidor.",
+                                        );
+                                        return;
+                                      }
+                                      setPdfSeleccionado(doc);
+                                    } catch {
+                                      mostrarToastError(
+                                        "No se pudo acceder al archivo.",
+                                      );
+                                    }
+                                  }}
                                   className="text-sm font-semibold text-[#151c27] text-left hover:text-[#006686] hover:underline w-full truncate block"
                                 >
                                   {doc.nombre_original}
@@ -610,15 +640,40 @@ const Expedientes = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              <a
-                                href={getUrlDescarga(doc._id)}
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(
+                                      getUrlDescarga(doc._id),
+                                    );
+                                    if (!response.ok) {
+                                      const data = await response.json();
+                                      mostrarToastError(
+                                        data.message ||
+                                          "El archivo no se encuentra en el servidor.",
+                                      );
+                                      return;
+                                    }
+                                    const blob = await response.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = doc.nombre_original;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                  } catch {
+                                    mostrarToastError(
+                                      "No se pudo descargar el archivo.",
+                                    );
+                                  }
+                                }}
                                 className="p-1.5 rounded text-[#3f484e] hover:bg-[#f0f3ff] hover:text-[#006686] transition-colors"
                                 title="Descargar"
                               >
                                 <span className="material-symbols-outlined text-[18px]">
                                   download
                                 </span>
-                              </a>
+                              </button>
                               <button
                                 onClick={() => setDocAEliminar(doc._id)}
                                 disabled={eliminandoId === doc._id}

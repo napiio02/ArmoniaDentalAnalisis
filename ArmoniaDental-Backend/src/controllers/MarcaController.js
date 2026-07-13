@@ -11,11 +11,6 @@ import {
   obtenerResumenMarcasService,
 } from "../services/MarcaService.js";
 
-// NOTA: se asume que ya existe un middleware de autenticación que deja
-// { id, rol, nombre } del usuario en sesión en req.user (igual que req.paciente_id
-// llega en los params, este llega del token). Si tu middleware guarda esos datos
-// con otro nombre, solo hay que ajustar las referencias a req.user en este archivo.
-
 const ROL_VISIBILIDAD_TOTAL = "Dentista";
 
 export async function obtenerMarcas(req, res) {

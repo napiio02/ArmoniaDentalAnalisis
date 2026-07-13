@@ -3,13 +3,45 @@ import { Link } from "react-router";
 import { getCitas } from "../services/citaService";
 import Sidebar from "../components/Sidebar";
 
-// ─── Home ────
+const VERSION = "v1";
+const BASE_URL = `http://localhost:3000/${VERSION}`;
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+const formatearTiempoRelativo = (fecha) => {
+  const ahora = new Date();
+  const diff = Math.floor((ahora - new Date(fecha)) / 1000);
+  if (diff < 60) return "hace un momento";
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+  return `hace ${Math.floor(diff / 86400)} días`;
+};
+
+const formatearFechaHora = (fecha) =>
+  new Date(fecha).toLocaleDateString("es-CR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 const Home = () => {
   const [citasHoy, setCitasHoy] = useState([]);
   const [citasMes, setCitasMes] = useState(0);
+  const [proximaCita, setProximaCita] = useState(null);
   const [insumosStockBajo, setInsumosStockBajo] = useState(0);
+  const [pacientesActivos, setPacientesActivos] = useState(null);
+  const [nuevosEsteMes, setNuevosEsteMes] = useState(null);
+  const [actividadReciente, setActividadReciente] = useState([]);
+  const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const usuarioNombre = "Dra. Laura";
 
   const getSaludo = () => {
     const hora = new Date().getHours();
@@ -17,17 +49,25 @@ const Home = () => {
     if (hora < 18) return "Buenas tardes";
     return "Buenas noches";
   };
+
   const hoy = new Date();
 
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const headers = {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        };
+        const headers = getAuthHeaders();
 
+        // ── Sesión del usuario ──
+        const resSesion = await fetch(`${BASE_URL}/auth/me`, {
+          headers,
+          credentials: "include",
+        });
+        if (resSesion.ok) {
+          const sesion = await resSesion.json();
+          setUsuario(sesion.data?.usuario || null);
+        }
+
+        // ── Citas ──
         const todasLasCitas = await getCitas({ pasadas: "true" });
 
         const citasDeHoy = todasLasCitas.filter((c) => {
@@ -51,20 +91,59 @@ const Home = () => {
         );
         const delMes = todasLasCitas.filter((c) => {
           const f = new Date(c.fecha_hora);
-          return f >= primerDiaMes && f <= ultimoDiaMes;
+          return (
+            f >= primerDiaMes &&
+            f <= ultimoDiaMes &&
+            c.estado !== "Cancelada" &&
+            c.estado !== "No asistió"
+          );
         });
         setCitasMes(delMes.length);
 
-        const resInsumos = await fetch("http://localhost:3000/v1/insumos", {
+        // Próxima cita — la más cercana en el futuro con estado activo
+        const ahora = new Date();
+        const futuras = todasLasCitas
+          .filter(
+            (c) =>
+              new Date(c.fecha_hora) > ahora &&
+              !["Cancelada", "No asistió", "Atendida"].includes(c.estado),
+          )
+          .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+        setProximaCita(futuras[0] || null);
+
+        // ── Insumos con stock bajo ──
+        const resInsumos = await fetch(`${BASE_URL}/insumos`, {
           headers,
+          credentials: "include",
         });
         if (resInsumos.ok) {
           const insumos = await resInsumos.json();
           const lista = Array.isArray(insumos) ? insumos : (insumos.data ?? []);
-          const stockBajo = lista.filter(
-            (i) => i.activo && i.stock_actual <= i.stock_minimo,
-          ).length;
-          setInsumosStockBajo(stockBajo);
+          setInsumosStockBajo(
+            lista.filter((i) => i.activo && i.stock_actual <= i.stock_minimo)
+              .length,
+          );
+        }
+
+        // ── Stats de pacientes ──
+        const resPacientes = await fetch(`${BASE_URL}/pacientes/stats`, {
+          headers,
+          credentials: "include",
+        });
+        if (resPacientes.ok) {
+          const stats = await resPacientes.json();
+          setPacientesActivos(stats.data?.total ?? null);
+          setNuevosEsteMes(stats.data?.nuevosEsteMes ?? null);
+        }
+
+        // ── Actividad reciente ──
+        const resActividad = await fetch(`${BASE_URL}/actividad-reciente`, {
+          headers,
+          credentials: "include",
+        });
+        if (resActividad.ok) {
+          const actividad = await resActividad.json();
+          setActividadReciente(actividad.data || []);
         }
       } catch (err) {
         console.error("Error al cargar datos del home:", err);
@@ -93,8 +172,9 @@ const Home = () => {
     const map = {
       Confirmada: "bg-green-100 text-green-700",
       "En atención": "bg-blue-100 text-blue-700",
-      Pendiente: "bg-yellow-100 text-yellow-700",
+      Programada: "bg-yellow-100 text-yellow-700",
       Cancelada: "bg-red-100 text-red-700",
+      Atendida: "bg-gray-100 text-gray-600",
     };
     return map[estado] || "bg-gray-100 text-gray-600";
   };
@@ -103,23 +183,20 @@ const Home = () => {
     { icon: "add_circle", label: "Nueva Cita", to: "/citas", primary: true },
     { icon: "badge", label: "Expedientes", to: "/expedientes", primary: false },
     {
-      icon: "account_balance_wallet",
-      label: "Facturación",
-      to: "/comprobantes",
+      icon: "inventory_2",
+      label: "Inventario",
+      to: "/inventario",
       primary: false,
     },
     { icon: "assessment", label: "Reportes", to: "/reportes", primary: false },
-    {
-      icon: "medication",
-      label: "Recetas",
-      to: "/comprobantes",
-      primary: false,
-    },
+    { icon: "people", label: "Pacientes", to: "/pacientes", primary: false },
   ];
+
+  const nombreUsuario = usuario?.nombre ? usuario.nombre.split(" ")[0] : "—";
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
-      <Sidebar activeItem="citas" />
+      <Sidebar activeItem="home" />
 
       <main className="flex-1 h-screen overflow-y-auto p-8">
         <div className="max-w-screen-2xl mx-auto">
@@ -127,7 +204,8 @@ const Home = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
             <div>
               <h2 className="text-[28px] font-bold leading-[36px] text-[#151c27]">
-                {getSaludo()}, {usuarioNombre}
+                {getSaludo()}
+                {usuario ? `, ${nombreUsuario}` : ""}
               </h2>
               <p className="text-sm text-[#3f484e] mt-1">
                 Bienvenido de nuevo, esto es lo que está sucediendo hoy.
@@ -158,13 +236,7 @@ const Home = () => {
             <div className="bg-white p-4 border border-[#bec8ce] rounded-xl shadow-sm flex flex-col justify-between h-32">
               <div className="flex justify-between items-start">
                 <span className="material-symbols-outlined text-[#006686] bg-[#7dd3fc20] p-2 rounded-lg">
-                  person
-                </span>
-                <span className="text-[#006b5f] text-xs font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">
-                    trending_up
-                  </span>{" "}
-                  +12%
+                  people
                 </span>
               </div>
               <div>
@@ -172,27 +244,74 @@ const Home = () => {
                   Pacientes Activos
                 </p>
                 <p className="text-[22px] font-semibold text-[#151c27]">
-                  1,284
+                  {cargando ? (
+                    <span className="loading loading-spinner loading-sm" />
+                  ) : (
+                    (pacientesActivos ?? "—")
+                  )}
                 </p>
               </div>
             </div>
 
-            {/* Citas del mes */}
+            {/* Nuevos este mes */}
+            <div className="bg-white p-4 border border-[#bec8ce] rounded-xl shadow-sm flex flex-col justify-between h-32">
+              <div className="flex justify-between items-start">
+                <span className="material-symbols-outlined text-[#006686] bg-[#7dd3fc20] p-2 rounded-lg">
+                  person_add
+                </span>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
+                  Nuevos este mes
+                </p>
+                <p className="text-[22px] font-semibold text-[#151c27]">
+                  {cargando ? (
+                    <span className="loading loading-spinner loading-sm" />
+                  ) : (
+                    (nuevosEsteMes ?? "—")
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Próxima cita */}
+            <div className="bg-white p-4 border border-[#bec8ce] rounded-xl shadow-sm flex flex-col justify-between h-32">
+              <div className="flex justify-between items-start">
+                <span className="material-symbols-outlined text-[#006686] bg-[#7dd3fc20] p-2 rounded-lg">
+                  event_upcoming
+                </span>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
+                  Próxima Cita
+                </p>
+                {cargando ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : proximaCita ? (
+                  <>
+                    <p className="text-sm font-semibold text-[#151c27] truncate">
+                      {proximaCita.paciente_id?.nombre || "Paciente"}
+                    </p>
+                    <p className="text-[10px] text-[#3f484e]">
+                      {formatearFechaHora(proximaCita.fecha_hora)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-[#bec8ce]">Sin citas próximas</p>
+                )}
+              </div>
+            </div>
+
+            {/* Citas este mes */}
             <div className="bg-white p-4 border border-[#bec8ce] rounded-xl shadow-sm flex flex-col justify-between h-32">
               <div className="flex justify-between items-start">
                 <span className="material-symbols-outlined text-[#006686] bg-[#7dd3fc20] p-2 rounded-lg">
                   event_available
                 </span>
-                <span className="text-[#006b5f] text-xs font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">
-                    trending_up
-                  </span>{" "}
-                  +5%
-                </span>
               </div>
               <div>
                 <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
-                  Citas Mensuales
+                  Citas este mes
                 </p>
                 <p className="text-[22px] font-semibold text-[#151c27]">
                   {cargando ? (
@@ -203,58 +322,11 @@ const Home = () => {
                 </p>
               </div>
             </div>
-
-            {/* Ingresos */}
-            <div className="bg-white p-4 border border-[#bec8ce] rounded-xl shadow-sm flex flex-col justify-between h-32">
-              <div className="flex justify-between items-start">
-                <span className="material-symbols-outlined text-[#006686] bg-[#7dd3fc20] p-2 rounded-lg">
-                  payments
-                </span>
-                <span className="text-[#006b5f] text-xs font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">
-                    trending_up
-                  </span>{" "}
-                  +8%
-                </span>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
-                  Ingresos Mensuales
-                </p>
-                <p className="text-[22px] font-semibold text-[#151c27]">
-                  $54,200
-                </p>
-              </div>
-            </div>
-
-            {/* Alertas stock */}
-            <div className="bg-white p-4 border border-[#bec8ce] rounded-xl shadow-sm flex flex-col justify-between h-32">
-              <div className="flex justify-between items-start">
-                <span className="material-symbols-outlined text-[#ba1a1a] bg-[#ffdad620] p-2 rounded-lg">
-                  warning
-                </span>
-                <span className="text-[#ba1a1a] text-xs font-semibold">
-                  Crítico
-                </span>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">
-                  Alertas de Stock
-                </p>
-                <p className="text-[22px] font-semibold text-[#151c27]">
-                  {cargando ? (
-                    <span className="loading loading-spinner loading-sm" />
-                  ) : (
-                    `${insumosStockBajo} Artículos`
-                  )}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Bento layout */}
           <div className="grid grid-cols-12 gap-6">
-            {/* Left col: accesos + tabla citas */}
+            {/* Left col */}
             <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
               {/* Accesos rápidos */}
               <div className="grid grid-cols-5 gap-4">
@@ -268,9 +340,7 @@ const Home = () => {
                         : "bg-white border border-[#bec8ce] hover:border-[#006686]"
                     }`}
                   >
-                    <span
-                      className={`material-symbols-outlined mb-2 text-3xl transition-transform group-hover:scale-110 ${primary ? "text-[#006686]" : "text-[#006686]"}`}
-                    >
+                    <span className="material-symbols-outlined mb-2 text-3xl transition-transform group-hover:scale-110 text-[#006686]">
                       {icon}
                     </span>
                     <p
@@ -368,35 +438,42 @@ const Home = () => {
                     </span>
                   )}
                 </div>
-                {insumosStockBajo === 0 ? (
-                  <p className="text-sm text-[#3f484e]">
-                    No hay alertas de stock actualmente.
-                  </p>
+                {cargando ? (
+                  <div className="flex justify-center py-4">
+                    <span className="loading loading-spinner loading-md text-[#006686]" />
+                  </div>
+                ) : insumosStockBajo === 0 ? (
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[#006b5f] text-[20px]">
+                      check_circle
+                    </span>
+                    <p className="text-sm text-[#3f484e]">
+                      No hay alertas de stock actualmente.
+                    </p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-[#e2e8f8] flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[#3f484e]">
-                            healing
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-[#151c27]">
-                            Insumos con stock bajo
-                          </p>
-                          <p className="text-[10px] text-[#ba1a1a] font-bold uppercase">
-                            {insumosStockBajo} artículo(s) afectados
-                          </p>
-                        </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded bg-[#ffdad620] flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[#ba1a1a]">
+                          healing
+                        </span>
                       </div>
-                      <Link
-                        to="/inventario"
-                        className="text-[#006686] text-xs font-semibold px-3 py-1 border border-[#006686] rounded-full hover:bg-[#006686]/5 transition-colors"
-                      >
-                        Ver
-                      </Link>
+                      <div>
+                        <p className="text-sm font-semibold text-[#151c27]">
+                          Insumos con stock bajo
+                        </p>
+                        <p className="text-[10px] text-[#ba1a1a] font-bold uppercase">
+                          {insumosStockBajo} artículo(s) afectados
+                        </p>
+                      </div>
                     </div>
+                    <Link
+                      to="/inventario"
+                      className="text-[#006686] text-xs font-semibold px-3 py-1 border border-[#006686] rounded-full hover:bg-[#006686]/5 transition-colors"
+                    >
+                      Ver
+                    </Link>
                   </div>
                 )}
               </div>
@@ -406,34 +483,38 @@ const Home = () => {
                 <h3 className="text-base font-semibold text-[#151c27] mb-4">
                   Actividad Reciente
                 </h3>
-                <div className="relative pl-6 space-y-5 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-[#bec8ce]">
-                  <div className="relative">
-                    <div className="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-[#006686] border-2 border-white"></div>
-                    <p className="text-[10px] text-[#3f484e] mb-1">
-                      hace 10 minutos
-                    </p>
-                    <p className="text-sm text-[#151c27]">
-                      <span className="font-bold">Dra. Laura</span> agregó una
-                      nota clínica al expediente.
-                    </p>
+                {cargando ? (
+                  <div className="flex justify-center py-4">
+                    <span className="loading loading-spinner loading-md text-[#006686]" />
                   </div>
-                  <div className="relative">
-                    <div className="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-[#bec8ce] border-2 border-white"></div>
-                    <p className="text-[10px] text-[#3f484e] mb-1">
-                      hace 1 hora
-                    </p>
-                    <p className="text-sm text-[#151c27]">
-                      Nueva cita registrada para{" "}
-                      <span className="font-bold text-[#006b5f]">
-                        mañana a las 9:00 AM
-                      </span>
-                      .
-                    </p>
+                ) : actividadReciente.length === 0 ? (
+                  <p className="text-sm text-[#3f484e]">
+                    No hay actividad reciente registrada.
+                  </p>
+                ) : (
+                  <div className="relative pl-6 space-y-5 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-[#bec8ce]">
+                    {actividadReciente.map((item, i) => (
+                      <div key={i} className="relative">
+                        <div
+                          className={`absolute -left-6 top-1.5 w-3 h-3 rounded-full border-2 border-white ${i === 0 ? "bg-[#006686]" : "bg-[#bec8ce]"}`}
+                        />
+                        <p className="text-[10px] text-[#3f484e] mb-1">
+                          {formatearTiempoRelativo(item.fecha)}
+                        </p>
+                        <p className="text-sm text-[#151c27]">
+                          <span className="font-bold text-[#006b5f]">
+                            {item.paciente}
+                          </span>
+                          {" — "}
+                          {item.descripcion}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Banner */}
+              {/* Info usuario */}
               <div className="bg-[#006686] rounded-xl p-6 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 transition-transform group-hover:scale-110 group-hover:-rotate-12">
                   <span
@@ -443,15 +524,18 @@ const Home = () => {
                     dentistry
                   </span>
                 </div>
-                <h4 className="text-lg font-semibold text-white mb-2 relative z-10">
-                  Actualización de Software
+                <h4 className="text-lg font-semibold text-white mb-1 relative z-10">
+                  {usuario?.nombre || "Usuario"}
                 </h4>
-                <p className="text-sm text-white/80 mb-4 relative z-10">
-                  Nuevas herramientas de mapeo dental ya están disponibles.
+                <p className="text-sm text-white/70 mb-1 relative z-10">
+                  {usuario?.email || ""}
                 </p>
-                <button className="bg-white text-[#006686] text-xs font-semibold px-4 py-2 rounded-full relative z-10 hover:shadow-lg transition-all">
-                  Explorar Funciones
-                </button>
+                <p className="text-xs text-white/60 relative z-10 inline-flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">
+                    badge
+                  </span>
+                  {usuario?.rol || ""}
+                </p>
               </div>
             </div>
           </div>

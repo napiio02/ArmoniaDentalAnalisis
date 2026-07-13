@@ -1,5 +1,5 @@
-import { obtenerPacientesConExpedienteService, crearPacienteService, obtenerPacientePorIdService, actualizarPacientes } from "../services/PacienteService.js";
-
+import { obtenerPacientesConExpedienteService, crearPacienteService, obtenerPacientePorIdService, actualizarPacientes, toggleActivoPacienteService } from "../services/PacienteService.js";
+import PacienteModel from "../models/PacienteModel.js";
 
 export async function obtenerPacientesConExpediente(req, res) {
   try {
@@ -98,5 +98,39 @@ export async function actualizarPaciente(req, res) {
       message: "Ocurrió un error al actualizar el paciente.",
       error: error.message,
     });
+  }
+}
+
+export async function obtenerStatsPacientes(req, res) {
+  try {
+    const total = await PacienteModel.countDocuments({ activo: true });
+
+    const ahora = new Date();
+    const primerDiaMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    const nuevosEsteMes = await PacienteModel.countDocuments({
+      activo: true,
+      createdAt: { $gte: primerDiaMes },
+    });
+
+    return res.status(200).json({
+      ok: true,
+      data: { total, nuevosEsteMes },
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, message: error.message });
+  }
+}
+
+export async function toggleActivoPaciente(req, res) {
+  try {
+    const { id } = req.params;
+    const paciente = await toggleActivoPacienteService(id);
+    return res.status(200).json({
+      ok: true,
+      message: `Paciente ${paciente.activo ? "activado" : "desactivado"} correctamente.`,
+      data: paciente,
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, message: error.message });
   }
 }

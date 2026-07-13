@@ -7,6 +7,7 @@ import {
   eliminarDocumentoService,
 } from "../services/DocumentoExpedienteService.js";
 import { generarPdfAnotadoService } from "../services/DocumentoExpedienteService.js";
+import fs from "fs";
 
 export async function descargarDocumentoAnotado(req, res) {
   try {
@@ -14,23 +15,29 @@ export async function descargarDocumentoAnotado(req, res) {
     const { anotaciones } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ ok: false, message: "Documento no válido." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no válido." });
     }
 
     const pdfBuffer = await generarPdfAnotadoService(id, anotaciones || []);
 
     if (!pdfBuffer) {
-      return res.status(404).json({ ok: false, message: "Documento no encontrado." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no encontrado." });
     }
 
-    const documento = await (await import("../models/DocumentoExpedienteModel.js")).default.findById(id);
+    const documento = await (
+      await import("../models/DocumentoExpedienteModel.js")
+    ).default.findById(id);
     const nombreDescarga = documento.nombre_original;
 
     res.set({
-  "Content-Type": "application/pdf",
-  "Content-Disposition": `attachment; filename="${encodeURIComponent(nombreDescarga)}"; filename*=UTF-8''${encodeURIComponent(nombreDescarga)}`,
-  "Content-Length": pdfBuffer.length,
-});
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(nombreDescarga)}"; filename*=UTF-8''${encodeURIComponent(nombreDescarga)}`,
+      "Content-Length": pdfBuffer.length,
+    });
 
     return res.send(pdfBuffer);
   } catch (error) {
@@ -49,15 +56,21 @@ export async function subirDocumento(req, res) {
     const { tipo, paciente_id } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ ok: false, message: "Expediente no válido." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Expediente no válido." });
     }
 
     if (!req.file) {
-      return res.status(400).json({ ok: false, message: "No se recibió ningún archivo." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "No se recibió ningún archivo." });
     }
 
     if (!paciente_id) {
-      return res.status(400).json({ ok: false, message: "El paciente_id es obligatorio." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "El paciente_id es obligatorio." });
     }
 
     const documento = await subirDocumentoService({
@@ -88,7 +101,9 @@ export async function obtenerDocumentosPorExpediente(req, res) {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ ok: false, message: "Expediente no válido." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Expediente no válido." });
     }
 
     const documentos = await obtenerDocumentosPorExpedienteService(id);
@@ -115,7 +130,18 @@ export async function descargarDocumento(req, res) {
     const documento = await obtenerDocumentoPorIdService(id);
 
     if (!documento) {
-      return res.status(404).json({ ok: false, message: "Documento no encontrado." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no encontrado." });
+    }
+
+    if (!fs.existsSync(documento.ruta_storage)) {
+      return res
+        .status(404)
+        .json({
+          ok: false,
+          message: "El archivo no se encuentra en el servidor.",
+        });
     }
 
     return res.download(documento.ruta_storage, documento.nombre_original);
@@ -136,9 +162,16 @@ export async function verDocumento(req, res) {
     const documento = await obtenerDocumentoPorIdService(id);
 
     if (!documento) {
-      return res.status(404).json({ ok: false, message: "Documento no encontrado." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no encontrado." });
     }
-
+    if (!fs.existsSync(documento.ruta_storage)) {
+      return res.status(404).json({
+        ok: false,
+        message: "El archivo no se encuentra en el servidor.",
+      });
+    }
     return res.sendFile(documento.ruta_storage);
   } catch (error) {
     console.error("Error al mostrar documento:", error);
@@ -156,13 +189,17 @@ export async function guardarAnotaciones(req, res) {
     const { anotaciones } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ ok: false, message: "Documento no válido." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no válido." });
     }
 
     const documento = await guardarAnotacionesService(id, anotaciones);
 
     if (!documento) {
-      return res.status(404).json({ ok: false, message: "Documento no encontrado." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no encontrado." });
     }
 
     return res.status(200).json({
@@ -185,13 +222,17 @@ export async function eliminarDocumento(req, res) {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ ok: false, message: "Documento no válido." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no válido." });
     }
 
     const documento = await eliminarDocumentoService(id);
 
     if (!documento) {
-      return res.status(404).json({ ok: false, message: "Documento no encontrado." });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Documento no encontrado." });
     }
 
     return res.status(200).json({

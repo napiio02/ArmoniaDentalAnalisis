@@ -3,11 +3,11 @@ import mongoose from "mongoose";
 const { Schema } = mongoose;
 
 export const ESTADOS_MARCA = [
-  "En curso", // se marcó entrada, aún no hay salida
-  "Completa", // jornada cerrada (automática, o manual/justificación ya aprobada)
-  "Pendiente aprobación", // marca manual creada por un empleado (no por el rol con visibilidad total)
-  "Justificada pendiente", // el empleado justificó una marca incompleta/incorrecta
-  "Rechazada", // el rol con visibilidad total rechazó la marca manual o la justificación
+  "En curso", 
+  "Completa", 
+  "Pendiente aprobación",
+  "Justificada pendiente", 
+  "Rechazada", 
 ];
 
 const JustificacionSchema = new Schema(

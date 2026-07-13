@@ -101,3 +101,11 @@ export async function actualizarPacientes(id, datos) {
 
   return paciente;
 }
+
+export async function toggleActivoPacienteService(id) {
+  const paciente = await PacienteModel.findById(id);
+  if (!paciente) throw new Error("Paciente no encontrado");
+  paciente.activo = !paciente.activo;
+  await paciente.save();
+  return paciente;
+}

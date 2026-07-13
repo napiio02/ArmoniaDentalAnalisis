@@ -2,7 +2,9 @@ import {
   obtenerPacientesConExpediente,
   crearPaciente,
   actualizarPaciente,
-  obtenerPacientePorId,   
+  obtenerPacientePorId,
+  obtenerStatsPacientes,
+  toggleActivoPaciente,   
 } from "../controllers/PacienteController.js";
 
 export const PacientesRoutes = (app) => {
@@ -10,6 +12,8 @@ export const PacientesRoutes = (app) => {
 
   app.get(`/${version}/pacientes`, obtenerPacientesConExpediente);
   app.post(`/${version}/pacientes`, crearPaciente);
+  app.get(`/${version}/pacientes/stats`, obtenerStatsPacientes);  
   app.put(`/${version}/pacientes/:id`, actualizarPaciente);
-  app.get(`/${version}/pacientes/:id`, obtenerPacientePorId);   
+  app.get(`/${version}/pacientes/:id`, obtenerPacientePorId);
+  app.patch(`/${version}/pacientes/:id/status`, toggleActivoPaciente);
 };

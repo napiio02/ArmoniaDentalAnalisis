@@ -36,8 +36,6 @@ const calcularHoras = (entrada, salida) => {
   return Math.round((mins / 60) * 100) / 100;
 };
 
-// AJUSTA: tus controllers pueden responder el objeto/array directo, o envuelto
-// en { data }. Este helper soporta ambos para que no truene si cambia.
 const extraerDatos = (resultado, fallback) => {
   if (resultado === null || resultado === undefined) return fallback;
   if (Array.isArray(resultado)) return resultado;
@@ -45,7 +43,6 @@ const extraerDatos = (resultado, fallback) => {
   return resultado;
 };
 
-// AJUSTA: forma real de /auth/me. Cubre { usuario }, { user } y el objeto plano.
 const normalizarUsuario = (raw) => {
   const u = raw?.usuario || raw?.user || raw;
   if (!u) return null;
@@ -57,7 +54,7 @@ const normalizarUsuario = (raw) => {
   };
 };
 
-// El usuario_id que viene poblado en las marcas trae rol_id.nombre, no rol.
+// El usuario_id que viene poblado en las marcas trae rol_id.nombre, no rol
 const nombreRolDe = (usuarioObj) =>
   usuarioObj?.rol_id?.nombre || usuarioObj?.rol?.nombre || usuarioObj?.rol || "—";
 
