@@ -4,7 +4,7 @@ import Sidebar from "../../components/Sidebar";
 import axios from "axios";
 
 
-const API_URL = "http://localhost:3000/v1/insumos";
+const API_URL = "https://armoniadentalanalisis.onrender.com/v1/insumos";
 
 const CATEGORIAS = [
 	"Protección", "Anestesia", "Materiales restaurativos",
