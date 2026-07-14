@@ -17,8 +17,6 @@ const Label = ({ children }) => (
   </label>
 );
 
-// El backend puebla rol_id como objeto ({ _id, nombre, descripcion, activo }),
-// no hay campo "rol" plano. Este helper centraliza la lectura.
 const nombreRolDe = (usuario) => usuario?.rol_id?.nombre || "Sin rol";
 
 const getInitials = (nombre = "") => {
