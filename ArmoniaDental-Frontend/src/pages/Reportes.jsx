@@ -32,7 +32,7 @@ const Reportes = () => {
 	const [insumosStockBajo, setInsumosStockBajo] = useState([]);
 
 useEffect(() => {
-  fetch("http://localhost:3000/v1/insumos")
+  fetch("https://armoniadentalanalisis.onrender.com/v1/insumos")
 	.then((res) => res.json())
 	.then((data) => {
 	  const lista = Array.isArray(data) ? data : data.data ?? [];

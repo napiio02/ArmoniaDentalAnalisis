@@ -1,7 +1,7 @@
 
 import axios from "axios";
 
-const BASE_URL = "http://localhost:3000/v1/insumos";
+const BASE_URL = "https://armoniadentalanalisis.onrender.com/v1/insumos";
 
 export const insumoService = {
     getAll: () => axios.get(BASE_URL),

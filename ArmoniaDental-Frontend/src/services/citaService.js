@@ -1,8 +1,8 @@
 const VERSION = "v1";
 
-const API_URL = `http://localhost:3000/${VERSION}/citas`;
-const PACIENTES_URL = `http://localhost:3000/${VERSION}/pacientes`;
-const USUARIOS_URL = `http://localhost:3000/${VERSION}/users/list`;
+const API_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}/citas`;
+const PACIENTES_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}/pacientes`;
+const USUARIOS_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}/users/list`;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");

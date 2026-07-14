@@ -1,5 +1,5 @@
 const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3000/v1";
+  import.meta.env.VITE_API_URL || "https://armoniadentalanalisis.onrender.com/v1";
 
 const procesarRespuesta = async (response) => {
   const resultado = await response.json();

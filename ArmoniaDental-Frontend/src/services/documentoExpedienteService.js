@@ -1,5 +1,5 @@
 const VERSION = "v1";
-const API_URL = `http://localhost:3000/${VERSION}`;
+const API_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}`;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
