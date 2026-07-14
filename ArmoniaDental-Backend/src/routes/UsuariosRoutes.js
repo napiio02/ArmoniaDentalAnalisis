@@ -1,6 +1,6 @@
 
 import { infoUser, ListUsers } from "../controllers/UsuarioController.js";
-import { verifyToken } from "../middlewares/verifyToken.js";
+import { verifyToken } from "../middlewares/VerifyToken.js";
 
 
 export const UsersRoutes = (app) => {
