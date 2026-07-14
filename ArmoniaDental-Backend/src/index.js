@@ -24,7 +24,7 @@ const port = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "https://armoniadentalanalisis.onrender.com",
+    origin: process.env.FRONTEND_URL || "https://armoniadentalanalisis-1.onrender.com",
     credentials: true,
   })
 );
