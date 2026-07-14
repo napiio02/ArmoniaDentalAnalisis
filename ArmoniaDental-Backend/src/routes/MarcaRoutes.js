@@ -10,7 +10,7 @@ import {
   rechazarMarca,
   obtenerMarcasPendientes,
 } from "../controllers/MarcaController.js";
-import { verifyToken } from "../middlewares/verifyToken.js";
+import { verifyToken } from "../middlewares/VerifyToken.js";
 
 export const MarcaRoutes = (app) => {
   const version = process.env.VERSION || "v1";

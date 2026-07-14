@@ -7,7 +7,7 @@ import {
   restablecerContrasena,
 } from "../controllers/AuthController.js";
 
-import { verifyToken } from "../middlewares/verifyToken.js";
+import { verifyToken } from "../middlewares/VerifyToken.js";
 
 export const AuthRoutes = (app) => {
   const version = process.env.VERSION || "v1";
