@@ -15,7 +15,8 @@ const POPULATE_USUARIO = {
 
 const nombreRol = (usuarioPopulado) => usuarioPopulado?.rol_id?.nombre ?? null;
 
-const hoyISO = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Costa_Rica" });
+const hoyISO = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "America/Costa_Rica" });
 
 const horaActual = () =>
   new Date().toLocaleTimeString("es-CR", {
