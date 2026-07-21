@@ -100,7 +100,7 @@ export async function getUsuarios() {
 
 export const getCitasAtendidasPorPaciente = async (pacienteId) => {
   const response = await fetch(
-    `http://localhost:3000/${VERSION}/pacientes/${pacienteId}/citas-atendidas`,
+    `https://armoniadentalanalisis.onrender.com/${VERSION}/pacientes/${pacienteId}/citas-atendidas`,
     {
       headers: getAuthHeaders(),
       credentials: "include",
