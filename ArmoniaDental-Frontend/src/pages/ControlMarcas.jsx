@@ -17,7 +17,8 @@ import {
 
 const ROL_CON_VISIBILIDAD_TOTAL = "Dentista";
 
-const hoyISO = () => new Date().toISOString().split("T")[0];
+const hoyISO = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "America/Costa_Rica" });
 
 const formatearDuracion = (ms) => {
   if (!ms || ms < 0) return "00h 00m";
@@ -98,6 +99,14 @@ const ControlMarcas = () => {
     hora_entrada: "",
     hora_salida: "",
     observaciones: "",
+  });
+
+  const ahora = new Date();
+  const hora_entrada = ahora.toLocaleTimeString("es-CR", {
+    timeZone: "America/Costa_Rica",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
 
   const [formJustificacion, setFormJustificacion] = useState({
