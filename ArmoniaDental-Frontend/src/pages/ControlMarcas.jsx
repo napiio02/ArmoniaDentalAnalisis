@@ -101,7 +101,6 @@ const ControlMarcas = () => {
     observaciones: "",
   });
 
-  const ahora = new Date();
   const hora_entrada = ahora.toLocaleTimeString("es-CR", {
     timeZone: "America/Costa_Rica",
     hour: "2-digit",
