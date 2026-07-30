@@ -345,64 +345,6 @@ export const MARCAS = [
 	},
 ];
 
-export const COMPROBANTES = [
-	{
-		_id: "cp1",
-		numero: "COMP-2026-001",
-		paciente_id: { _id: "p1", nombre: "Ana Rodríguez Soto" },
-		usuario_id: { _id: "u1", nombre: "Laura Ureña Rodríguez" },
-		tipo: "Constancia de atención",
-		fecha: "2026-04-10",
-		hora_inicio: "09:00",
-		hora_fin: "09:45",
-		descripcion: "Limpieza dental completa y aplicación de flúor"
-	},
-	{
-		_id: "cp2",
-		numero: "COMP-2026-002",
-		paciente_id: { _id: "p2", nombre: "Carlos Méndez Ureña" },
-		usuario_id: { _id: "u1", nombre: "Laura Ureña Rodríguez" },
-		tipo: "Incapacidad",
-		fecha: "2026-04-11",
-		hora_inicio: "10:30",
-		hora_fin: "12:00",
-		descripcion: "Extracción dental simple. Requiere 2 días de reposo."
-	},
-	{
-		_id: "cp3",
-		numero: "COMP-2026-003",
-		paciente_id: { _id: "p6", nombre: "Andrés Quesada Brenes" },
-		usuario_id: { _id: "u1", nombre: "Laura Ureña Rodríguez" },
-		tipo: "Constancia de atención",
-		fecha: "2026-04-12",
-		hora_inicio: "08:00",
-		hora_fin: "09:00",
-		descripcion: "Ajuste de aparato de ortodoncia"
-	},
-	{
-		_id: "cp4",
-		numero: "COMP-2026-004",
-		paciente_id: { _id: "p4", nombre: "Luis Fallas Vargas" },
-		usuario_id: { _id: "u1", nombre: "Laura Ureña Rodríguez" },
-		tipo: "Justificación laboral",
-		fecha: "2026-04-13",
-		hora_inicio: "14:00",
-		hora_fin: "15:30",
-		descripcion: "Colocación de empaste posterior. Paciente bajo anestesia."
-	},
-	{
-		_id: "cp5",
-		numero: "COMP-2026-005",
-		paciente_id: { _id: "p7", nombre: "Valeria Solís Picado" },
-		usuario_id: { _id: "u1", nombre: "Laura Ureña Rodríguez" },
-		tipo: "Constancia de atención",
-		fecha: "2026-04-14",
-		hora_inicio: "07:00",
-		hora_fin: "07:50",
-		descripcion: "Revisión dental inicial y toma de radiografías"
-	},
-];
-
 export const EXPEDIENTES = [
 	{
 		_id: "e1",

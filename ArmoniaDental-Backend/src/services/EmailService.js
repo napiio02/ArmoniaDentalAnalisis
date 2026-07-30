@@ -316,3 +316,103 @@ Si no solicitaste este cambio, puedes ignorar este mensaje.
     rejected: resultado.rejected,
   };
 };
+
+/*
+ * Envía un comprobante médico generado en memoria.
+ */
+export const enviarCorreoComprobante = async ({
+  destinatario,
+  nombrePaciente,
+  numero,
+  pdfBuffer,
+  nombreArchivo,
+}) => {
+  const transportador = crearTransportador();
+
+  if (!Buffer.isBuffer(pdfBuffer)) {
+    throw new Error("El comprobante adjunto no es válido.");
+  }
+
+  const remitenteNombre =
+    process.env.EMAIL_FROM_NAME || "Armonía Dental";
+  const pacienteSeguro = escaparHTML(nombrePaciente || "paciente");
+  const numeroSeguro = escaparHTML(numero);
+  const asunto = `Comprobante médico ${numero}`;
+
+  const textoPlano = `
+Hola ${nombrePaciente || "paciente"}:
+
+Adjuntamos el comprobante médico ${numero} emitido por Armonía Dental.
+
+El documento se encuentra en formato PDF.
+  `.trim();
+
+  const contenidoHTML = `
+    <!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Comprobante médico</title>
+      </head>
+      <body
+        style="
+          margin: 0;
+          padding: 24px;
+          background-color: #f9f9ff;
+          font-family: Arial, Helvetica, sans-serif;
+          color: #151c27;
+        "
+      >
+        <div
+          style="
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 28px;
+            background-color: #ffffff;
+            border: 1px solid #bec8ce;
+            border-radius: 16px;
+          "
+        >
+          <h1
+            style="
+              margin: 0 0 20px;
+              font-size: 22px;
+              color: #006686;
+            "
+          >
+            Armonía Dental
+          </h1>
+          <p style="font-size: 15px; line-height: 1.6;">
+            Hola, <strong>${pacienteSeguro}</strong>.
+          </p>
+          <p style="font-size: 15px; line-height: 1.6;">
+            Adjuntamos el comprobante médico
+            <strong>${numeroSeguro}</strong> en formato PDF.
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const resultado = await transportador.sendMail({
+    from: `"${remitenteNombre}" <${process.env.EMAIL_USER}>`,
+    to: destinatario,
+    subject: asunto,
+    text: textoPlano,
+    html: contenidoHTML,
+    attachments: [
+      {
+        filename: nombreArchivo || `${numero}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+  });
+
+  return {
+    messageId: resultado.messageId,
+    accepted: resultado.accepted,
+    rejected: resultado.rejected,
+  };
+};

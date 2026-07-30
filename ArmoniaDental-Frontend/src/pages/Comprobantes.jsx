@@ -1,6 +1,12 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { COMPROBANTES, PACIENTES } from "../data/mockData";
+import { obtenerPacientesConExpediente } from "../services/pacienteService";
+import {
+  crearComprobante,
+  enviarComprobante,
+  listarComprobantes,
+  obtenerComprobante,
+} from "../services/comprobanteService";
 
 const TIPOS = ["Incapacidad", "Justificación laboral"];
 
@@ -17,8 +23,31 @@ const BADGE_TIPO = {
   "Justificación laboral": "bg-[#7dd3fc20] text-[#006686] border-[#006686]/20",
 };
 
+const obtenerFechaActual = () => {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Costa_Rica",
+  });
+};
+
+const formatearFecha = (fecha, opciones = {}) => {
+  if (!fecha) return "No indicada";
+
+  const valor = new Date(fecha);
+
+  if (Number.isNaN(valor.getTime())) {
+    return "No indicada";
+  }
+
+  return valor.toLocaleDateString("es-CR", {
+    timeZone: "UTC",
+    ...opciones,
+  });
+};
+
 const Comprobantes = () => {
-  const [comprobantes, setComprobantes] = useState(COMPROBANTES);
+  const [comprobantes, setComprobantes] = useState([]);
+  const [pacientes, setPacientes] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -28,71 +57,158 @@ const Comprobantes = () => {
 
   const [formNuevo, setFormNuevo] = useState({
     paciente_id: "",
-    usuario_id: "u1",
     tipo: "Incapacidad",
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: obtenerFechaActual(),
     hora_inicio: "",
     hora_fin: "",
     descripcion: "",
   });
 
+  useEffect(() => {
+    let componenteActivo = true;
+
+    const cargarDatos = async () => {
+      setCargando(true);
+
+      const [resultadoComprobantes, resultadoPacientes] =
+        await Promise.allSettled([
+          listarComprobantes(),
+          obtenerPacientesConExpediente(),
+        ]);
+
+      if (!componenteActivo) return;
+
+      if (resultadoComprobantes.status === "fulfilled") {
+        setComprobantes(
+          Array.isArray(resultadoComprobantes.value?.data)
+            ? resultadoComprobantes.value.data
+            : []
+        );
+      } else {
+        setComprobantes([]);
+        window.alert(
+          resultadoComprobantes.reason?.message ||
+            "No se pudieron cargar los comprobantes."
+        );
+      }
+
+      if (resultadoPacientes.status === "fulfilled") {
+        setPacientes(
+          Array.isArray(resultadoPacientes.value?.data)
+            ? resultadoPacientes.value.data
+            : []
+        );
+      } else {
+        setPacientes([]);
+        window.alert(
+          resultadoPacientes.reason?.message ||
+            "No se pudieron cargar los pacientes."
+        );
+      }
+
+      setCargando(false);
+    };
+
+    cargarDatos();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, []);
+
   const filtrados = comprobantes.filter((c) => {
-    const term = busqueda.toLowerCase();
+    const term = busqueda.trim().toLocaleLowerCase("es");
+    const nombrePaciente = c.paciente_nombre || "";
+    const numero = c.numero || "";
     const match =
-      c.paciente_id.nombre.toLowerCase().includes(term) ||
-      c.numero.toLowerCase().includes(term);
+      nombrePaciente.toLocaleLowerCase("es").includes(term) ||
+      numero.toLocaleLowerCase("es").includes(term);
     return match && (tipoFiltro ? c.tipo === tipoFiltro : true);
   });
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     setGuardando(true);
-    const paciente = PACIENTES.find((p) => p._id === formNuevo.paciente_id);
-    const usuario = USUARIOS.find((u) => u._id === formNuevo.usuario_id);
-    setTimeout(() => {
-      const nuevo = {
-        _id: `cp${Date.now()}`,
-        numero: `COMP-2026-${String(comprobantes.length + 1).padStart(3, "0")}`,
-        paciente_id: {
-          _id: paciente._id,
-          nombre: paciente.nombre,
-          email: paciente.email || "cliente@correo.com",
-        },
-        usuario_id: { _id: usuario._id, nombre: usuario.nombre },
-        tipo: formNuevo.tipo,
-        fecha: formNuevo.fecha,
-        hora_inicio: formNuevo.hora_inicio,
-        hora_fin: formNuevo.hora_fin,
-        descripcion: formNuevo.descripcion,
-      };
-      setComprobantes((p) => [nuevo, ...p]);
+
+    try {
+      const resultado = await crearComprobante(formNuevo);
+
+      setComprobantes((previos) => [
+        resultado.data,
+        ...previos,
+      ]);
       setFormNuevo({
         paciente_id: "",
-        usuario_id: "u1",
         tipo: "Incapacidad",
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: obtenerFechaActual(),
         hora_inicio: "",
         hora_fin: "",
         descripcion: "",
       });
       setMostrarModal(false);
+    } catch (error) {
+      window.alert(
+        error.message || "No se pudo crear el comprobante."
+      );
+    } finally {
       setGuardando(false);
-    }, 600);
+    }
   };
 
-  const handleEnviar = () => {
+  const handleEnviar = async () => {
     if (estadoEnvio === "sending") return;
     setEstadoEnvio("sending");
-    setTimeout(() => setEstadoEnvio("sent"), 1800);
+
+    try {
+      const resultado = await enviarComprobante(
+        mostrarDetalle._id
+      );
+      const actualizado = resultado.data;
+
+      setMostrarDetalle(actualizado);
+      setComprobantes((previos) =>
+        previos.map((comprobante) =>
+          comprobante._id === actualizado._id
+            ? actualizado
+            : comprobante
+        )
+      );
+      setEstadoEnvio("sent");
+    } catch (error) {
+      setEstadoEnvio("idle");
+      window.alert(
+        error.message || "No se pudo enviar el comprobante."
+      );
+    }
+  };
+
+  const handleVerDetalle = async (comprobante) => {
+    setMostrarDetalle(comprobante);
+    setEstadoEnvio(
+      comprobante.estado_envio === "enviado" ? "sent" : "idle"
+    );
+
+    try {
+      const resultado = await obtenerComprobante(
+        comprobante._id
+      );
+
+      setMostrarDetalle(resultado.data);
+      setEstadoEnvio(
+        resultado.data.estado_envio === "enviado"
+          ? "sent"
+          : "idle"
+      );
+    } catch (error) {
+      window.alert(
+        error.message ||
+          "No se pudo obtener el detalle del comprobante."
+      );
+    }
   };
 
   const getCorreo = (comp) => {
-    if (!comp) return "cliente@correo.com";
-    if (comp.paciente_id?.email) return comp.paciente_id.email;
-    return (
-      PACIENTES.find((p) => p._id === comp.paciente_id?._id)?.email ||
-      "cliente@correo.com"
-    );
+    return comp?.correo_destino || comp?.enviado_a || "No indicado";
   };
 
   return (
@@ -159,7 +275,9 @@ const Comprobantes = () => {
                     description
                   </span>
                   <p className="text-sm text-[#3f484e]">
-                    No se encontraron comprobantes
+                    {cargando
+                      ? "Cargando comprobantes..."
+                      : "No se encontraron comprobantes"}
                   </p>
                 </div>
               ) : (
@@ -194,7 +312,7 @@ const Comprobantes = () => {
                           {comp.numero}
                         </td>
                         <td className="px-5 py-4 text-sm text-[#151c27]">
-                          {comp.paciente_id.nombre}
+                          {comp.paciente_nombre}
                         </td>
                         <td className="px-5 py-4">
                           <span
@@ -204,9 +322,7 @@ const Comprobantes = () => {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-sm text-[#3f484e]">
-                          {new Date(
-                            comp.fecha + "T12:00:00",
-                          ).toLocaleDateString("es-CR", {
+                          {formatearFecha(comp.fecha, {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
@@ -216,14 +332,11 @@ const Comprobantes = () => {
                           {comp.hora_inicio} – {comp.hora_fin}
                         </td>
                         <td className="px-5 py-4 text-sm text-[#3f484e]">
-                          {comp.usuario_id.nombre}
+                          {comp.profesional_nombre}
                         </td>
                         <td className="px-5 py-4">
                           <button
-                            onClick={() => {
-                              setMostrarDetalle(comp);
-                              setEstadoEnvio("idle");
-                            }}
+                            onClick={() => handleVerDetalle(comp)}
                             className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-all"
                             title="Ver"
                           >
@@ -277,7 +390,7 @@ const Comprobantes = () => {
                   className={inputCls}
                 >
                   <option value="">Seleccionar paciente</option>
-                  {PACIENTES.filter((p) => p.activo).map((p) => (
+                  {pacientes.filter((p) => p.activo !== false).map((p) => (
                     <option key={p._id} value={p._id}>
                       {p.nombre}
                     </option>
@@ -439,7 +552,10 @@ const Comprobantes = () => {
                     </span>
                   ),
                 },
-                { label: "Paciente", value: mostrarDetalle.paciente_id.nombre },
+                {
+                  label: "Paciente",
+                  value: mostrarDetalle.paciente_nombre,
+                },
                 {
                   label: "Correo",
                   value: (
@@ -450,9 +566,7 @@ const Comprobantes = () => {
                 },
                 {
                   label: "Fecha",
-                  value: new Date(
-                    mostrarDetalle.fecha + "T12:00:00",
-                  ).toLocaleDateString("es-CR"),
+                  value: formatearFecha(mostrarDetalle.fecha),
                 },
                 {
                   label: "Horario",
@@ -462,7 +576,10 @@ const Comprobantes = () => {
                     </span>
                   ),
                 },
-                { label: "Doctor(a)", value: mostrarDetalle.usuario_id.nombre },
+                {
+                  label: "Doctor(a)",
+                  value: mostrarDetalle.profesional_nombre,
+                },
               ].map((row) => (
                 <div
                   key={row.label}
