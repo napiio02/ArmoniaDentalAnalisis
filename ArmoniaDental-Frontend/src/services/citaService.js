@@ -1,8 +1,8 @@
 const VERSION = "v1";
 
-const API_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}/citas`;
-const PACIENTES_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}/pacientes`;
-const USUARIOS_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}/users/list`;
+const API_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/citas`;
+const PACIENTES_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/pacientes`;
+const USUARIOS_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/users/list`;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -100,7 +100,7 @@ export async function getUsuarios() {
 
 export const getCitasAtendidasPorPaciente = async (pacienteId) => {
   const response = await fetch(
-    `https://armoniadentalanalisis.onrender.com/${VERSION}/pacientes/${pacienteId}/citas-atendidas`,
+    `https://armoniadentalbackend.onrender.com/${VERSION}/pacientes/${pacienteId}/citas-atendidas`,
     {
       headers: getAuthHeaders(),
       credentials: "include",

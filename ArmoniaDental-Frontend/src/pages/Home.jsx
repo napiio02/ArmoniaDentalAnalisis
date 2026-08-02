@@ -4,7 +4,7 @@ import { getCitas } from "../services/citaService";
 import Sidebar from "../components/Sidebar";
 
 const VERSION = "v1";
-const BASE_URL = `https://armoniadentalanalisis.onrender.com/${VERSION}`;
+const BASE_URL = `https://armoniadentalbackend.onrender.com/${VERSION}`;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");

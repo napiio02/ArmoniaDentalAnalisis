@@ -1,4 +1,4 @@
-const API_URL = "https://armoniadentalanalisis.onrender.com/api/odontogramas";
+const API_URL = "https://armoniadentalbackend.onrender.com/api/odontogramas";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
