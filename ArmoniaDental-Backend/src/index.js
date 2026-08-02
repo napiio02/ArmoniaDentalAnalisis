@@ -23,9 +23,14 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+const ORIGENES_PERMITIDOS = [
+  process.env.FRONTEND_URL || "https://armoniadentalanalisis-1.onrender.com",
+  "http://localhost:5173",
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "https://armoniadentalanalisis-1.onrender.com",
+    origin: ORIGENES_PERMITIDOS,
     credentials: true,
   })
 );
