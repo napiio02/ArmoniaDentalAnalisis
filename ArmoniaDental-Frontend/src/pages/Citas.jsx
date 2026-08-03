@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import ModalConfirmarEliminar from "../components/ModalConfirmarEliminar";
 import {
   getCitas,
   createCita,
@@ -99,6 +100,8 @@ const Citas = () => {
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [citaEditando, setCitaEditando] = useState(null);
+  const [citaACancelar, setCitaACancelar] = useState(null);
+  const [cancelandoCita, setCancelandoCita] = useState(false);
 
   // Estado del calendario mensual
   const hoy = new Date();
@@ -275,15 +278,26 @@ const Citas = () => {
     }
   };
 
-  const handleCancelarCita = async (id) => {
-    if (!confirm("¿Estás seguro de que deseas cancelar esta cita?")) return;
+  const handleCancelarCita = (id) => {
+    setCitaACancelar(id);
+  };
+
+  const confirmarCancelarCita = async () => {
+    if (!citaACancelar) return;
+
     try {
-      await cancelarCita(id);
+      setCancelandoCita(true);
+      await cancelarCita(citaACancelar);
       setCitas((p) =>
-        p.map((c) => (c._id === id ? { ...c, estado: "Cancelada" } : c)),
+        p.map((c) =>
+          c._id === citaACancelar ? { ...c, estado: "Cancelada" } : c,
+        ),
       );
     } catch (err) {
       mostrarError(err.message);
+    } finally {
+      setCancelandoCita(false);
+      setCitaACancelar(null);
     }
   };
 
@@ -1214,6 +1228,17 @@ const Citas = () => {
           </div>
         </div>
       )}
+
+      <ModalConfirmarEliminar
+        open={!!citaACancelar}
+        titulo="Cancelar cita"
+        mensaje="¿Estás seguro de que deseas cancelar esta cita?"
+        textoConfirmar="Cancelar cita"
+        icono="event_busy"
+        eliminando={cancelandoCita}
+        onConfirmar={confirmarCancelarCita}
+        onCancelar={() => setCitaACancelar(null)}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { obtenerPacientesConExpediente } from "../../services/pacienteService";
+import ModalConfirmarEliminar from "../../components/ModalConfirmarEliminar";
 import OdontogramaChart from "./components/OdontogramaChart";
 import toast, { Toaster } from "react-hot-toast";
 import { CheckCircle2, AlertTriangle, Info, XCircle } from "lucide-react";
@@ -356,6 +357,7 @@ export default function Odontograma() {
     open: false,
     toothNumber: null,
   });
+  const [confirmacionPendiente, setConfirmacionPendiente] = useState(null);
   const pageRef = useRef(null);
 
   const patientOptions = useMemo(
@@ -518,15 +520,17 @@ export default function Odontograma() {
     setToothMenu({ open: true, x: pos.x, y: pos.y, toothNumber });
   }
 
-  function selectPatient(patient) {
-    if (hasUnsavedChanges) {
-      const ok = window.confirm(
-        "Tienes cambios pendientes sin guardar. Si cambias de paciente, se perderán. ¿Deseas continuar?",
-      );
-      if (!ok) return;
-    }
+  function aplicarSeleccionPaciente(patient) {
     setPacienteId(patient._id);
     setPatientQuery(patient.cedula || patient.nombre || "");
+  }
+
+  function selectPatient(patient) {
+    if (hasUnsavedChanges) {
+      setConfirmacionPendiente({ tipo: "cambiar-paciente", patient });
+      return;
+    }
+    aplicarSeleccionPaciente(patient);
   }
 
   function handleFaceClick(toothNumber, face) {
@@ -630,7 +634,7 @@ export default function Odontograma() {
 
 
 
-  async function handleResetAll() {
+  function handleResetAll() {
     if (!pacienteId) {
       showToast({
         type: "error",
@@ -651,12 +655,10 @@ export default function Odontograma() {
       return;
     }
 
-    const confirmar = window.confirm(
-      "¿Deseas vaciar completamente el odontograma?\n\n" +
-        "Se eliminarán todos los registros y observaciones actuales de las piezas."
-    );
+    setConfirmacionPendiente({ tipo: "restablecer" });
+  }
 
-    if (!confirmar) return;
+  async function confirmarResetAll() {
 
     const dientesVacios = buildBlankTeeth();
 
@@ -717,6 +719,7 @@ export default function Odontograma() {
       });
     } finally {
       setGuardando(false);
+      setConfirmacionPendiente(null);
     }
   }
 
@@ -972,6 +975,45 @@ export default function Odontograma() {
         }
         onClose={() => setObservationModal({ open: false, toothNumber: null })}
         onSave={saveObservation}
+      />
+
+      <ModalConfirmarEliminar
+        open={!!confirmacionPendiente}
+        titulo={
+          confirmacionPendiente?.tipo === "restablecer"
+            ? "Restablecer odontograma"
+            : "Cambiar de paciente"
+        }
+        mensaje={
+          confirmacionPendiente?.tipo === "restablecer"
+            ? "Se eliminarán todos los registros y observaciones actuales de las piezas. ¿Deseas continuar?"
+            : "Tienes cambios pendientes sin guardar. Si cambias de paciente, se perderán. ¿Deseas continuar?"
+        }
+        textoConfirmar={
+          confirmacionPendiente?.tipo === "restablecer"
+            ? "Restablecer"
+            : "Cambiar paciente"
+        }
+        icono={
+          confirmacionPendiente?.tipo === "restablecer"
+            ? "restart_alt"
+            : "person_search"
+        }
+        eliminando={
+          confirmacionPendiente?.tipo === "restablecer" && guardando
+        }
+        onConfirmar={() => {
+          if (confirmacionPendiente?.tipo === "restablecer") {
+            confirmarResetAll();
+            return;
+          }
+
+          if (confirmacionPendiente?.patient) {
+            aplicarSeleccionPaciente(confirmacionPendiente.patient);
+          }
+          setConfirmacionPendiente(null);
+        }}
+        onCancelar={() => setConfirmacionPendiente(null)}
       />
 
       {/* ── Layout ── */}

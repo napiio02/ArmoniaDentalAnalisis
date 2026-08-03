@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import Sidebar from "../../components/Sidebar";
+import CentroNotificaciones, {
+	mostrarNotificacion,
+} from "../../components/CentroNotificaciones";
 import axios from "axios";
 
 
@@ -44,7 +47,11 @@ const Inventario = () => {
 			const { data } = await axios.patch(`${API_URL}/${id}/status`);
 			setInsumos((prev) => prev.map((i) => (i._id === id ? data : i)));
 		} catch {
-			alert("Error al cambiar el estado.");
+			mostrarNotificacion({
+				tipo: "error",
+				titulo: "No se pudo actualizar el insumo",
+				mensaje: "Error al cambiar el estado.",
+			});
 		}
 	};
 
@@ -84,6 +91,7 @@ const Inventario = () => {
 
 	return (
 		<div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+			<CentroNotificaciones />
 			<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 			<Sidebar activeItem="inventario" />
 

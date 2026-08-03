@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import ModalSubirDocumento from "../components/ModalSubirDocumento";
 import ModalConfirmarEliminar from "../components/ModalConfirmarEliminar";
+import CentroNotificaciones, {
+  mostrarNotificacion,
+} from "../components/CentroNotificaciones";
 import {
   obtenerPacientesConExpediente,
   obtenerPacientePorId,
@@ -274,7 +277,11 @@ const Expedientes = () => {
       await eliminarDocumento(docAEliminar);
       setDocumentos((prev) => prev.filter((d) => d._id !== docAEliminar));
     } catch (err) {
-      alert(err.message || "No se pudo eliminar el documento.");
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo eliminar el documento",
+        mensaje: err.message || "Inténtalo nuevamente.",
+      });
     } finally {
       setEliminandoId(null);
       setDocAEliminar(null);
@@ -297,6 +304,7 @@ const Expedientes = () => {
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+      <CentroNotificaciones />
       <Sidebar activeItem="expedientes" />
 
       <main className="flex-1 h-screen overflow-y-auto p-8">

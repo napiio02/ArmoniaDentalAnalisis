@@ -1,5 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import CentroNotificaciones, {
+  mostrarNotificacion,
+} from "../components/CentroNotificaciones";
 import { obtenerPacientesConExpediente } from "../services/pacienteService";
 import {
   crearComprobante,
@@ -86,10 +89,13 @@ const Comprobantes = () => {
         );
       } else {
         setComprobantes([]);
-        window.alert(
-          resultadoComprobantes.reason?.message ||
-            "No se pudieron cargar los comprobantes."
-        );
+        mostrarNotificacion({
+          tipo: "error",
+          titulo: "Error al cargar comprobantes",
+          mensaje:
+            resultadoComprobantes.reason?.message ||
+            "No se pudieron cargar los comprobantes.",
+        });
       }
 
       if (resultadoPacientes.status === "fulfilled") {
@@ -100,10 +106,13 @@ const Comprobantes = () => {
         );
       } else {
         setPacientes([]);
-        window.alert(
-          resultadoPacientes.reason?.message ||
-            "No se pudieron cargar los pacientes."
-        );
+        mostrarNotificacion({
+          tipo: "error",
+          titulo: "Error al cargar pacientes",
+          mensaje:
+            resultadoPacientes.reason?.message ||
+            "No se pudieron cargar los pacientes.",
+        });
       }
 
       setCargando(false);
@@ -147,9 +156,11 @@ const Comprobantes = () => {
       });
       setMostrarModal(false);
     } catch (error) {
-      window.alert(
-        error.message || "No se pudo crear el comprobante."
-      );
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo crear el comprobante",
+        mensaje: error.message || "Inténtalo nuevamente.",
+      });
     } finally {
       setGuardando(false);
     }
@@ -176,9 +187,11 @@ const Comprobantes = () => {
       setEstadoEnvio("sent");
     } catch (error) {
       setEstadoEnvio("idle");
-      window.alert(
-        error.message || "No se pudo enviar el comprobante."
-      );
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo enviar el comprobante",
+        mensaje: error.message || "Inténtalo nuevamente.",
+      });
     }
   };
 
@@ -200,10 +213,13 @@ const Comprobantes = () => {
           : "idle"
       );
     } catch (error) {
-      window.alert(
-        error.message ||
-          "No se pudo obtener el detalle del comprobante."
-      );
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo cargar el detalle",
+        mensaje:
+          error.message ||
+          "No se pudo obtener el detalle del comprobante.",
+      });
     }
   };
 
@@ -213,6 +229,7 @@ const Comprobantes = () => {
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+      <CentroNotificaciones />
       <Sidebar activeItem="comprobantes" />
 
       <main className="flex-1 h-screen overflow-y-auto p-8">

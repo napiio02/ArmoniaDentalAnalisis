@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import Sidebar from "../../components/Sidebar";
+import CentroNotificaciones, {
+  mostrarNotificacion,
+} from "../../components/CentroNotificaciones";
 import { obtenerPacientesConExpediente, toggleActivoPaciente } from "../../services/pacienteService";
 
 const POR_PAGINA = 10;
@@ -73,12 +76,17 @@ const Pacientes = () => {
       prev.map((p) => p._id === id ? { ...p, activo: !activoActual } : p)
     );
   } catch (err) {
-    alert(err.message || "No se pudo cambiar el estado del paciente.");
+    mostrarNotificacion({
+      tipo: "error",
+      titulo: "No se pudo actualizar el paciente",
+      mensaje: err.message || "No se pudo cambiar el estado del paciente.",
+    });
   }
 };
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+      <CentroNotificaciones />
       <Sidebar activeItem="pacientes" />
 
       <main className="flex-1 h-screen overflow-y-auto p-8">

@@ -3,6 +3,8 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { guardarAnotaciones, descargarPdfAnotado } from "../services/documentoExpedienteService";
+import ModalConfirmarEliminar from "./ModalConfirmarEliminar";
+import { mostrarNotificacion } from "./CentroNotificaciones";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -35,6 +37,7 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
   const [descargando, setDescargando] = useState(false);
   const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false);
   const [imagenCargada, setImagenCargada] = useState(false);
+  const [confirmacion, setConfirmacion] = useState(null);
 
   const [anotaciones, setAnotaciones] = useState(documento?.anotaciones || []);
   const [trazoActual, setTrazoActual] = useState(null);
@@ -152,9 +155,13 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
   };
 
   const limpiarPaginaActual = () => {
-    if (!confirm("¿Limpiar todas las anotaciones de esta página?")) return;
+    setConfirmacion("limpiar");
+  };
+
+  const confirmarLimpiarPagina = () => {
     setAnotaciones((prev) => prev.filter((t) => t.pagina !== paginaActual));
     setHayCambiosSinGuardar(true);
+    setConfirmacion(null);
   };
 
   const handleGuardar = async () => {
@@ -166,7 +173,11 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
       onAnotacionesGuardadas?.(documento._id, anotaciones);
       setTimeout(() => setGuardado(false), 1800);
     } catch (err) {
-      alert(err.message || "No se pudieron guardar las anotaciones.");
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudieron guardar las anotaciones",
+        mensaje: err.message || "Inténtalo nuevamente.",
+      });
     } finally {
       setGuardando(false);
     }
@@ -214,14 +225,26 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
         }, mimeType, 0.95);
       }
     } catch (err) {
-      alert(err.message || "No se pudo descargar el archivo anotado.");
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo descargar el archivo",
+        mensaje: err.message || "No se pudo descargar el archivo anotado.",
+      });
     } finally {
       setDescargando(false);
     }
   };
 
   const handleCerrar = () => {
-    if (hayCambiosSinGuardar && !confirm("Tenés anotaciones sin guardar. ¿Cerrar de todas formas?")) return;
+    if (hayCambiosSinGuardar) {
+      setConfirmacion("cerrar");
+      return;
+    }
+    onClose();
+  };
+
+  const confirmarCerrar = () => {
+    setConfirmacion(null);
     onClose();
   };
 
@@ -408,6 +431,26 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
           </button>
         </div>
       )}
+
+      <ModalConfirmarEliminar
+        open={confirmacion === "limpiar"}
+        titulo="Limpiar anotaciones"
+        mensaje="¿Deseas limpiar todas las anotaciones de esta página?"
+        textoConfirmar="Limpiar"
+        icono="delete_sweep"
+        onConfirmar={confirmarLimpiarPagina}
+        onCancelar={() => setConfirmacion(null)}
+      />
+
+      <ModalConfirmarEliminar
+        open={confirmacion === "cerrar"}
+        titulo="Cambios sin guardar"
+        mensaje="Tienes anotaciones sin guardar. ¿Deseas cerrar de todas formas?"
+        textoConfirmar="Cerrar sin guardar"
+        icono="warning"
+        onConfirmar={confirmarCerrar}
+        onCancelar={() => setConfirmacion(null)}
+      />
     </div>
   );
 }
