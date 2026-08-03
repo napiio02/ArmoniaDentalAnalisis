@@ -1,4 +1,5 @@
 import CitaModel from "../models/CitaModel.js";
+import { enviarMensajePlantilla } from "./WhatsappService.js";
 
 const DURACIONES = {
   Limpieza: 45,
@@ -38,6 +39,8 @@ const horarioChoque = async (fecha_hora, tipo, excludeId = null) => {
     }) ?? null
   );
 }
+
+
 
 const mensajeChoque = (choque) => {
   return `Horario ocupado, ya hay una cita de ${choque.tipo} con ${
@@ -114,6 +117,29 @@ export const obtenerCitaPorIdService = async (id) => {
   return cita;
 }
 
+const formatearTelefono = (telefono) => {
+  // Asegura que el número tenga el código de país de Costa Rica (506)
+  const limpio = telefono.replace(/\D/g, ""); // quita espacios, guiones, etc.
+  return limpio.startsWith("506") ? limpio : `506${limpio}`;
+};
+
+const formatearFechaHora = (fecha_hora) => {
+  const fecha = new Date(fecha_hora);
+  const fechaTexto = fecha.toLocaleDateString("es-CR", {
+    timeZone: "America/Costa_Rica",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const horaTexto = fecha.toLocaleTimeString("es-CR", {
+    timeZone: "America/Costa_Rica",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return { fechaTexto, horaTexto };
+};
+
 export const crearCitaService = async (datos) => {
   const { paciente_id, usuario_id, fecha_hora, tipo, motivo, observaciones } =
     datos;
@@ -142,10 +168,31 @@ export const crearCitaService = async (datos) => {
     estado: "Programada",
   });
 
-  return CitaModel.findById(nueva._id)
+  const citaCompleta = await CitaModel.findById(nueva._id)
     .populate("paciente_id", "nombre cedula telefono")
     .populate("usuario_id", "nombre email");
-}
+
+  // Enviar confirmación por WhatsApp (no bloquea la respuesta si falla)
+  if (citaCompleta.paciente_id?.telefono) {
+    const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
+
+    enviarMensajePlantilla({
+      telefono: formatearTelefono(citaCompleta.paciente_id.telefono),
+      nombrePlantilla: "confirmacion_cita",
+      parametros: [
+        citaCompleta.paciente_id.nombre,
+        tipo,
+        fechaTexto,
+        horaTexto,
+      ],
+      citaId: nueva._id.toString(),
+    }).catch((err) =>
+      console.error("No se pudo enviar WhatsApp de confirmación:", err.message)
+    );
+  }
+
+  return citaCompleta;
+};
 
 export const actualizarCitaService = async (id, datos) => {
   const { fecha_hora, tipo, estado, motivo, observaciones } = datos;

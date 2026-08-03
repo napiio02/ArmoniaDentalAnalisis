@@ -277,12 +277,11 @@ export const solicitarRecuperacionPassword = async (data) => {
     );
   }
 
-  if (!process.env.FRONTEND_URL) {
-    throw crearError(
-      "No se encontró FRONTEND_URL en las variables de entorno.",
-      500
-    );
-  }
+  const frontendBaseURL = (
+    process.env.FRONTEND_URL ||
+    process.env.frontend_url ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
 
   const emailNormalizado = normalizarEmail(email);
 
@@ -325,13 +324,8 @@ export const solicitarRecuperacionPassword = async (data) => {
 
   await usuario.save();
 
-  const frontendURL = process.env.FRONTEND_URL.replace(
-    /\/$/,
-    ""
-  );
-
   const enlaceRecuperacion =
-    `${frontendURL}/restablecer-password` +
+    `${frontendBaseURL}/restablecer-password` +
     `?token=${encodeURIComponent(tokenRecuperacion)}`;
 
   try {

@@ -17,15 +17,32 @@ import { ExpedientesRoutes } from "./routes/ExpedientesRoutes.js";
 import { HistoriaClinicaRoutes } from "./routes/HistoriaClinicaRoutes.js";
 import { MarcaRoutes } from "./routes/MarcaRoutes.js";
 import { ComprobantesRoutes } from "./routes/ComprobantesRoutes.js";
+import { WhatsappRoutes } from "./routes/WhatsappRoutes.js";
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+  "https://armoniadentalfront.onrender.com",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "https://armoniadentalfront.onrender.com",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("No autorizado por CORS"));
+    },
     credentials: true,
   })
 );
@@ -45,6 +62,7 @@ ExpedientesRoutes(app);
 HistoriaClinicaRoutes(app);
 MarcaRoutes(app);
 ComprobantesRoutes(app);
+WhatsappRoutes(app);
 
 app.get("/", (req, res) => {
   res.json({
