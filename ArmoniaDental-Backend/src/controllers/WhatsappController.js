@@ -1,17 +1,9 @@
 import { procesarRespuestaBoton } from "../services/WhatsappService.js";
 
-/*
- * Meta llama a este endpoint UNA VEZ, por GET, para verificar
- * que el webhook es tuyo, cuando lo registras en el dashboard.
- */
 export const verificarWebhook = (req, res) => {
   const modo = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const desafio = req.query["hub.challenge"];
-
-  console.log("Modo recibido:", modo);
-  console.log("Token recibido:", token);
-  console.log("Token esperado:", process.env.WHATSAPP_VERIFY_TOKEN);
 
   if (modo === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
     console.log("Webhook de WhatsApp verificado correctamente.");
@@ -21,10 +13,6 @@ export const verificarWebhook = (req, res) => {
   return res.sendStatus(403);
 };
 
-/*
- * Meta llama a este endpoint por POST cada vez que hay un evento
- * (mensaje recibido, botón presionado, cambio de estado, etc.).
- */
 export const recibirWebhook = async (req, res) => {
   try {
     res.sendStatus(200);
@@ -32,8 +20,6 @@ export const recibirWebhook = async (req, res) => {
     const entrada = req.body?.entry?.[0];
     const cambio = entrada?.changes?.[0];
     const mensaje = cambio?.value?.messages?.[0];
-
-    console.log("Webhook recibido:", JSON.stringify(req.body, null, 2));
 
     if (!mensaje) return;
 
