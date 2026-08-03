@@ -9,6 +9,10 @@ export const verificarWebhook = (req, res) => {
   const token = req.query["hub.verify_token"];
   const desafio = req.query["hub.challenge"];
 
+  console.log("Modo recibido:", modo);
+  console.log("Token recibido:", token);
+  console.log("Token esperado:", process.env.WHATSAPP_VERIFY_TOKEN);
+
   if (modo === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
     console.log("Webhook de WhatsApp verificado correctamente.");
     return res.status(200).send(desafio);
