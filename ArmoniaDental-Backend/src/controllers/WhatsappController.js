@@ -33,6 +33,8 @@ export const recibirWebhook = async (req, res) => {
     const cambio = entrada?.changes?.[0];
     const mensaje = cambio?.value?.messages?.[0];
 
+    console.log("Webhook recibido:", JSON.stringify(req.body, null, 2));
+
     if (!mensaje) return;
 
     // Botón de PLANTILLA (quick_reply)
