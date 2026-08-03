@@ -1,6 +1,9 @@
 import CitaModel from "../models/CitaModel.js";
 import { enviarMensajePlantilla } from "./WhatsappService.js";
 
+//Temporal
+import { enviarBotonesInteractivos } from "./WhatsappService.js";
+
 const DURACIONES = {
   Limpieza: 45,
   Revisión: 30,
@@ -172,17 +175,11 @@ export const crearCitaService = async (datos) => {
     .populate("usuario_id", "nombre email");
 
   if (citaCompleta.paciente_id?.telefono) {
-    const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
+  const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
 
-    enviarMensajePlantilla({
+    enviarBotonesInteractivos({
       telefono: formatearTelefono(citaCompleta.paciente_id.telefono),
-      nombrePlantilla: "confirmacion_cita",
-      parametrosNombrados: {
-        nombre_paciente: citaCompleta.paciente_id.nombre,
-        tipo_cita: tipo,
-        fecha_cita: fechaTexto,
-        hora_cita: horaTexto,
-      },
+      texto: `Hola ${citaCompleta.paciente_id.nombre}, tu cita de ${tipo} en Armonía Dental es el ${fechaTexto} a las ${horaTexto}. Por favor confirma tu asistencia.`,
       citaId: nueva._id.toString(),
     }).catch((err) =>
       console.error("No se pudo enviar WhatsApp de confirmación:", err.message)

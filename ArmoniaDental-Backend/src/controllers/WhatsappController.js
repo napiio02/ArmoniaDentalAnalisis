@@ -27,28 +27,28 @@ export const verificarWebhook = (req, res) => {
  */
 export const recibirWebhook = async (req, res) => {
   try {
-    // Respondemos 200 de inmediato: Meta espera respuesta rápida,
-    // y si tarda, reintenta el envío del webhook innecesariamente.
     res.sendStatus(200);
 
     const entrada = req.body?.entry?.[0];
     const cambio = entrada?.changes?.[0];
     const mensaje = cambio?.value?.messages?.[0];
 
-    if (!mensaje) return; // puede ser un evento de "leído/entregado", lo ignoramos
+    if (!mensaje) return;
 
-    // Si el paciente tocó un botón de respuesta rápida:
+    // Botón de PLANTILLA (quick_reply)
     if (mensaje.type === "button") {
-      const payload = mensaje.button.payload; // ej: "CONFIRMAR_64f...", "CANCELAR_64f..."
-      await procesarRespuestaBoton(payload);
+      await procesarRespuestaBoton(mensaje.button.payload);
       return;
     }
 
-    // Si el paciente escribió texto libre, por ahora solo lo logueamos.
+    // Botón INTERACTIVO (mensaje de sesión, sin plantilla)
+    if (mensaje.type === "interactive" && mensaje.interactive?.type === "button_reply") {
+      await procesarRespuestaBoton(mensaje.interactive.button_reply.id);
+      return;
+    }
+
     if (mensaje.type === "text") {
-      console.log(
-        `Mensaje de texto recibido de ${mensaje.from}: ${mensaje.text.body}`
-      );
+      console.log(`Mensaje de texto recibido de ${mensaje.from}: ${mensaje.text.body}`);
     }
   } catch (error) {
     console.error("Error procesando webhook de WhatsApp:", error);

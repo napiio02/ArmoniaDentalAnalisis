@@ -7,6 +7,42 @@ const headers = {
   "Content-Type": "application/json",
 };
 
+//Temporalmente
+export const enviarBotonesInteractivos = async ({ telefono, texto, citaId }) => {
+  try {
+    const body = {
+      messaging_product: "whatsapp",
+      to: telefono,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: texto },
+        action: {
+          buttons: [
+            {
+              type: "reply",
+              reply: { id: `CONFIRMAR_${citaId}`, title: "Confirmar" },
+            },
+            {
+              type: "reply",
+              reply: { id: `CANCELAR_${citaId}`, title: "Cancelar" },
+            },
+          ],
+        },
+      },
+    };
+
+    const response = await axios.post(WHATSAPP_API_URL, body, { headers });
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error al enviar botones interactivos:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
 /*
  * Envía la plantilla de confirmación de cita con botones
  * de respuesta rápida (Confirmar / Cancelar).
