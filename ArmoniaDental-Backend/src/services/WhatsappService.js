@@ -1,25 +1,4 @@
 import axios from "axios";
-import CitaModel from "../models/CitaModel.js";
-
-export const procesarRespuestaBoton = async (payload) => {
-  const [accion, citaId] = payload.split("_");
-
-  const cita = await CitaModel.findById(citaId);
-  if (!cita) {
-    console.warn(`Cita no encontrada para el payload: ${payload}`);
-    return;
-  }
-
-  if (accion === "CONFIRMAR") {
-    cita.estado = "Confirmada";
-    await cita.save();
-    console.log(`Cita ${citaId} confirmada por el paciente.`);
-  } else if (accion === "CANCELAR") {
-    cita.estado = "Cancelada";
-    await cita.save();
-    console.log(`Cita ${citaId} cancelada por el paciente.`);
-  }
-};
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
@@ -32,17 +11,25 @@ const headers = {
  * Envía la plantilla de confirmación de cita con botones
  * de respuesta rápida (Confirmar / Cancelar).
  *
- * La plantilla debe estar previamente creada y aprobada
- * en Meta con el mismo nombre y la misma cantidad de
- * variables {{1}}, {{2}}, etc.
+ * parametrosNombrados debe coincidir exactamente con los
+ * nombres de variable definidos en la plantilla de Meta.
+ * Ej: { nombre_paciente: "Juan", tipo_cita: "Limpieza", ... }
  */
 export const enviarMensajePlantilla = async ({
   telefono,
   nombrePlantilla,
-  parametros = [],
+  parametrosNombrados = {},
   citaId,
 }) => {
   try {
+    const parametrosBody = Object.entries(parametrosNombrados).map(
+      ([nombre, valor]) => ({
+        type: "text",
+        parameter_name: nombre,
+        text: String(valor),
+      })
+    );
+
     const body = {
       messaging_product: "whatsapp",
       to: telefono,
@@ -53,34 +40,19 @@ export const enviarMensajePlantilla = async ({
         components: [
           {
             type: "body",
-            parameters: parametros.map((texto) => ({
-              type: "text",
-              text: texto,
-            })),
+            parameters: parametrosBody,
           },
-          // Botones: el "payload" es lo que recibiremos de vuelta
-          // en el webhook cuando el paciente toque el botón.
           {
             type: "button",
             sub_type: "quick_reply",
             index: "0",
-            parameters: [
-              {
-                type: "payload",
-                payload: `CONFIRMAR_${citaId}`,
-              },
-            ],
+            parameters: [{ type: "payload", payload: `CONFIRMAR_${citaId}` }],
           },
           {
             type: "button",
             sub_type: "quick_reply",
             index: "1",
-            parameters: [
-              {
-                type: "payload",
-                payload: `CANCELAR_${citaId}`,
-              },
-            ],
+            parameters: [{ type: "payload", payload: `CANCELAR_${citaId}` }],
           },
         ],
       },
@@ -97,6 +69,10 @@ export const enviarMensajePlantilla = async ({
   }
 };
 
+/*
+ * Envía un mensaje de texto libre (solo funciona dentro
+ * de las 24h después de que el usuario te escribió).
+ */
 export const enviarMensajeTexto = async ({ telefono, mensaje }) => {
   try {
     const body = {
@@ -117,3 +93,28 @@ export const enviarMensajeTexto = async ({ telefono, mensaje }) => {
   }
 };
 
+/*
+ * Procesa la respuesta de un botón de WhatsApp (Confirmar/Cancelar)
+ * y actualiza el estado de la cita correspondiente.
+ */
+export const procesarRespuestaBoton = async (payload) => {
+  const CitaModel = (await import("../models/CitaModel.js")).default;
+
+  const [accion, citaId] = payload.split("_");
+
+  const cita = await CitaModel.findById(citaId);
+  if (!cita) {
+    console.warn(`Cita no encontrada para el payload: ${payload}`);
+    return;
+  }
+
+  if (accion === "CONFIRMAR") {
+    cita.estado = "Confirmada";
+    await cita.save();
+    console.log(`Cita ${citaId} confirmada por el paciente.`);
+  } else if (accion === "CANCELAR") {
+    cita.estado = "Cancelada";
+    await cita.save();
+    console.log(`Cita ${citaId} cancelada por el paciente.`);
+  }
+};

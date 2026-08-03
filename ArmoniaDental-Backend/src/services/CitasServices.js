@@ -118,8 +118,7 @@ export const obtenerCitaPorIdService = async (id) => {
 }
 
 const formatearTelefono = (telefono) => {
-  // Asegura que el número tenga el código de país de Costa Rica (506)
-  const limpio = telefono.replace(/\D/g, ""); // quita espacios, guiones, etc.
+  const limpio = telefono.replace(/\D/g, "");
   return limpio.startsWith("506") ? limpio : `506${limpio}`;
 };
 
@@ -172,19 +171,18 @@ export const crearCitaService = async (datos) => {
     .populate("paciente_id", "nombre cedula telefono")
     .populate("usuario_id", "nombre email");
 
-  // Enviar confirmación por WhatsApp (no bloquea la respuesta si falla)
   if (citaCompleta.paciente_id?.telefono) {
     const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
 
     enviarMensajePlantilla({
       telefono: formatearTelefono(citaCompleta.paciente_id.telefono),
       nombrePlantilla: "confirmacion_cita",
-      parametros: [
-        citaCompleta.paciente_id.nombre,
-        tipo,
-        fechaTexto,
-        horaTexto,
-      ],
+      parametrosNombrados: {
+        nombre_paciente: citaCompleta.paciente_id.nombre,
+        tipo_cita: tipo,
+        fecha_cita: fechaTexto,
+        hora_cita: horaTexto,
+      },
       citaId: nueva._id.toString(),
     }).catch((err) =>
       console.error("No se pudo enviar WhatsApp de confirmación:", err.message)
