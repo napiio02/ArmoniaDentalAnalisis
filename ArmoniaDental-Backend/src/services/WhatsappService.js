@@ -72,7 +72,7 @@ export const enviarMensajePlantilla = async ({
       type: "template",
       template: {
         name: nombrePlantilla,
-        language: { code: "es" },
+        language: { code: "es_CR" },
         components: [
           {
             type: "body",
