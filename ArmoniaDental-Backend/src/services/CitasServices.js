@@ -117,7 +117,7 @@ export const obtenerCitaPorIdService = async (id) => {
   return cita;
 }
 
-const formatearTelefono = (telefono) => {
+export const formatearTelefono = (telefono) => {
   const limpio = telefono.replace(/\D/g, "");
   return limpio.startsWith("506") ? limpio : `506${limpio}`;
 };

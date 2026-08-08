@@ -7,41 +7,6 @@ const headers = {
   "Content-Type": "application/json",
 };
 
-//Temporalmente
-export const enviarBotonesInteractivos = async ({ telefono, texto, citaId }) => {
-  try {
-    const body = {
-      messaging_product: "whatsapp",
-      to: telefono,
-      type: "interactive",
-      interactive: {
-        type: "button",
-        body: { text: texto },
-        action: {
-          buttons: [
-            {
-              type: "reply",
-              reply: { id: `CONFIRMAR_${citaId}`, title: "Confirmar" },
-            },
-            {
-              type: "reply",
-              reply: { id: `CANCELAR_${citaId}`, title: "Cancelar" },
-            },
-          ],
-        },
-      },
-    };
-
-    const response = await axios.post(WHATSAPP_API_URL, body, { headers });
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Error al enviar botones interactivos:",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
 
 /*
  * Envía la plantilla de confirmación de cita con botones
@@ -137,20 +102,34 @@ export const procesarRespuestaBoton = async (payload) => {
   const CitaModel = (await import("../models/CitaModel.js")).default;
 
   const [accion, citaId] = payload.split("_");
+  
+  
 
   const cita = await CitaModel.findById(citaId);
   if (!cita) {
     console.warn(`Cita no encontrada para el payload: ${payload}`);
+    await enviarMensajeTexto({
+        telefono: telefonoPaciente,
+        mensaje: "No pudimos encontrar tu cita. Por favor comunícate con la clínica.",
+      });
     return;
   }
 
   if (accion === "CONFIRMAR") {
     cita.estado = "Confirmada";
     await cita.save();
+    await enviarMensajeTexto({
+        telefono: telefonoPaciente,
+        mensaje: "¡Gracias! Tu cita ha sido confirmada. Te estaremos esperando.",
+      });
     console.log(`Cita ${citaId} confirmada por el paciente.`);
   } else if (accion === "CANCELAR") {
     cita.estado = "Cancelada";
     await cita.save();
+    await enviarMensajeTexto({
+        telefono: telefonoPaciente,
+        mensaje: "Tu cita ha sido cancelada. Si deseas reagendar, comunícate con la clínica.",
+      });
     console.log(`Cita ${citaId} cancelada por el paciente.`);
   }
 };

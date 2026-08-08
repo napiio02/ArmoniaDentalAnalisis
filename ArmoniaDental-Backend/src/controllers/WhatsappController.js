@@ -25,13 +25,13 @@ export const recibirWebhook = async (req, res) => {
 
     // Botón de PLANTILLA (quick_reply)
     if (mensaje.type === "button") {
-      await procesarRespuestaBoton(mensaje.button.payload);
+      await procesarRespuestaBoton(mensaje.button.payload, mensaje.from);
       return;
     }
 
     // Botón INTERACTIVO (mensaje de sesión, sin plantilla)
     if (mensaje.type === "interactive" && mensaje.interactive?.type === "button_reply") {
-      await procesarRespuestaBoton(mensaje.interactive.button_reply.id);
+      await procesarRespuestaBoton(mensaje.interactive.button_reply.id, mensaje.from);
       return;
     }
 
