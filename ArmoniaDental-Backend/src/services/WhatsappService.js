@@ -98,7 +98,7 @@ export const enviarMensajeTexto = async ({ telefono, mensaje }) => {
  * Procesa la respuesta de un botón de WhatsApp (Confirmar/Cancelar)
  * y actualiza el estado de la cita correspondiente.
  */
-export const procesarRespuestaBoton = async (payload) => {
+export const procesarRespuestaBoton = async (payload, telefonoPaciente) => {
   const CitaModel = (await import("../models/CitaModel.js")).default;
 
   const [accion, citaId] = payload.split("_");
