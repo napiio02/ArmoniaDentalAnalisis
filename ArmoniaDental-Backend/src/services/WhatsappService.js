@@ -115,6 +115,22 @@ export const procesarRespuestaBoton = async (payload, telefonoPaciente) => {
     return;
   }
 
+  if(cita.estado === "Cancelada") {
+    console.warn(`Cita ${citaId} ya estaba cancelada.`);
+    await enviarMensajeTexto({
+        telefono: telefonoPaciente,
+        mensaje: "Tu cita ya se encuentra cancelada.",
+      });
+    return;
+  } else if(cita.estado === "Confirmada") {
+    console.warn(`Cita ${citaId} ya se encuentra confirmada.`);
+    await enviarMensajeTexto({
+        telefono: telefonoPaciente,
+        mensaje: "Tu cita ya se encuentra confirmada.",
+      });
+    return;
+  }
+
   if (accion === "CONFIRMAR") {
     cita.estado = "Confirmada";
     await cita.save();
