@@ -6,6 +6,29 @@ import {
     deleteUsuario
 } from "../services/UsuariosService.js";
 
+const responderError = (res, error, mensaje) => {
+    const status = error.code === 11000 ? 409
+        : error.statusCode || (["ValidationError", "CastError"].includes(error.name) ? 400 : 500);
+    const detalle = error.code === 11000
+        ? "Ya existe un usuario con ese correo o cédula." : error.message;
+    return res.status(status).json({ message: detalle || mensaje, error: detalle });
+};
+
+export const cambiarEstadoUsuario = async (req, res) => {
+    try {
+        if (typeof req.body?.activo !== "boolean") {
+            return res.status(400).json({ message: "Debe indicar el estado activo del usuario." });
+        }
+        const usuario = await modifyUser(req.params.id, { activo: req.body.activo });
+        return res.status(200).json({
+            message: `Usuario ${usuario.activo ? "activado" : "desactivado"} exitosamente`,
+            usuario,
+        });
+    } catch (error) {
+        return responderError(res, error, "Error al cambiar el estado del usuario");
+    }
+};
+
 export const ListUsers = async(req, res) => {
 
     try {
@@ -16,10 +39,7 @@ export const ListUsers = async(req, res) => {
 
     } catch(error){
 
-        res.status(500).json({
-            message:"Error obteniendo usuarios",
-            error:error.message
-        });
+        responderError(res, error, "Error obteniendo usuarios");
 
     }
 
@@ -43,10 +63,7 @@ export const infoUser = async(req, res) => {
 
     } catch(error){
 
-        res.status(500).json({
-            message:"Error obteniendo usuario",
-            error:error.message
-        });
+        responderError(res, error, "Error obteniendo usuario");
 
     }
 
@@ -56,7 +73,7 @@ export const NuevoUsuario = async(req,res)=>{
 
     try{
 
-        const nuevoUsuario = await createUser(req.body);
+        const nuevoUsuario = await createUser(req.body || {});
 
         res.status(201).json({
             message:"Usuario creado exitosamente",
@@ -65,10 +82,7 @@ export const NuevoUsuario = async(req,res)=>{
 
     } catch(error){
 
-        res.status(500).json({
-            message:"Error al crear usuario",
-            error:error.message
-        });
+        responderError(res, error, "Error al crear usuario");
 
     }
 
@@ -81,7 +95,7 @@ export const modificarUsuario = async(req,res)=>{
         const id = req.params.id;
 
         const usuarioActualizado =
-            await modifyUser(id, req.body);
+            await modifyUser(id, req.body || {});
 
         res.status(200).json({
 
@@ -93,10 +107,7 @@ export const modificarUsuario = async(req,res)=>{
 
     } catch(error){
 
-        res.status(500).json({
-            message:"Error al modificar usuario",
-            error:error.message
-        });
+        responderError(res, error, "Error al modificar usuario");
 
     }
 
@@ -120,10 +131,7 @@ export const borrarUsuario = async(req,res)=>{
 
     } catch(error){
 
-        res.status(500).json({
-            message:"Error al eliminar usuario",
-            error:error.message
-        });
+        responderError(res, error, "Error al eliminar usuario");
 
     }
 

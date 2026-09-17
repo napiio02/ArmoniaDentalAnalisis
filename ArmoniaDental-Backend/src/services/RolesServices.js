@@ -4,9 +4,8 @@ export const getRoles = async() => {
 
     const roles = await Roles.find({
 
-        nombre: {
-            $ne: "Administrator"
-        }
+        nombre: { $in: ["Admin", "Dentista", "Asistente Dental"] },
+        activo: true
 
     });
 

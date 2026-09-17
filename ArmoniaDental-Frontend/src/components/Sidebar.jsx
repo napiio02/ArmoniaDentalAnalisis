@@ -7,7 +7,7 @@ export default function Sidebar({ activeItem = "citas" }) {
   const navigate = useNavigate();
 
   const [openExpedientes, setOpenExpedientes] = useState(false);
-  const [openAdmin, setOpenAdmin] = useState(false);
+  const [openAdmin, setOpenAdmin] = useState(activeItem === "usuarios");
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
   const [errorSesion, setErrorSesion] = useState("");
 
@@ -211,6 +211,7 @@ export default function Sidebar({ activeItem = "citas" }) {
 
           {openAdmin && (
             <div className="pl-10 space-y-1 mt-1">
+              {navItem("group", "Usuarios", "/administracion/usuarios", activeItem === "usuarios")}
               <Link
                 to="/control-marcas"
                 className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
@@ -235,12 +236,6 @@ export default function Sidebar({ activeItem = "citas" }) {
           )}
         </div>
 
-        {navItem(
-          "group",
-          "Usuarios",
-          "/usuarios",
-          activeItem === "usuarios"
-        )}
       </nav>
 
       {/* Usuario y cierre de sesión */}

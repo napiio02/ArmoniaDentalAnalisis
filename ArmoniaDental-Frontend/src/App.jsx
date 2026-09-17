@@ -223,7 +223,7 @@ const App = () => {
         />
 
         <Route
-          path="/usuarios"
+          path="/administracion/usuarios"
           element={
             <ProtectedRoute>
               <Usuarios />
@@ -244,6 +244,9 @@ const App = () => {
           path="/restablecer-password"
           element={<RestablecerPass />}
         />
+
+        <Route path="/administracion" element={<Navigate to="/administracion/usuarios" replace />} />
+        <Route path="/usuarios" element={<Navigate to="/administracion/usuarios" replace />} />
 
         {/* Ruta desconocida */}
         <Route path="*" element={<Navigate to="/" replace />} />
