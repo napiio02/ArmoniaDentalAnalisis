@@ -1,15 +1,33 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { cerrarSesion } from "../services/authService";
 
+const opcionesAdministracion = [
+  { icono: "group", nombre: "Usuarios", ruta: "/administracion/usuarios" },
+  { icono: "schedule", nombre: "Control de Marcas", ruta: "/control-marcas" },
+  { icono: "description", nombre: "Comprobantes", ruta: "/comprobantes" },
+  { icono: "bar_chart", nombre: "Reportes", ruta: "/reportes" },
+];
+
 export default function Sidebar({ activeItem = "citas" }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const pathname = location.pathname.replace(/\/+$/, "") || "/";
+  const esRutaAdministracion = opcionesAdministracion.some(
+    (opcion) => opcion.ruta === pathname
+  );
 
   const [openExpedientes, setOpenExpedientes] = useState(false);
-  const [openAdmin, setOpenAdmin] = useState(activeItem === "usuarios");
+  const [openAdmin, setOpenAdmin] = useState(esRutaAdministracion);
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
   const [errorSesion, setErrorSesion] = useState("");
+
+  useEffect(() => {
+    if (esRutaAdministracion) {
+      setOpenAdmin(true);
+    }
+  }, [pathname, esRutaAdministracion]);
 
   const obtenerUsuarioGuardado = () => {
     try {
@@ -211,27 +229,16 @@ export default function Sidebar({ activeItem = "citas" }) {
 
           {openAdmin && (
             <div className="pl-10 space-y-1 mt-1">
-              {navItem("group", "Usuarios", "/administracion/usuarios", activeItem === "usuarios")}
-              <Link
-                to="/control-marcas"
-                className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
-              >
-                Control de Marcas
-              </Link>
-
-              <Link
-                to="/comprobantes"
-                className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
-              >
-                Comprobantes
-              </Link>
-
-              <Link
-                to="/reportes"
-                className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
-              >
-                Reportes
-              </Link>
+              {opcionesAdministracion.map((opcion) => (
+                <div key={opcion.ruta}>
+                  {navItem(
+                    opcion.icono,
+                    opcion.nombre,
+                    opcion.ruta,
+                    pathname === opcion.ruta
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
