@@ -67,6 +67,8 @@ const UsuarioSchema = new mongoose.Schema(
       required: true,
     },
 
+    session_version: { type: Number, default: 0, select: true },
+
     fecha_activacion: {
       type: Date,
       default: null,

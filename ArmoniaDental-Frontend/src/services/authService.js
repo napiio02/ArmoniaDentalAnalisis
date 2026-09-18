@@ -1,21 +1,17 @@
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://armoniadentalbackend.onrender.com/v1";
+import { apiFetch, API_URL } from "./apiClient";
 
 const procesarRespuesta = async (response) => {
   const resultado = await response.json();
 
   if (!response.ok) {
-    throw new Error(
-      resultado.message ||
-        "Ocurrió un error al procesar la solicitud."
-    );
+    throw Object.assign(new Error(resultado.message || "Ocurrió un error al procesar la solicitud."), { code: resultado.code, status: response.status });
   }
 
   return resultado;
 };
 
 export const iniciarSesion = async (credenciales) => {
-  const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await apiFetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -28,7 +24,7 @@ export const iniciarSesion = async (credenciales) => {
 };
 
 export const obtenerSesion = async () => {
-  const response = await fetch(`${API_URL}/auth/me`, {
+  const response = await apiFetch(`${API_URL}/auth/me`, {
     method: "GET",
     credentials: "include",
   });
@@ -37,7 +33,7 @@ export const obtenerSesion = async () => {
 };
 
 export const cerrarSesion = async () => {
-  const response = await fetch(`${API_URL}/auth/logout`, {
+  const response = await apiFetch(`${API_URL}/auth/logout`, {
     method: "POST",
     credentials: "include",
   });
@@ -46,7 +42,7 @@ export const cerrarSesion = async () => {
 };
 
 export const registrarAsistente = async (datos) => {
-  const response = await fetch(`${API_URL}/auth/registro`, {
+  const response = await apiFetch(`${API_URL}/auth/registro`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -62,7 +58,7 @@ export const registrarAsistente = async (datos) => {
  * Solicita el envío del correo de recuperación.
  */
 export const solicitarRecuperacionPassword = async (email) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/auth/recuperar-password`,
     {
       method: "POST",
@@ -86,7 +82,7 @@ export const restablecerPassword = async ({
   password,
   confirmarPassword,
 }) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/auth/restablecer-password`,
     {
       method: "POST",

@@ -1,5 +1,4 @@
-const VERSION = "v1";
-const API_URL = `https://armoniadentalbackend.onrender.com/${VERSION}`;
+import { apiFetch, API_URL } from "./apiClient";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -12,7 +11,7 @@ export async function subirDocumento(expedienteId, { tipo, paciente_id, archivo 
   formData.append("paciente_id", paciente_id);
   formData.append("archivo", archivo);
 
-  const response = await fetch(`${API_URL}/expedientes/${expedienteId}/documentos`, {
+  const response = await apiFetch(`${API_URL}/expedientes/${expedienteId}/documentos`, {
     method: "POST",
     headers: getAuthHeaders(), // NO poner Content-Type, el navegador lo define con el boundary del FormData
     credentials: "include",
@@ -29,7 +28,7 @@ export async function subirDocumento(expedienteId, { tipo, paciente_id, archivo 
 }
 
 export async function obtenerDocumentosPorExpediente(expedienteId) {
-  const response = await fetch(`${API_URL}/expedientes/${expedienteId}/documentos`, {
+  const response = await apiFetch(`${API_URL}/expedientes/${expedienteId}/documentos`, {
     method: "GET",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -53,7 +52,7 @@ export function getUrlVer(documentoId) {
 }
 
 export async function guardarAnotaciones(documentoId, anotaciones) {
-  const response = await fetch(`${API_URL}/documentos/${documentoId}/anotaciones`, {
+  const response = await apiFetch(`${API_URL}/documentos/${documentoId}/anotaciones`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     credentials: "include",
@@ -70,7 +69,7 @@ export async function guardarAnotaciones(documentoId, anotaciones) {
 }
 
 export async function eliminarDocumento(documentoId) {
-  const response = await fetch(`${API_URL}/documentos/${documentoId}`, {
+  const response = await apiFetch(`${API_URL}/documentos/${documentoId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -86,7 +85,7 @@ export async function eliminarDocumento(documentoId) {
 }
 
 export async function descargarPdfAnotado(documentoId, anotaciones, nombreOriginal) {
-  const response = await fetch(`${API_URL}/documentos/${documentoId}/descargar-anotado`, {
+  const response = await apiFetch(`${API_URL}/documentos/${documentoId}/descargar-anotado`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     credentials: "include",

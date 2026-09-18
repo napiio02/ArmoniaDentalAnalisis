@@ -1,3 +1,4 @@
+import { apiFetch } from "../services/apiClient";
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import ModalSubirDocumento from "../components/ModalSubirDocumento";
@@ -609,7 +610,7 @@ const Expedientes = () => {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      const response = await fetch(
+                                      const response = await apiFetch(
                                         getUrlVer(doc._id),
                                       );
                                       if (!response.ok) {
@@ -655,7 +656,7 @@ const Expedientes = () => {
                                     const headers = token
                                       ? { Authorization: `Bearer ${token}` }
                                       : {};
-                                    const response = await fetch(
+                                    const response = await apiFetch(
                                       getUrlVer(doc._id),
                                       {
                                         credentials: "include",

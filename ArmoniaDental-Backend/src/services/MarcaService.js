@@ -5,7 +5,7 @@ const ROL_VISIBILIDAD_TOTAL = "Dentista";
 
 const ESTADOS_PENDIENTES = ["Pendiente aprobación", "Justificada pendiente"];
 
-const esVisibilidadTotal = (rol) => rol === ROL_VISIBILIDAD_TOTAL;
+const esVisibilidadTotal = (rol) => ["Admin", ROL_VISIBILIDAD_TOTAL].includes(rol);
 
 const POPULATE_USUARIO = {
   path: "usuario_id",

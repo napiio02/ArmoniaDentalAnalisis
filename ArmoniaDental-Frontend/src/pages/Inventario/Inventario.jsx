@@ -4,7 +4,7 @@ import Sidebar from "../../components/Sidebar";
 import CentroNotificaciones, {
 	mostrarNotificacion,
 } from "../../components/CentroNotificaciones";
-import axios from "axios";
+import { http as axios } from "../../services/apiClient";
 
 
 const API_URL = "https://armoniadentalbackend.onrender.com/v1/insumos";

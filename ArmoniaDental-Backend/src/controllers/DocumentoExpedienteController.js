@@ -78,7 +78,7 @@ export async function subirDocumento(req, res) {
       paciente_id,
       tipo,
       archivo: req.file,
-      usuario_id: req.usuario?._id || null,
+      usuario_id: req.user._id || null,
     });
 
     return res.status(201).json({

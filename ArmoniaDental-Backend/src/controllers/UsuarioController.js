@@ -1,4 +1,5 @@
 import {
+    getPersonal,
     getUserList,
     getUserInfo,
     createUser,
@@ -10,7 +11,7 @@ const responderError = (res, error, mensaje) => {
     const status = error.code === 11000 ? 409
         : error.statusCode || (["ValidationError", "CastError"].includes(error.name) ? 400 : 500);
     const detalle = error.code === 11000
-        ? "Ya existe un usuario con ese correo o cédula." : error.message;
+        ? (error.keyPattern?.rol_id ? "Ya existe un Administrador. No se permite un segundo Admin." : "Ya existe un usuario con ese correo o cédula.") : error.message;
     return res.status(status).json({ message: detalle || mensaje, error: detalle });
 };
 
@@ -19,7 +20,7 @@ export const cambiarEstadoUsuario = async (req, res) => {
         if (typeof req.body?.activo !== "boolean") {
             return res.status(400).json({ message: "Debe indicar el estado activo del usuario." });
         }
-        const usuario = await modifyUser(req.params.id, { activo: req.body.activo });
+        const usuario = await modifyUser(req.params.id, { activo: req.body.activo }, req.user);
         return res.status(200).json({
             message: `Usuario ${usuario.activo ? "activado" : "desactivado"} exitosamente`,
             usuario,
@@ -73,7 +74,7 @@ export const NuevoUsuario = async(req,res)=>{
 
     try{
 
-        const nuevoUsuario = await createUser(req.body || {});
+        const nuevoUsuario = await createUser(req.body || {}, req.user);
 
         res.status(201).json({
             message:"Usuario creado exitosamente",
@@ -95,7 +96,7 @@ export const modificarUsuario = async(req,res)=>{
         const id = req.params.id;
 
         const usuarioActualizado =
-            await modifyUser(id, req.body || {});
+            await modifyUser(id, req.body || {}, req.user);
 
         res.status(200).json({
 
@@ -119,7 +120,7 @@ export const borrarUsuario = async(req,res)=>{
 
         const idUsuario = req.params.id;
 
-        await deleteUsuario(idUsuario);
+        await deleteUsuario(idUsuario, req.user);
 
         res.status(200).json({
 
@@ -135,4 +136,8 @@ export const borrarUsuario = async(req,res)=>{
 
     }
 
+};
+export const listarPersonal = async (req, res) => {
+  try { res.json(await getPersonal()); }
+  catch (error) { responderError(res, error, "Error obteniendo personal"); }
 };

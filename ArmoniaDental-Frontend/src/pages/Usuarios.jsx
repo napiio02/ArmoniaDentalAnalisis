@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import ModalConfirmarEliminar from "../components/ModalConfirmarEliminar";
@@ -44,6 +45,9 @@ function ModalUsuario({ titulo, onCerrar, ocupado, children }) {
 }
 
 export default function Usuarios() {
+  const { usuario: usuarioConectado } = useAuth();
+  const esCuentaPropia = (u) => u?._id === usuarioConectado?._id;
+  const esAdmin = (u) => u?.rol_id?.nombre === "Admin";
   const [usuarios, setUsuarios] = useState([]);
   const [roles, setRoles] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -157,9 +161,9 @@ export default function Usuarios() {
                   <td className="px-5 py-4"><div className="flex items-center gap-1">{[
                     { icon: "visibility", label: "Ver información", click: () => abrirUsuario(usuario) },
                     { icon: "edit", label: "Editar usuario", click: () => abrirUsuario(usuario, true) },
-                    { icon: usuario.activo ? "person_off" : "person_check", label: usuario.activo ? "Desactivar usuario" : "Activar usuario", click: () => pedirConfirmacion(usuario, "estado") },
-                    { icon: "delete", label: "Eliminar usuario", click: () => pedirConfirmacion(usuario, "eliminar") },
-                  ].map((a) => <button key={a.label} type="button" title={a.label} aria-label={`${a.label}: ${usuario.nombre}`} onClick={a.click} disabled={Boolean(cargandoUsuario) || guardando} className={`p-2 rounded-lg hover:bg-[#f0f3ff] disabled:opacity-40 ${a.icon === "delete" ? "text-[#ba1a1a]" : "text-[#006686]"}`}><span className="material-symbols-outlined text-[20px]">{a.icon}</span></button>)}</div></td>
+                    { icon: usuario.activo ? "person_off" : "person_check", label: usuario.activo ? "Desactivar usuario" : "Activar usuario", disabled: esCuentaPropia(usuario) || esAdmin(usuario), click: () => pedirConfirmacion(usuario, "estado") },
+                    { icon: "delete", label: "Eliminar usuario", disabled: esCuentaPropia(usuario) || esAdmin(usuario), click: () => pedirConfirmacion(usuario, "eliminar") },
+                  ].map((a) => <button key={a.label} type="button" title={a.label} aria-label={`${a.label}: ${usuario.nombre}`} onClick={a.click} disabled={Boolean(cargandoUsuario) || guardando || a.disabled} className={`p-2 rounded-lg hover:bg-[#f0f3ff] disabled:opacity-40 ${a.icon === "delete" ? "text-[#ba1a1a]" : "text-[#006686]"}`}><span className="material-symbols-outlined text-[20px]">{a.icon}</span></button>)}</div></td>
                 </tr>)}</tbody>
               </table>}
           </div>
@@ -171,8 +175,8 @@ export default function Usuarios() {
         <ErrorMensaje mensaje={errorFormulario} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {CAMPOS.map((campo, index) => <div key={campo.name}><Label htmlFor={`usuario-${campo.name}`}>{campo.label}</Label><input id={`usuario-${campo.name}`} name={campo.name} type={campo.type} required autoFocus={index === 0} value={form[campo.name]} disabled={guardando} className={inputCls} onChange={(e) => cambioForm(campo.name, e.target.value)} /></div>)}
-          <div><Label htmlFor="usuario-rol">Rol</Label><select id="usuario-rol" required value={form.rol_id} disabled={guardando} className={inputCls} onChange={(e) => cambioForm("rol_id", e.target.value)}><option value="">Seleccione un rol</option>{usuarioEditando?.rol_id && !roles.some((r) => r._id === usuarioEditando.rol_id._id) && <option value={usuarioEditando.rol_id._id} disabled>{usuarioEditando.rol_id.nombre} (no disponible)</option>}{roles.map((r) => <option key={r._id} value={r._id}>{r.nombre}</option>)}</select></div>
-          <div><Label htmlFor="usuario-activo">Estado del usuario</Label><select id="usuario-activo" value={String(form.activo)} disabled={guardando} className={inputCls} onChange={(e) => cambioForm("activo", e.target.value === "true")}><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+          <div><Label htmlFor="usuario-rol">Rol</Label><select id="usuario-rol" required value={form.rol_id} disabled={guardando || esAdmin(usuarioEditando)} className={inputCls} onChange={(e) => cambioForm("rol_id", e.target.value)}><option value="">Seleccione un rol</option>{usuarioEditando?.rol_id && !roles.some((r) => r._id === usuarioEditando.rol_id._id) && <option value={usuarioEditando.rol_id._id} disabled>{usuarioEditando.rol_id.nombre} (no disponible)</option>}{roles.map((r) => <option key={r._id} value={r._id} disabled={r.nombre === "Admin" && !esAdmin(usuarioEditando)}>{r.nombre}</option>)}</select></div>
+          <div><Label htmlFor="usuario-activo">Estado del usuario</Label><select id="usuario-activo" value={String(form.activo)} disabled={guardando || esCuentaPropia(usuarioEditando) || esAdmin(usuarioEditando)} className={inputCls} onChange={(e) => cambioForm("activo", e.target.value === "true")}><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
           {!usuarioEditando && [{ name: "password", label: "Contraseña inicial" }, { name: "confirmarPassword", label: "Confirmar contraseña" }].map((campo) => <div key={campo.name}><Label htmlFor={`usuario-${campo.name}`}>{campo.label}</Label><input id={`usuario-${campo.name}`} type="password" autoComplete="new-password" required minLength={8} value={form[campo.name]} disabled={guardando} className={inputCls} onChange={(e) => cambioForm(campo.name, e.target.value)} /></div>)}
         </div>
         <p className="text-xs text-[#3f484e]">{usuarioEditando ? "La edición conserva la contraseña y el estado de registro de la cuenta." : "Use una contraseña de al menos 8 caracteres. El usuario podrá iniciar sesión si su cuenta está activa."}</p>

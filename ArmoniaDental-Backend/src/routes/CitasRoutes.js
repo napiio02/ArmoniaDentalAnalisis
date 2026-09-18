@@ -1,3 +1,4 @@
+import { verifyToken } from "../middlewares/VerifyToken.js";
 import {
   getCitas,
   getCitaById,
@@ -12,20 +13,20 @@ import {
 export const CitasRoutes = (app) => {
   const version = process.env.VERSION || "v1";
 
-  app.get(`/${version}/citas`, getCitas);
+  app.get(`/${version}/citas`, verifyToken, getCitas);
 
-  app.get(`/${version}/citas/disponibilidad`, getDisponibilidad);
+  app.get(`/${version}/citas/disponibilidad`, verifyToken, getDisponibilidad);
 
-  app.get(`/${version}/citas/:id`, getCitaById);
+  app.get(`/${version}/citas/:id`, verifyToken, getCitaById);
 
-  app.post(`/${version}/citas`, createCita);
+  app.post(`/${version}/citas`, verifyToken, createCita);
 
-  app.put(`/${version}/citas/:id`, updateCita);
+  app.put(`/${version}/citas/:id`, verifyToken, updateCita);
 
-  app.patch(`/${version}/citas/:id/cancelar`, cancelarCita);
+  app.patch(`/${version}/citas/:id/cancelar`, verifyToken, cancelarCita);
 
-  app.get(`/${version}/pacientes/:paciente_id/citas-atendidas`, getCitasAtendidasPorPaciente);
+  app.get(`/${version}/pacientes/:paciente_id/citas-atendidas`, verifyToken, getCitasAtendidasPorPaciente);
 
-  app.get(`/${version}/actividad-reciente`, getActividadReciente);
+  app.get(`/${version}/actividad-reciente`, verifyToken, getActividadReciente);
 };
 

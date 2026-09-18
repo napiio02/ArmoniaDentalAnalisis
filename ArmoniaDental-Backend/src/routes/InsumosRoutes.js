@@ -1,10 +1,11 @@
+import { verifyToken } from "../middlewares/VerifyToken.js";
 import {
     GetInsumos,
     GetInsumo,
     CreateInsumo,
     UpdateInsumo,
     ToggleActivoInsumo,
-    RegistrarEntradaInsumo,   
+    RegistrarEntradaInsumo,
     GetMovimientosInsumo,
     RegistrarSalidaInsumo,
 } from "../controllers/InsumoController.js";
@@ -12,12 +13,12 @@ import {
 export const InsumosRoutes = (app) => {
     const version = process.env.VERSION || "v1";
 
-    app.get(`/${version}/insumos`, GetInsumos);
-    app.get(`/${version}/insumos/:id`, GetInsumo);
-    app.post(`/${version}/insumos`, CreateInsumo);
-    app.put(`/${version}/insumos/:id`, UpdateInsumo);
-    app.patch(`/${version}/insumos/:id/status`, ToggleActivoInsumo);
-    app.patch(`/${version}/insumos/:id/entrada`, RegistrarEntradaInsumo);  
-    app.get(`/${version}/insumos/:id/movimientos`, GetMovimientosInsumo);
-    app.patch(`/${version}/insumos/:id/salida`, RegistrarSalidaInsumo);
+    app.get(`/${version}/insumos`, verifyToken, GetInsumos);
+    app.get(`/${version}/insumos/:id`, verifyToken, GetInsumo);
+    app.post(`/${version}/insumos`, verifyToken, CreateInsumo);
+    app.put(`/${version}/insumos/:id`, verifyToken, UpdateInsumo);
+    app.patch(`/${version}/insumos/:id/status`, verifyToken, ToggleActivoInsumo);
+    app.patch(`/${version}/insumos/:id/entrada`, verifyToken, RegistrarEntradaInsumo);
+    app.get(`/${version}/insumos/:id/movimientos`, verifyToken, GetMovimientosInsumo);
+    app.patch(`/${version}/insumos/:id/salida`, verifyToken, RegistrarSalidaInsumo);
 };

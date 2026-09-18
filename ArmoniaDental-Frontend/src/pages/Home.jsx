@@ -1,3 +1,4 @@
+import { apiFetch } from "../services/apiClient";
 ﻿import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { getCitas } from "../services/citaService";
@@ -58,7 +59,7 @@ const Home = () => {
         const headers = getAuthHeaders();
 
         // ── Sesión del usuario ──
-        const resSesion = await fetch(`${BASE_URL}/auth/me`, {
+        const resSesion = await apiFetch(`${BASE_URL}/auth/me`, {
           headers,
           credentials: "include",
         });
@@ -112,7 +113,7 @@ const Home = () => {
         setProximaCita(futuras[0] || null);
 
         // ── Insumos con stock bajo ──
-        const resInsumos = await fetch(`${BASE_URL}/insumos`, {
+        const resInsumos = await apiFetch(`${BASE_URL}/insumos`, {
           headers,
           credentials: "include",
         });
@@ -126,7 +127,7 @@ const Home = () => {
         }
 
         // ── Stats de pacientes ──
-        const resPacientes = await fetch(`${BASE_URL}/pacientes/stats`, {
+        const resPacientes = await apiFetch(`${BASE_URL}/pacientes/stats`, {
           headers,
           credentials: "include",
         });
@@ -137,7 +138,7 @@ const Home = () => {
         }
 
         // ── Actividad reciente ──
-        const resActividad = await fetch(`${BASE_URL}/actividad-reciente`, {
+        const resActividad = await apiFetch(`${BASE_URL}/actividad-reciente`, {
           headers,
           credentials: "include",
         });

@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiClient";
 const VERSION = "v1";
 const BASE_URL = `https://armoniadentalbackend.onrender.com/${VERSION}`;
 
@@ -29,7 +30,7 @@ function normalizarLista(data) {
 }
 
 export async function obtenerPacientesReporte() {
-	const response = await fetch(`${BASE_URL}/pacientes`, {
+	const response = await apiFetch(`${BASE_URL}/pacientes`, {
 		method: "GET",
 		headers: getAuthHeaders(),
 		credentials: "include",
@@ -40,7 +41,7 @@ export async function obtenerPacientesReporte() {
 }
 
 export async function obtenerCitasReporte() {
-	const response = await fetch(`${BASE_URL}/citas`, {
+	const response = await apiFetch(`${BASE_URL}/citas`, {
 		method: "GET",
 		headers: getAuthHeaders(),
 		credentials: "include",
@@ -51,7 +52,7 @@ export async function obtenerCitasReporte() {
 }
 
 export async function obtenerInsumosReporte() {
-	const response = await fetch(`${BASE_URL}/insumos`, {
+	const response = await apiFetch(`${BASE_URL}/insumos`, {
 		method: "GET",
 		headers: getAuthHeaders(),
 		credentials: "include",
@@ -64,7 +65,7 @@ export async function obtenerInsumosReporte() {
 // GET /marcas/resumen requiere sesión (verifyToken). Devuelve
 // { enJornada, horasHoy, marcasHoy, marcasManuales, porEmpleado: [{usuario_id, nombre, rol, totalHoras, diasTrabajados}] }
 export async function obtenerResumenMarcasReporte() {
-	const response = await fetch(`${BASE_URL}/marcas/resumen`, {
+	const response = await apiFetch(`${BASE_URL}/marcas/resumen`, {
 		method: "GET",
 		headers: getAuthHeaders(),
 		credentials: "include",

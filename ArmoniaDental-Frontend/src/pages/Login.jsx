@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/AuthContext";
 import { Link, useNavigate } from "react-router";
 import { useState } from "react";
 
@@ -5,6 +6,7 @@ import { iniciarSesion } from "../services/authService";
 
 function Login() {
   const navigate = useNavigate();
+  const { iniciarSesionLocal } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -48,6 +50,7 @@ function Login() {
         JSON.stringify(resultado.data.usuario)
       );
 
+      iniciarSesionLocal();
       navigate("/", { replace: true });
     } catch (error) {
       setError(
@@ -59,14 +62,6 @@ function Login() {
     }
   };
 
-  const colocarCredencialesPrueba = () => {
-    setFormData({
-      email: "laura@armoniadental.com",
-      password: "Laura1234!",
-    });
-
-    setError("");
-  };
 
   return (
     <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex items-center justify-center px-4">
@@ -110,32 +105,6 @@ function Login() {
               <span>{error}</span>
             </div>
           )}
-
-          {/* Credenciales de prueba */}
-          <div className="bg-[#7dd3fc20] border border-[#006686]/20 rounded-xl p-3 mb-5">
-            <p className="text-xs font-bold text-[#006686] mb-1 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">
-                info
-              </span>
-              Credenciales de prueba
-            </p>
-
-            <p className="text-xs text-[#3f484e] font-mono">
-              laura@armoniadental.com
-            </p>
-
-            <p className="text-xs text-[#3f484e] font-mono">
-              Laura1234!
-            </p>
-
-            <button
-              type="button"
-              onClick={colocarCredencialesPrueba}
-              className="mt-2 text-xs font-semibold text-[#006686] hover:underline"
-            >
-              Usar credenciales de prueba
-            </button>
-          </div>
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-4">

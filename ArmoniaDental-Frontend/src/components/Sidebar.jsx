@@ -1,5 +1,7 @@
+import { useAuth } from "../auth/AuthContext";
+import { puedeAcceder } from "../auth/permisos";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { cerrarSesion } from "../services/authService";
 
@@ -11,7 +13,6 @@ const opcionesAdministracion = [
 ];
 
 export default function Sidebar({ activeItem = "citas" }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname.replace(/\/+$/, "") || "/";
   const esRutaAdministracion = opcionesAdministracion.some(
@@ -29,24 +30,7 @@ export default function Sidebar({ activeItem = "citas" }) {
     }
   }, [pathname, esRutaAdministracion]);
 
-  const obtenerUsuarioGuardado = () => {
-    try {
-      const usuarioGuardado = localStorage.getItem("usuario");
-
-      return usuarioGuardado
-        ? JSON.parse(usuarioGuardado)
-        : null;
-    } catch (error) {
-      console.error(
-        "No fue posible leer el usuario guardado:",
-        error
-      );
-
-      return null;
-    }
-  };
-
-  const usuario = obtenerUsuarioGuardado();
+  const { usuario, salir } = useAuth();
 
   const nombreUsuario =
     usuario?.nombre || "Usuario de Armonía Dental";
@@ -85,7 +69,7 @@ export default function Sidebar({ activeItem = "citas" }) {
       // el token antiguo de demostración.
       localStorage.removeItem("token");
 
-      navigate("/login", { replace: true });
+      salir();
     } catch (error) {
       console.error("Error cerrando la sesión:", error);
 
@@ -229,7 +213,7 @@ export default function Sidebar({ activeItem = "citas" }) {
 
           {openAdmin && (
             <div className="pl-10 space-y-1 mt-1">
-              {opcionesAdministracion.map((opcion) => (
+              {opcionesAdministracion.filter((opcion) => puedeAcceder(usuario, opcion.ruta)).map((opcion) => (
                 <div key={opcion.ruta}>
                   {navItem(
                     opcion.icono,

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "https://armoniadentalbackend.onrender.com/v1";
+import { apiFetch, API_URL } from "./apiClient";
 
 const procesarRespuesta = async (response) => {
   const resultado = await response.json();
@@ -20,7 +20,7 @@ const construirQuery = (params = {}) => {
 };
 
 export const obtenerMarcas = async ({ fecha, usuario_id, estado } = {}) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/marcas${construirQuery({ fecha, usuario_id, estado })}`,
     { method: "GET", credentials: "include" },
   );
@@ -28,7 +28,7 @@ export const obtenerMarcas = async ({ fecha, usuario_id, estado } = {}) => {
 };
 
 export const obtenerResumenMarcas = async () => {
-  const response = await fetch(`${API_URL}/marcas/resumen`, {
+  const response = await apiFetch(`${API_URL}/marcas/resumen`, {
     method: "GET",
     credentials: "include",
   });
@@ -36,7 +36,7 @@ export const obtenerResumenMarcas = async () => {
 };
 
 export const obtenerJornadaActiva = async () => {
-  const response = await fetch(`${API_URL}/marcas/jornada-activa`, {
+  const response = await apiFetch(`${API_URL}/marcas/jornada-activa`, {
     method: "GET",
     credentials: "include",
   });
@@ -44,7 +44,7 @@ export const obtenerJornadaActiva = async () => {
 };
 
 export const obtenerMarcasPendientes = async () => {
-  const response = await fetch(`${API_URL}/marcas/pendientes`, {
+  const response = await apiFetch(`${API_URL}/marcas/pendientes`, {
     method: "GET",
     credentials: "include",
   });
@@ -52,7 +52,7 @@ export const obtenerMarcasPendientes = async () => {
 };
 
 export const iniciarJornada = async () => {
-  const response = await fetch(`${API_URL}/marcas/iniciar`, {
+  const response = await apiFetch(`${API_URL}/marcas/iniciar`, {
     method: "POST",
     credentials: "include",
   });
@@ -60,7 +60,7 @@ export const iniciarJornada = async () => {
 };
 
 export const finalizarJornada = async () => {
-  const response = await fetch(`${API_URL}/marcas/finalizar`, {
+  const response = await apiFetch(`${API_URL}/marcas/finalizar`, {
     method: "POST",
     credentials: "include",
   });
@@ -68,7 +68,7 @@ export const finalizarJornada = async () => {
 };
 
 export const crearMarcaManual = async (datos) => {
-  const response = await fetch(`${API_URL}/marcas/manual`, {
+  const response = await apiFetch(`${API_URL}/marcas/manual`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -78,7 +78,7 @@ export const crearMarcaManual = async (datos) => {
 };
 
 export const justificarMarca = async (id, datos) => {
-  const response = await fetch(`${API_URL}/marcas/${id}/justificar`, {
+  const response = await apiFetch(`${API_URL}/marcas/${id}/justificar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -88,7 +88,7 @@ export const justificarMarca = async (id, datos) => {
 };
 
 export const aprobarMarca = async (id, comentario = "") => {
-  const response = await fetch(`${API_URL}/marcas/${id}/aprobar`, {
+  const response = await apiFetch(`${API_URL}/marcas/${id}/aprobar`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -98,7 +98,7 @@ export const aprobarMarca = async (id, comentario = "") => {
 };
 
 export const rechazarMarca = async (id, comentario = "") => {
-  const response = await fetch(`${API_URL}/marcas/${id}/rechazar`, {
+  const response = await apiFetch(`${API_URL}/marcas/${id}/rechazar`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

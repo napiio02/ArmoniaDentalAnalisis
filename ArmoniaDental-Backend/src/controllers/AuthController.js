@@ -1,3 +1,6 @@
+import { revocarSesion } from "../services/SesionService.js";
+import { obtenerToken } from "../middlewares/VerifyToken.js";
+import jwt from "jsonwebtoken";
 import {
   completarRegistroAsistente,
   iniciarSesion,
@@ -65,7 +68,7 @@ export const login = async (req, res) => {
     res.cookie(
       COOKIE_NAME,
       resultado.token,
-      obtenerOpcionesCookie()
+      { ...obtenerOpcionesCookie(), maxAge: Math.max(0, resultado.expires_at.getTime() - Date.now()) }
     );
 
     return res.status(200).json({
@@ -175,6 +178,16 @@ export const obtenerSesion = async (req, res) => {
  */
 export const logout = async (req, res) => {
   try {
+    const token = obtenerToken(req);
+    if (token) {
+      try {
+        // Logout idempotente: también libera una sesión ya expirada.
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"], ignoreExpiration: true });
+        if (decoded.sid) await revocarSesion(decoded.sid);
+      } catch (error) {
+        if (!["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error.name)) throw error;
+      }
+    }
     const opcionesCookie = obtenerOpcionesCookie();
 
     res.clearCookie(COOKIE_NAME, {

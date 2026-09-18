@@ -1,3 +1,5 @@
+import { capturarCuerpoWebhook } from "./middlewares/VerifyWebhook.js";
+import { prepararSeguridad } from "./services/AdministradorService.js";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
@@ -48,7 +50,7 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ verify: capturarCuerpoWebhook }));
 
 AuthRoutes(app);
 UsersRoutes(app);
@@ -71,16 +73,13 @@ app.get("/", (req, res) => {
   });
 });
 
-app.listen(port, async () => {
-  try {
-    //* Conectar Mongo Atlas
-    await connectDB();
-
-    console.log(`Server started on port ${port}`);
-  } catch (error) {
-    console.error("Error iniciando el servidor:", error.message);
-    process.exit(1);
-  }
-});
+try {
+  await connectDB();
+  await prepararSeguridad();
+  app.listen(port, () => console.log(`Server started on port ${port}`));
+} catch (error) {
+  console.error("Error iniciando el servidor:", error.message);
+  process.exit(1);
+}
 
 export default app;

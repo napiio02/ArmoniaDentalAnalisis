@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Route, Routes, Navigate } from "react-router";
 
-import { obtenerSesion } from "./services/authService";
+import ProtectedRoute from "./auth/ProtectedRoute";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -23,59 +23,6 @@ import RegistrarEntrada from "./pages/Inventario/RegistrarEntrada";
 import RegistrarSalida from "./pages/Inventario/RegistrarSalida";
 import RecuperarPass from "./pages/RecuperarPass";
 import RestablecerPass from "./pages/RestablecerPass";
-
-const ProtectedRoute = ({ children }) => {
-  const [estadoSesion, setEstadoSesion] = useState("cargando");
-
-  useEffect(() => {
-    let componenteActivo = true;
-
-    const validarSesion = async () => {
-      try {
-        const resultado = await obtenerSesion();
-
-        if (!componenteActivo) {
-          return;
-        }
-
-        localStorage.setItem("usuario", JSON.stringify(resultado.data.usuario));
-
-        setEstadoSesion("autenticado");
-      } catch (error) {
-        if (!componenteActivo) {
-          return;
-        }
-
-        localStorage.removeItem("usuario");
-        setEstadoSesion("no-autenticado");
-      }
-    };
-
-    validarSesion();
-
-    return () => {
-      componenteActivo = false;
-    };
-  }, []);
-
-  if (estadoSesion === "cargando") {
-    return (
-      <div className="min-h-screen bg-[#f9f9ff] flex items-center justify-center">
-        <div className="text-center">
-          <span className="loading loading-spinner loading-lg text-[#006686]" />
-
-          <p className="text-sm text-[#3f484e] mt-3">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (estadoSesion === "no-autenticado") {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
-};
 
 const App = () => {
   return (

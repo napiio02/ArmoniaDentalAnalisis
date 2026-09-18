@@ -1,3 +1,4 @@
+import { revocarSesionesUsuario } from "./SesionService.js";
 import Usuario from "../models/Usuario.js";
 import Rol from "../models/Roles.js";
 import mongoose from "mongoose";
@@ -47,6 +48,7 @@ const validarRol = async (id) => {
   if (!rol || !rol.activo || !ROLES_USUARIOS.includes(rol.nombre)) {
     throw crearError("Seleccione un rol disponible: Admin, Dentista o Asistente Dental.");
   }
+  return rol;
 };
 
 const validarActivo = (activo) => {
@@ -54,6 +56,19 @@ const validarActivo = (activo) => {
     throw crearError("El estado activo debe ser verdadero o falso.");
   }
 };
+
+const exigirAdmin = (actor) => {
+  if (actor?.rol !== "Admin" || !actor.activo) throw crearError("Solo un administrador activo puede gestionar usuarios.", 403);
+};
+const validarAdminUnico = async (rol, excluirId) => {
+  if (rol.nombre !== "Admin") return;
+  const existente = await Usuario.findOne({ rol_id: rol._id, ...(excluirId ? { _id: { $ne: excluirId } } : {}) });
+  if (existente) throw crearError("Ya existe un Administrador. No se permite un segundo Admin.", 409);
+};
+
+// Datos mínimos para selectores de Citas/Marcas; no ofrece gestión de cuentas.
+export const getPersonal = () => Usuario.find({ activo: true, estado_cuenta: "Activa" })
+  .select("nombre rol_id activo").populate("rol_id", "nombre").sort({ nombre: 1 });
 
 /*
  * Obtiene todos los usuarios registrados.
@@ -86,7 +101,8 @@ export const getUserInfo = async (id) => {
 /*
  * Crea una cuenta con contraseña inicial desde Administración.
  */
-export const createUser = async (data) => {
+export const createUser = async (data, actor) => {
+  exigirAdmin(actor);
   const {
     nombre,
     email,
@@ -108,7 +124,7 @@ export const createUser = async (data) => {
   const cedulaNormalizada = validarTexto(cedula, "La cédula");
   const telefonoNormalizado = validarTexto(telefono, "El teléfono");
   validarActivo(activo);
-  await validarRol(rol_id);
+  const rol = await validarRol(rol_id);
   if (typeof password !== "string" || password.length < 8) {
     throw crearError("La contraseña inicial debe tener al menos 8 caracteres.");
   }
@@ -138,6 +154,8 @@ export const createUser = async (data) => {
     );
   }
 
+  await validarAdminUnico(rol);
+  if (rol.nombre === "Admin" && activo === false) throw crearError("El Administrador debe estar activo.");
   const nuevoUsuario = await Usuario.create({
     nombre: nombreNormalizado,
     email: emailNormalizado,
@@ -162,7 +180,8 @@ export const createUser = async (data) => {
  *
  * No modifica la contraseña ni el estado del registro de la cuenta.
  */
-export const modifyUser = async (id, data) => {
+export const modifyUser = async (id, data, actor) => {
+  exigirAdmin(actor);
   validarId(id);
   const usuarioActual = await Usuario.findById(id);
 
@@ -170,6 +189,12 @@ export const modifyUser = async (id, data) => {
     throw crearError("Usuario no encontrado.", 404);
   }
 
+  const rolActual = await Rol.findById(usuarioActual.rol_id);
+  if (data.activo === false && String(actor._id) === String(usuarioActual._id)) throw crearError("No puede desactivar su propia cuenta.", 403);
+  if (rolActual?.nombre === "Admin" && (data.activo === false ||
+      (data.rol_id !== undefined && String(data.rol_id) !== String(usuarioActual.rol_id)))) {
+    throw crearError("No puede desactivar ni cambiar el rol del Administrador único.", 409);
+  }
   const updateData = {};
 
   if (data.nombre !== undefined) {
@@ -217,7 +242,8 @@ export const modifyUser = async (id, data) => {
   }
 
   if (data.rol_id !== undefined) {
-    await validarRol(data.rol_id);
+    const rol = await validarRol(data.rol_id);
+    await validarAdminUnico(rol, id);
     updateData.rol_id = data.rol_id;
   }
 
@@ -226,24 +252,32 @@ export const modifyUser = async (id, data) => {
     updateData.activo = data.activo;
   }
 
+  const revocar = data.activo === false || (data.rol_id !== undefined && String(data.rol_id) !== String(usuarioActual.rol_id));
+  if (revocar) {
+    updateData.reset_password_token_hash = null;
+    updateData.reset_password_expires_at = null;
+  }
   const usuarioActualizado = await Usuario.findByIdAndUpdate(
     id,
-    updateData,
+    { $set: updateData, ...(revocar ? { $inc: { session_version: 1 } } : {}) },
     {
       new: true,
       runValidators: true,
     }
   ).populate("rol_id", "nombre descripcion activo");
 
+  if (revocar) await revocarSesionesUsuario(id);
   return usuarioActualizado;
 };
 
 /*
  * Elimina permanentemente un usuario.
  */
-export const deleteUsuario = async (id) => {
+export const deleteUsuario = async (id, actor) => {
+  exigirAdmin(actor);
   validarId(id);
-  await getUserInfo(id);
+  const usuario = await getUserInfo(id);
+  if (usuario.rol_id?.nombre === "Admin" || String(actor._id) === id) throw crearError("No puede eliminar al Administrador único ni su propia cuenta.", 409);
   // Conserva las referencias que utilizan los demás módulos del sistema.
   const referencias = await Promise.all([
     Marca.exists({ $or: [{ usuario_id: id }, { creado_por: id }, { "justificacion.revisado_por": id }] }),
@@ -261,5 +295,6 @@ export const deleteUsuario = async (id) => {
     throw crearError("Usuario no encontrado.", 404);
   }
 
+  await revocarSesionesUsuario(id);
   return usuarioEliminado;
 };

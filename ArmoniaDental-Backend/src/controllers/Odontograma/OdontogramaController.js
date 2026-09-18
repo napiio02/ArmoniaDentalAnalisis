@@ -102,14 +102,12 @@ export async function obtenerOdontogramaPorPaciente(req, res) {
 
 export async function guardarOdontograma(req, res) {
   try {
-    const usuarioTemporalId = process.env.USUARIO_TEMPORAL_ID;
 
     const payload = {
       ...req.body,
 
-      // Cuando exista login real, lo ideal sería:
-      // usuario_id: req.user?._id,
-      usuario_id: req.user?._id || usuarioTemporalId || req.body.usuario_id,
+      // La identidad proviene exclusivamente de la sesión autenticada.
+      usuario_id: req.user._id,
     };
 
     const odontograma = await guardarOdontogramaService(payload);

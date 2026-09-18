@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { obtenerSesion } from "../services/authService";
-import { listarUsuarios } from "../services/usuarioService";
+import { listarPersonal } from "../services/usuarioService";
 import {
   obtenerMarcas,
   obtenerResumenMarcas,
@@ -64,7 +64,7 @@ const ControlMarcas = () => {
   const [cargandoSesion, setCargandoSesion] = useState(true);
 
   const usuarioActivoId = usuarioLogueado?._id || "";
-  const puedeVerTodo = usuarioLogueado?.rol === ROL_CON_VISIBILIDAD_TOTAL;
+  const puedeVerTodo = ["Admin", ROL_CON_VISIBILIDAD_TOTAL].includes(usuarioLogueado?.rol);
 
   const [usuarios, setUsuarios] = useState([]);
   const [marcas, setMarcas] = useState([]);
@@ -191,7 +191,7 @@ const ControlMarcas = () => {
     if (!puedeVerTodo) return;
     (async () => {
       try {
-        const resultado = await listarUsuarios();
+        const resultado = await listarPersonal();
         setUsuarios(extraerDatos(resultado, []));
       } catch (err) {
         mostrarError("No se pudo cargar la lista de empleados.");

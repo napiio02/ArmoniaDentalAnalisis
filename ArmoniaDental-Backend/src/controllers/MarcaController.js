@@ -176,7 +176,7 @@ export async function justificarMarca(req, res) {
 
 export async function aprobarMarca(req, res) {
   try {
-    if (req.user.rol !== ROL_VISIBILIDAD_TOTAL) {
+    if (!["Admin", ROL_VISIBILIDAD_TOTAL].includes(req.user.rol)) {
       return res.status(403).json({
         ok: false,
         message: "No tienes permisos para aprobar marcas.",
@@ -206,7 +206,7 @@ export async function aprobarMarca(req, res) {
 
 export async function rechazarMarca(req, res) {
   try {
-    if (req.user.rol !== ROL_VISIBILIDAD_TOTAL) {
+    if (!["Admin", ROL_VISIBILIDAD_TOTAL].includes(req.user.rol)) {
       return res.status(403).json({
         ok: false,
         message: "No tienes permisos para rechazar marcas.",
@@ -236,7 +236,7 @@ export async function rechazarMarca(req, res) {
 
 export async function obtenerMarcasPendientes(req, res) {
   try {
-    if (req.user.rol !== ROL_VISIBILIDAD_TOTAL) {
+    if (!["Admin", ROL_VISIBILIDAD_TOTAL].includes(req.user.rol)) {
       return res.status(403).json({
         ok: false,
         message: "No tienes permisos para ver las marcas pendientes.",

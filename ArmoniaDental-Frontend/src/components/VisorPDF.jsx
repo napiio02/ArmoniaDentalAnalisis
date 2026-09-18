@@ -1,3 +1,4 @@
+import { apiFetch } from "../services/apiClient";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -27,6 +28,8 @@ const puntoCercano = (punto, cursor, radio) => {
 };
 
 export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAnotacionesGuardadas }) {
+  const [archivoURL, setArchivoURL] = useState(null);
+  const [errorArchivo, setErrorArchivo] = useState(false);
   const [numPaginas, setNumPaginas] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
   const [herramienta, setHerramienta] = useState("lapiz");
@@ -49,6 +52,32 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
 
   const esImagen = ES_IMAGEN(documento?.formato);
   const esPdf = ES_PDF(documento?.formato);
+
+  // Carga autenticada para PDF e imágenes, también en despliegues entre dominios.
+  useEffect(() => {
+    const controller = new AbortController();
+    let vigente = true;
+    let objectURL;
+    setArchivoURL(null);
+    setErrorArchivo(false);
+    (async () => {
+      try {
+        const response = await apiFetch(urlVer, { signal: controller.signal });
+        if (!response.ok) throw new Error("No se pudo cargar el documento.");
+        const blob = await response.blob();
+        if (!vigente) return;
+        objectURL = URL.createObjectURL(blob);
+        setArchivoURL(objectURL);
+      } catch (error) {
+        if (vigente && error.name !== "AbortError") setErrorArchivo(true);
+      }
+    })();
+    return () => {
+      vigente = false;
+      controller.abort();
+      if (objectURL) URL.revokeObjectURL(objectURL);
+    };
+  }, [urlVer]);
 
   const trazosDePagina = anotaciones.filter((t) => t.pagina === paginaActual);
 
@@ -343,10 +372,13 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
           style={{ touchAction: "none", userSelect: "none" }}
           onDragStart={(e) => e.preventDefault()}
         >
+          {!archivoURL && <div className="flex items-center justify-center w-[600px] h-[400px] text-sm text-[#3f484e]">
+            {errorArchivo ? "No se pudo cargar el documento." : <span className="loading loading-spinner loading-lg text-[#006686]" />}
+          </div>}
           {/* PDF */}
-          {esPdf && (
+          {esPdf && archivoURL && (
             <Document
-              file={urlVer}
+              file={archivoURL}
               onLoadSuccess={onDocumentoCargado}
               loading={
                 <div className="flex items-center justify-center w-[600px] h-[800px]">
@@ -369,13 +401,13 @@ export default function VisorPDF({ documento, urlVer, urlDescarga, onClose, onAn
           )}
 
           {/* Imagen */}
-          {esImagen && (
+          {esImagen && archivoURL && (
             <img
               ref={imgRef}
-              src={urlVer}
+              src={archivoURL}
               alt={documento?.nombre_original}
               onLoad={handleImagenCargada}
-              crossOrigin="anonymous"
+
               className="block max-w-[80vw] max-h-[80vh] object-contain"
               draggable={false}
             />

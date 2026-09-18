@@ -1,3 +1,4 @@
+import { autorizarRoles } from "../middlewares/AutorizarRoles.js";
 import {
   crearComprobante,
   descargarPdfComprobante,
@@ -7,20 +8,7 @@ import {
 } from "../controllers/ComprobanteController.js";
 import { verifyToken } from "../middlewares/VerifyToken.js";
 
-const ROL_PROFESIONAL = "Dentista";
-
-const autorizarProfesional = (req, res, next) => {
-  if (req.user.rol !== ROL_PROFESIONAL) {
-    return res.status(403).json({
-      ok: false,
-      message:
-        "No tiene permisos para realizar esta operación con comprobantes.",
-      data: null,
-    });
-  }
-
-  next();
-};
+const autorizarProfesional = autorizarRoles("Admin", "Dentista");
 
 export const ComprobantesRoutes = (app) => {
   const version = process.env.VERSION || "v1";
@@ -28,11 +16,13 @@ export const ComprobantesRoutes = (app) => {
   app.get(
     `/${version}/comprobantes`,
     verifyToken,
+    autorizarProfesional,
     listarComprobantes
   );
   app.get(
     `/${version}/comprobantes/:id`,
     verifyToken,
+    autorizarProfesional,
     obtenerComprobante
   );
   app.post(
@@ -44,6 +34,7 @@ export const ComprobantesRoutes = (app) => {
   app.get(
     `/${version}/comprobantes/:id/pdf`,
     verifyToken,
+    autorizarProfesional,
     descargarPdfComprobante
   );
   app.post(

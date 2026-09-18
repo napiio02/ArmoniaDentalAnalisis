@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiClient";
 const API_URL = "https://armoniadentalbackend.onrender.com/api/odontogramas";
 
 function getAuthHeaders() {
@@ -20,7 +21,7 @@ async function procesarRespuesta(response, mensajeDefault) {
 }
 
 export async function obtenerOdontogramaPorPaciente(pacienteId) {
-  const response = await fetch(`${API_URL}/paciente/${pacienteId}`, {
+  const response = await apiFetch(`${API_URL}/paciente/${pacienteId}`, {
     method: "GET",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -33,7 +34,7 @@ export async function obtenerOdontogramaPorPaciente(pacienteId) {
 }
 
 export async function guardarOdontograma(payload) {
-  const response = await fetch(API_URL, {
+  const response = await apiFetch(API_URL, {
     method: "POST",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -47,7 +48,7 @@ export async function guardarOdontograma(payload) {
 }
 
 export async function obtenerHistorialOdontograma(odontogramaId) {
-  const response = await fetch(`${API_URL}/${odontogramaId}/historial`, {
+  const response = await apiFetch(`${API_URL}/${odontogramaId}/historial`, {
     method: "GET",
     headers: getAuthHeaders(),
     credentials: "include",

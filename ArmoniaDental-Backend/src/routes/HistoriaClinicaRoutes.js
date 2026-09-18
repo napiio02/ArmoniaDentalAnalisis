@@ -1,3 +1,4 @@
+import { verifyToken } from "../middlewares/VerifyToken.js";
 import {
   crearHistoriaClinica,
   obtenerHistoriaClinicaPorPaciente,
@@ -6,6 +7,6 @@ import {
 export const HistoriaClinicaRoutes = (app) => {
   const version = process.env.VERSION || "v1";
 
-  app.post(`/${version}/pacientes/:paciente_id/historia-clinica`, crearHistoriaClinica);
-  app.get(`/${version}/pacientes/:paciente_id/historia-clinica`, obtenerHistoriaClinicaPorPaciente);
+  app.post(`/${version}/pacientes/:paciente_id/historia-clinica`, verifyToken, crearHistoriaClinica);
+  app.get(`/${version}/pacientes/:paciente_id/historia-clinica`, verifyToken, obtenerHistoriaClinicaPorPaciente);
 };

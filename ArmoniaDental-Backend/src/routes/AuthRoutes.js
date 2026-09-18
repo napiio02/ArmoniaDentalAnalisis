@@ -1,3 +1,4 @@
+import { autorizarRoles } from "../middlewares/AutorizarRoles.js";
 import {
   registrarAsistente,
   login,
@@ -12,8 +13,9 @@ import { verifyToken } from "../middlewares/VerifyToken.js";
 export const AuthRoutes = (app) => {
   const version = process.env.VERSION || "v1";
 
-  // Rutas públicas de autenticación
-  app.post(`/${version}/auth/registro`, registrarAsistente);
+  // El registro de cuentas existentes solo puede completarlo Administración.
+  // Login y logout son públicos (logout es idempotente).
+  app.post(`/${version}/auth/registro`, verifyToken, autorizarRoles("Admin"), registrarAsistente);
   app.post(`/${version}/auth/login`, login);
   app.post(`/${version}/auth/logout`, logout);
 

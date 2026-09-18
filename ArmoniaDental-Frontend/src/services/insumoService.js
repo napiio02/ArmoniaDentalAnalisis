@@ -1,5 +1,5 @@
 
-import axios from "axios";
+import { http as axios } from "./apiClient";
 
 const BASE_URL = "https://armoniadentalbackend.onrender.com/v1/insumos";
 

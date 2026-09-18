@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiClient";
 const VERSION = "v1";
 
 const API_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/pacientes`;
@@ -12,7 +13,7 @@ function getAuthHeaders() {
 }
 
 export async function obtenerPacientesConExpediente() {
-	const response = await fetch(API_URL, {
+	const response = await apiFetch(API_URL, {
 		method: "GET",
 		headers: getAuthHeaders(),
 		credentials: "include",
@@ -28,7 +29,7 @@ export async function obtenerPacientesConExpediente() {
 }
 
 export async function crearPaciente(datos) {
-  const response = await fetch(API_URL, {
+  const response = await apiFetch(API_URL, {
     method: "POST",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -45,7 +46,7 @@ export async function crearPaciente(datos) {
 }
 
 export async function obtenerPacientePorId(id) {
-  const response = await fetch(`${API_URL}/${id}`, {
+  const response = await apiFetch(`${API_URL}/${id}`, {
     method: "GET",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -61,7 +62,7 @@ export async function obtenerPacientePorId(id) {
 }
 
 export async function actualizarPaciente(id, datos) {
-  const response = await fetch(`${API_URL}/${id}`, {
+  const response = await apiFetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -80,7 +81,7 @@ export async function actualizarPaciente(id, datos) {
 
 
 export async function crearHistoriaClinica(pacienteId, datos) {
-  const response = await fetch(`${API_URL}/${pacienteId}/historia-clinica`, {
+  const response = await apiFetch(`${API_URL}/${pacienteId}/historia-clinica`, {
     method: "POST",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -97,7 +98,7 @@ export async function crearHistoriaClinica(pacienteId, datos) {
 }
 
 export async function obtenerHistoriaClinica(pacienteId) {
-  const response = await fetch(`${API_URL}/${pacienteId}/historia-clinica`, {
+  const response = await apiFetch(`${API_URL}/${pacienteId}/historia-clinica`, {
     method: "GET",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -114,7 +115,7 @@ export async function obtenerHistoriaClinica(pacienteId) {
 
 // Función para Expedientes
 export async function obtenerExpedientesPorPaciente(pacienteId) {
-  const response = await fetch(`${API_URL}/${pacienteId}/expedientes`, {
+  const response = await apiFetch(`${API_URL}/${pacienteId}/expedientes`, {
     method: "GET",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -130,7 +131,7 @@ export async function obtenerExpedientesPorPaciente(pacienteId) {
 }
 
 export async function toggleActivoPaciente(id) {
-  const response = await fetch(`${API_URL}/${id}/status`, {
+  const response = await apiFetch(`${API_URL}/${id}/status`, {
     method: "PATCH",
     headers: getAuthHeaders(),
     credentials: "include",

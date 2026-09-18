@@ -1,8 +1,9 @@
+import { apiFetch } from "./apiClient";
 const VERSION = "v1";
 
 const API_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/citas`;
 const PACIENTES_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/pacientes`;
-const USUARIOS_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/users/list`;
+const USUARIOS_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/personal`;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -23,7 +24,7 @@ async function handleResponse(response) {
 
 export async function getCitas(params = {}) {
   const query = new URLSearchParams(params).toString();
-  const response = await fetch(`${API_URL}${query ? `?${query}` : ""}`, {
+  const response = await apiFetch(`${API_URL}${query ? `?${query}` : ""}`, {
     headers: getAuthHeaders(),
     credentials: "include",
   });
@@ -31,7 +32,7 @@ export async function getCitas(params = {}) {
 }
 
 export async function createCita(datos) {
-  const response = await fetch(API_URL, {
+  const response = await apiFetch(API_URL, {
     method: "POST",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -41,7 +42,7 @@ export async function createCita(datos) {
 }
 
 export async function updateCita(id, datos) {
-  const response = await fetch(`${API_URL}/${id}`, {
+  const response = await apiFetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -51,7 +52,7 @@ export async function updateCita(id, datos) {
 }
 
 export const getDisponibilidad = async (fecha, tipo) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/disponibilidad?fecha=${fecha}&tipo=${encodeURIComponent(tipo)}`,
     {
       headers: getAuthHeaders(),
@@ -69,7 +70,7 @@ export const getDisponibilidad = async (fecha, tipo) => {
 };
 
 export async function cancelarCita(id) {
-  const response = await fetch(`${API_URL}/${id}/cancelar`, {
+  const response = await apiFetch(`${API_URL}/${id}/cancelar`, {
     method: "PATCH",
     headers: getAuthHeaders(),
     credentials: "include",
@@ -79,7 +80,7 @@ export async function cancelarCita(id) {
 
 
 export async function getPacientes() {
-  const response = await fetch(PACIENTES_URL, {
+  const response = await apiFetch(PACIENTES_URL, {
     headers: getAuthHeaders(),
     credentials: "include",
   });
@@ -89,7 +90,7 @@ export async function getPacientes() {
 }
 
 export async function getUsuarios() {
-  const response = await fetch(USUARIOS_URL, {
+  const response = await apiFetch(USUARIOS_URL, {
     headers: getAuthHeaders(),
     credentials: "include",
   });
@@ -99,7 +100,7 @@ export async function getUsuarios() {
 }
 
 export const getCitasAtendidasPorPaciente = async (pacienteId) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `https://armoniadentalbackend.onrender.com/${VERSION}/pacientes/${pacienteId}/citas-atendidas`,
     {
       headers: getAuthHeaders(),

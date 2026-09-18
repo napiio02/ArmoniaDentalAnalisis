@@ -1,6 +1,4 @@
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://armoniadentalbackend.onrender.com/v1";
+import { apiFetch, API_URL } from "./apiClient";
 
 const procesarRespuesta = async (response) => {
   const resultado = await response.json();
@@ -23,7 +21,7 @@ export const listarComprobantes = async (filtros = {}) => {
   if (filtros.busqueda) parametros.set("busqueda", filtros.busqueda);
 
   const query = parametros.toString();
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/comprobantes${query ? `?${query}` : ""}`,
     {
       method: "GET",
@@ -35,7 +33,7 @@ export const listarComprobantes = async (filtros = {}) => {
 };
 
 export const obtenerComprobante = async (id) => {
-  const response = await fetch(`${API_URL}/comprobantes/${id}`, {
+  const response = await apiFetch(`${API_URL}/comprobantes/${id}`, {
     method: "GET",
     credentials: "include",
   });
@@ -44,7 +42,7 @@ export const obtenerComprobante = async (id) => {
 };
 
 export const crearComprobante = async (datos) => {
-  const response = await fetch(`${API_URL}/comprobantes`, {
+  const response = await apiFetch(`${API_URL}/comprobantes`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -63,7 +61,7 @@ export const enviarComprobante = async (
   const body = correoDestino
     ? { correo_destino: correoDestino }
     : {};
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/comprobantes/${id}/enviar`,
     {
       method: "POST",
@@ -82,7 +80,7 @@ export const descargarPdfComprobante = async (
   id,
   numero
 ) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/comprobantes/${id}/pdf`,
     {
       method: "GET",

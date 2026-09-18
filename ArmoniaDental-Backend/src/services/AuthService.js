@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import { crearSesion, revocarSesion, revocarSesionesUsuario } from "./SesionService.js";
 import crypto from "node:crypto";
 
 import Usuario from "../models/Usuario.js";
@@ -44,27 +44,6 @@ const obtenerMinutosExpiracion = () => {
   }
 
   return minutos;
-};
-
-const generarToken = (usuario) => {
-  if (!process.env.JWT_SECRET) {
-    throw crearError(
-      "No se encontró JWT_SECRET en las variables de entorno.",
-      500
-    );
-  }
-
-  return jwt.sign(
-    {
-      userId: usuario._id.toString(),
-      email: usuario.email,
-      rol: usuario.rol_id.nombre,
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: process.env.JWT_EXPIRES_IN || "8h",
-    }
-  );
 };
 
 const construirUsuarioSeguro = (usuario) => {
@@ -231,7 +210,7 @@ export const iniciarSesion = async (data) => {
     );
   }
 
-  if (!usuario.rol_id || !usuario.rol_id.activo) {
+  if (!usuario.rol_id || !usuario.rol_id.activo || !["Admin", "Dentista", "Asistente Dental"].includes(usuario.rol_id.nombre)) {
     throw crearError(
       "El rol asignado al usuario no está disponible.",
       403
@@ -250,16 +229,19 @@ export const iniciarSesion = async (data) => {
     );
   }
 
-  usuario.ultimo_acceso = new Date();
-
-  await usuario.save();
-
-  const token = generarToken(usuario);
-
-  return {
-    token,
-    usuario: construirUsuarioSeguro(usuario),
-  };
+  const sesion = await crearSesion(usuario);
+  // No emitir credenciales si la cuenta cambió mientras se comprobaba la contraseña.
+  try {
+    const resultado = await Usuario.updateOne({ _id: usuario._id, activo: true, estado_cuenta: "Activa",
+      rol_id: usuario.rol_id._id, password_hash: usuario.password_hash,
+      $or: [{ session_version: usuario.session_version ?? 0 }, { session_version: { $exists: false } }],
+    }, { $set: { ultimo_acceso: new Date() } });
+    if (!resultado.matchedCount) throw crearError("La cuenta cambió. Inicie sesión nuevamente.", 401);
+  } catch (error) {
+    await revocarSesion(sesion.sid);
+    throw error;
+  }
+  return { ...sesion, usuario: construirUsuarioSeguro(usuario) };
 };
 
 /*
@@ -432,7 +414,14 @@ export const restablecerPassword = async (data) => {
   usuario.reset_password_token_hash = null;
   usuario.reset_password_expires_at = null;
 
-  await usuario.save();
+  // Actualización atómica: consume el enlace una sola vez y revoca por versión.
+  const resultado = await Usuario.updateOne({ _id: usuario._id, reset_password_token_hash: tokenHash,
+    reset_password_expires_at: { $gt: new Date() }, activo: true, estado_cuenta: "Activa" }, {
+    $set: { password_hash: usuario.password_hash, reset_password_token_hash: null, reset_password_expires_at: null },
+    $inc: { session_version: 1 },
+  });
+  if (!resultado.matchedCount) throw crearError("El enlace de recuperación ya no es válido.");
+  await revocarSesionesUsuario(usuario._id);
 
   return true;
 };

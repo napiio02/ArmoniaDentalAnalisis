@@ -1,3 +1,4 @@
+import { verifyToken } from "../middlewares/VerifyToken.js";
 import { uploadDocumento } from "../middlewares/uploadMiddleware.js";
 import {
   subirDocumento,
@@ -12,11 +13,11 @@ import { descargarDocumentoAnotado } from "../controllers/DocumentoExpedienteCon
 export const DocumentosExpedienteRoutes = (app) => {
   const version = process.env.VERSION || "v1";
 
-  app.post(`/${version}/expedientes/:id/documentos`, uploadDocumento.single("archivo"), subirDocumento);
-  app.get(`/${version}/expedientes/:id/documentos`, obtenerDocumentosPorExpediente);
-  app.get(`/${version}/documentos/:id/descargar`, descargarDocumento);
-  app.get(`/${version}/documentos/:id/ver`, verDocumento);
-  app.patch(`/${version}/documentos/:id/anotaciones`, guardarAnotaciones);
-  app.delete(`/${version}/documentos/:id`, eliminarDocumento);
-  app.post(`/${version}/documentos/:id/descargar-anotado`, descargarDocumentoAnotado);
+  app.post(`/${version}/expedientes/:id/documentos`, verifyToken, uploadDocumento.single("archivo"), subirDocumento);
+  app.get(`/${version}/expedientes/:id/documentos`, verifyToken, obtenerDocumentosPorExpediente);
+  app.get(`/${version}/documentos/:id/descargar`, verifyToken, descargarDocumento);
+  app.get(`/${version}/documentos/:id/ver`, verifyToken, verDocumento);
+  app.patch(`/${version}/documentos/:id/anotaciones`, verifyToken, guardarAnotaciones);
+  app.delete(`/${version}/documentos/:id`, verifyToken, eliminarDocumento);
+  app.post(`/${version}/documentos/:id/descargar-anotado`, verifyToken, descargarDocumentoAnotado);
 };
