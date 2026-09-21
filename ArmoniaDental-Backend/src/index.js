@@ -20,6 +20,7 @@ import { HistoriaClinicaRoutes } from "./routes/HistoriaClinicaRoutes.js";
 import { MarcaRoutes } from "./routes/MarcaRoutes.js";
 import { ComprobantesRoutes } from "./routes/ComprobantesRoutes.js";
 import { WhatsappRoutes } from "./routes/WhatsappRoutes.js";
+import { ReportesRoutes } from "./routes/ReportesRoutes.js";
 
 dotenv.config();
 
@@ -65,6 +66,7 @@ HistoriaClinicaRoutes(app);
 MarcaRoutes(app);
 ComprobantesRoutes(app);
 WhatsappRoutes(app);
+ReportesRoutes(app);
 
 app.get("/", (req, res) => {
   res.json({

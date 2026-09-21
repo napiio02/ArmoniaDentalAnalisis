@@ -26,6 +26,7 @@ import { HistoriaClinicaRoutes } from "../src/routes/HistoriaClinicaRoutes.js";
 import { OdontogramaRoutes } from "../src/routes/Odontograma/OdontogramaRoutes.js";
 import { MarcaRoutes } from "../src/routes/MarcaRoutes.js";
 import { ComprobantesRoutes } from "../src/routes/ComprobantesRoutes.js";
+import { ReportesRoutes } from "../src/routes/ReportesRoutes.js";
 import { crearSesion } from "../src/services/SesionService.js";
 import { prepararSeguridad } from "../src/services/AdministradorService.js";
 
@@ -138,7 +139,7 @@ test("Seguridad y Administración a través de HTTP", async (t) => {
     app[method](path, ...handlers.slice(0, -1), (req, res) => res.json({ autorizado: true, rol: req.user.rol }));
   }]));
   for (const rutas of [InsumosRoutes, PacientesRoutes, CitasRoutes, DocumentosExpedienteRoutes, ExpedientesRoutes,
-    HistoriaClinicaRoutes, OdontogramaRoutes, ComprobantesRoutes]) rutas(registrar);
+    HistoriaClinicaRoutes, OdontogramaRoutes, ComprobantesRoutes, ReportesRoutes]) rutas(registrar);
   // Marca controllers have additional business permissions; tested separately below.
   MarcaRoutes(app);
   const server = app.listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve));
