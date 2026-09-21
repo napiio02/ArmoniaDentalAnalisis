@@ -200,9 +200,7 @@ const Reportes = () => {
 			doc.setTextColor(63, 72, 78);
 			doc.text(periodoTexto, margenX, cursorY);
 			cursorY += 5;
-			doc.text(`Zona horaria: ${reporte.periodo.zonaHoraria}`, margenX, cursorY);
-			cursorY += 5;
-			doc.text(`Datos generados el ${formatearFechaHora(reporte.generadoEn)}`, margenX, cursorY);
+			doc.text(`Reporte generado el ${formatearFechaHora(reporte.generadoEn)}`, margenX, cursorY);
 			cursorY += 10;
 
 			autoTable(doc, {
@@ -210,9 +208,9 @@ const Reportes = () => {
 				margin: { left: margenX, right: margenX },
 				head: [["Indicador", "Valor"]],
 				body: [
-					["Pacientes nuevos en el período", reporte.pacientes ? String(reporte.pacientes.nuevos) : "Datos no disponibles"],
-					["Total de citas en el período", reporte.citas ? String(reporte.citas.total) : "Datos no disponibles"],
-					["Citas canceladas en el período", reporte.citas ? String(reporte.citas.canceladas) : "Datos no disponibles"],
+					["Pacientes nuevos", reporte.pacientes ? String(reporte.pacientes.nuevos) : "Datos no disponibles"],
+					["Total de citas", reporte.citas ? String(reporte.citas.total) : "Datos no disponibles"],
+					["Citas canceladas", reporte.citas ? String(reporte.citas.canceladas) : "Datos no disponibles"],
 					["Stock crítico al generar el reporte", reporte.stockCritico ? String(reporte.stockCritico.total) : "Datos no disponibles"],
 				],
 				theme: "striped",
@@ -339,7 +337,6 @@ const Reportes = () => {
 
 							<div className="xl:ml-auto text-sm text-[#3f484e]">
 								<p className="font-semibold text-[#151c27]">Del {formatearFechaISO(periodoMostrado.desde)} al {formatearFechaISO(periodoMostrado.fechaFinalInclusiva)}</p>
-								<p className="text-xs mt-1">Zona horaria: {periodoMostrado.zonaHoraria ?? ZONA_HORARIA}</p>
 							</div>
 						</div>
 						{errorFiltro && <p className="text-xs text-[#ba1a1a] mt-3">{errorFiltro}</p>}
@@ -438,7 +435,7 @@ const Reportes = () => {
 
 							<div className="bg-white border border-[#ba1a1a]/20 rounded-xl p-6 shadow-sm">
 								<h3 className="font-semibold text-[#ba1a1a] mb-2 flex items-center gap-2"><span className="material-symbols-outlined text-[20px]">warning</span>Stock crítico al momento de generar el reporte</h3>
-								<p className="text-xs text-[#3f484e] mb-5">Estado del inventario al {formatearFechaHora(reporte.generadoEn)}; no depende del período seleccionado.</p>
+								<p className="text-xs text-[#3f484e] mb-5">Estado del inventario al {formatearFechaHora(reporte.generadoEn)}.</p>
 								{!reporte.stockCritico ? <ErrorSeccion mensaje={reporte.errores.stockCritico} /> : insumosCriticos.length === 0 ? (
 									<p className="text-sm text-[#3f484e]">No hay insumos activos con stock crítico.</p>
 								) : (
