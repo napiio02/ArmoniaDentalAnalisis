@@ -21,9 +21,16 @@ const historialSchema = new mongoose.Schema(
 		registrado_por_id: {
 			type: mongoose.Schema.Types.ObjectId,
 			required: true,
+			ref: "Usuario",
 		},
 		pieza_numero: {
 			type: Number,
+			default: null,
+		},
+		ambito: {
+			type: String,
+			enum: ["pieza", "general"],
+			default: "pieza",
 			required: true,
 		},
 		tipo_evento: {
@@ -57,7 +64,7 @@ const historialSchema = new mongoose.Schema(
 			type: String,
 			default: "",
 			trim: true,
-			maxlength: 1500,
+			maxlength: 2000,
 		},
 		activo: {
 			type: Boolean,

@@ -1,147 +1,129 @@
 import {
-  obtenerOdontogramaPorPacienteService,
+  obtenerOdontogramasPorPacienteService,
+  obtenerAccionesOdontogramaService,
   guardarOdontogramaService,
   obtenerHistorialOdontogramaService,
 } from "../../services/Odontograma/OdontogramaService.js";
 
 function responderError(res, error, mensajeDefault) {
   console.error(mensajeDefault, error);
-
   return res.status(error.statusCode || 500).json({
     ok: false,
+    code: error.code || "ODONTOGRAM_ERROR",
     message: error.message || mensajeDefault,
     data: null,
   });
 }
 
-function convertirPiezasParaCliente(piezas = []) {
-  const teeth = {};
+function convertirHistorial(historial = []) {
+  return historial.map((item) => ({
+    _id: item._id,
+    fecha: item.createdAt,
+    tipo: item.tipo_evento,
+    detalle: item.detalle,
+    accion_codigo: item.accion_codigo || "",
+    accion_nombre: item.accion_nombre || "",
+    area: item.area || "",
+    observacion: item.observacion || "",
+    ambito: item.ambito || "pieza",
+    pieza_numero: item.pieza_numero ?? null,
+    usuario: item.registrado_por_id?.nombre || "Usuario no disponible",
+  }));
+}
 
-  for (const pieza of piezas) {
+function convertirOdontograma(odontograma) {
+  if (!odontograma) return null;
+  const historial = convertirHistorial(odontograma.historial || []);
+  const historialPorPieza = new Map();
+  for (const item of historial) {
+    if (item.ambito === "general" || item.pieza_numero == null) continue;
+    const lista = historialPorPieza.get(item.pieza_numero) || [];
+    lista.push(item);
+    historialPorPieza.set(item.pieza_numero, lista);
+  }
+  const teeth = {};
+  for (const pieza of odontograma.piezas || []) {
     teeth[pieza.numero] = {
       marks: pieza.marks || [],
       observacion: pieza.observacion || "",
-      historial: [],
+      historial: historialPorPieza.get(pieza.numero) || [],
     };
   }
-
-  return teeth;
-}
-
-function unirHistorialConPiezas(piezas = [], historial = []) {
-  const teeth = convertirPiezasParaCliente(piezas);
-
-  const historialPorPieza = historial.reduce((acc, item) => {
-    const numero = item.pieza_numero;
-
-    if (!acc[numero]) acc[numero] = [];
-
-    acc[numero].push({
-      fecha: item.createdAt,
-      tipo: item.tipo_evento,
-      detalle: item.detalle,
-      accion_codigo: item.accion_codigo || "",
-      accion_nombre: item.accion_nombre || "",
-      area: item.area || "",
-      observacion: item.observacion || "",
-    });
-
-    return acc;
-  }, {});
-
-  for (const numero of Object.keys(teeth)) {
-    teeth[numero].historial = historialPorPieza[numero] || [];
-  }
-
-  return teeth;
+  return {
+    _id: odontograma._id,
+    paciente_id: odontograma.paciente_id,
+    expediente_id: odontograma.expediente_id,
+    dentadura: odontograma.dentadura,
+    notas_generales: odontograma.notas_generales || "",
+    teeth,
+    historial,
+    historial_general: historial.filter((item) => item.ambito === "general"),
+    version: odontograma.__v,
+    createdAt: odontograma.createdAt,
+    updatedAt: odontograma.updatedAt,
+  };
 }
 
 export async function obtenerOdontogramaPorPaciente(req, res) {
   try {
-    const { pacienteId } = req.params;
-
-    const odontograma = await obtenerOdontogramaPorPacienteService(pacienteId);
-
-    if (!odontograma) {
-      return res.status(200).json({
-        ok: true,
-        message: "El paciente no tiene odontograma registrado.",
-        data: null,
-      });
-    }
-
-    const teeth = unirHistorialConPiezas(
-      odontograma.piezas || [],
-      odontograma.historial || []
+    const resultado = await obtenerOdontogramasPorPacienteService(
+      req.params.pacienteId,
+      req.query.expediente_id,
     );
-
     return res.status(200).json({
       ok: true,
-      message: "Odontograma obtenido correctamente.",
+      message: "Odontogramas obtenidos correctamente.",
       data: {
-        _id: odontograma._id,
-        paciente_id: odontograma.paciente_id,
-        expediente_id: odontograma.expediente_id,
-        paciente: odontograma.paciente || null,
-        dentadura: odontograma.dentadura,
-        notas_generales: odontograma.notas_generales || "",
-        teeth,
-        historial: odontograma.historial || [],
-        createdAt: odontograma.createdAt,
-        updatedAt: odontograma.updatedAt,
+        paciente: resultado.paciente,
+        expediente_id: resultado.expediente_id,
+        odontogramas: {
+          permanente: convertirOdontograma(resultado.odontogramas.permanente),
+          temporal: convertirOdontograma(resultado.odontogramas.temporal),
+        },
       },
     });
   } catch (error) {
-    return responderError(
-      res,
-      error,
-      "Ocurrió un error al obtener el odontograma."
-    );
+    return responderError(res, error, "Ocurrió un error al obtener el odontograma.");
+  }
+}
+
+export async function obtenerAccionesOdontograma(req, res) {
+  try {
+    return res.status(200).json({
+      ok: true,
+      message: "Acciones del odontograma obtenidas correctamente.",
+      data: await obtenerAccionesOdontogramaService(),
+    });
+  } catch (error) {
+    return responderError(res, error, "Ocurrió un error al obtener las acciones del odontograma.");
   }
 }
 
 export async function guardarOdontograma(req, res) {
   try {
-
-    const payload = {
+    const odontograma = await guardarOdontogramaService({
       ...req.body,
-
-      // La identidad proviene exclusivamente de la sesión autenticada.
       usuario_id: req.user._id,
-    };
-
-    const odontograma = await guardarOdontogramaService(payload);
-
+    });
     return res.status(200).json({
       ok: true,
       message: "Odontograma guardado correctamente.",
-      data: odontograma,
+      data: convertirOdontograma(odontograma),
     });
   } catch (error) {
-    return responderError(
-      res,
-      error,
-      "Ocurrió un error al guardar el odontograma."
-    );
+    return responderError(res, error, "Ocurrió un error al guardar el odontograma.");
   }
 }
 
 export async function obtenerHistorialOdontograma(req, res) {
   try {
-    const { odontogramaId } = req.params;
-
-    const historial = await obtenerHistorialOdontogramaService(odontogramaId);
-
+    const historial = await obtenerHistorialOdontogramaService(req.params.odontogramaId);
     return res.status(200).json({
       ok: true,
       message: "Historial obtenido correctamente.",
-      data: historial,
+      data: convertirHistorial(historial),
     });
   } catch (error) {
-    return responderError(
-      res,
-      error,
-      "Ocurrió un error al obtener el historial del odontograma."
-    );
+    return responderError(res, error, "Ocurrió un error al obtener el historial del odontograma.");
   }
 }

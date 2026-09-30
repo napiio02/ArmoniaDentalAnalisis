@@ -74,12 +74,17 @@ const odontogramaSchema = new mongoose.Schema(
 	{
 		timestamps: true,
 		collection: "odontogramas",
+		optimisticConcurrency: true,
 	}
 );
 
 odontogramaSchema.index(
-	{ paciente_id: 1, expediente_id: 1, activo: 1 },
-	{ unique: true, partialFilterExpression: { activo: true } }
+	{ paciente_id: 1, expediente_id: 1, dentadura: 1, activo: 1 },
+	{
+		name: "odontograma_paciente_expediente_dentadura_activo_unique",
+		unique: true,
+		partialFilterExpression: { activo: true },
+	}
 );
 
 const OdontogramaModel = mongoose.model("Odontograma", odontogramaSchema);

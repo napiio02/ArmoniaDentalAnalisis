@@ -81,6 +81,8 @@ export default function ToothSVG({
   onContextMenu,
   onClick,
   small,
+  actionGroups,
+  disabled = false,
 }) {
   const w = small ? 34 : 44;
   const h = small ? 72 : 90;
@@ -90,20 +92,20 @@ export default function ToothSVG({
   const isMolar = position >= 6 || (isTemporary && position >= 4);
   const sprite = TOOTH_SPRITES[resolveSpriteKey(num)];
 
-  const ausente = getWholeAction(marks, ["ausente"]);
-  const implante = getWholeAction(marks, ["implante"]);
-  const endodoncia = getWholeAction(marks, ["endodoncia"]);
-  const restoRadicular = getWholeAction(marks, ["resto_radicular"]);
-  const exodoncia = getWholeAction(marks, ["indicada_exodoncia"]);
-  const brackets = getWholeAction(marks, ["brackets"]);
-  const sellante = getWholeAction(marks, ["sellante"]);
+  const ausente = getWholeAction(marks, ["ausente"], actionGroups);
+  const implante = getWholeAction(marks, ["implante"], actionGroups);
+  const endodoncia = getWholeAction(marks, ["endodoncia"], actionGroups);
+  const restoRadicular = getWholeAction(marks, ["resto_radicular"], actionGroups);
+  const exodoncia = getWholeAction(marks, ["indicada_exodoncia"], actionGroups);
+  const brackets = getWholeAction(marks, ["brackets"], actionGroups);
+  const sellante = getWholeAction(marks, ["sellante"], actionGroups);
 
   const corona =
     getWholeAction(marks, [
       "corona_metal_porcelana",
       "corona_libre_metal",
       "corona_acero_cromado",
-    ]) || null;
+    ], actionGroups) || null;
 
   const fractureMarks = marks.filter(
     (mark) => mark.actionId === "fractura_coronal",
@@ -123,14 +125,26 @@ export default function ToothSVG({
       width={w}
       height={h}
       viewBox="0 0 48 96"
-      role="img"
+
+      role="button"
+	  tabIndex={disabled ? -1 : 0}
       aria-label={`Pieza dental ${num}`}
-      onContextMenu={(event) => onContextMenu?.(event, num)}
+	  aria-disabled={disabled}
+	  onContextMenu={(event) => {
+		event.preventDefault();
+		if (!disabled) onContextMenu?.(event, num);
+	  }}
       onClick={(event) => {
         event.stopPropagation();
-        onClick?.(event, num);
+		if (!disabled) onClick?.(event, num);
       }}
-      className="cursor-pointer block select-none"
+	  onKeyDown={(event) => {
+		if (!disabled && ["Enter", " "].includes(event.key)) {
+		  event.preventDefault();
+		  onClick?.(event, num);
+		}
+	  }}
+	  className={`${disabled ? "cursor-not-allowed" : "cursor-pointer"} block select-none`}
       style={{ overflow: "visible" }}
     >
       <defs>

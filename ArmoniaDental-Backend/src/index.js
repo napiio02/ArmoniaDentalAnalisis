@@ -1,5 +1,6 @@
 import { capturarCuerpoWebhook } from "./middlewares/VerifyWebhook.js";
 import { prepararSeguridad } from "./services/AdministradorService.js";
+import { prepararOdontograma } from "./services/Odontograma/OdontogramaSetupService.js";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
@@ -78,6 +79,7 @@ app.get("/", (req, res) => {
 try {
   await connectDB();
   await prepararSeguridad();
+  await prepararOdontograma();
   app.listen(port, () => console.log(`Server started on port ${port}`));
 } catch (error) {
   console.error("Error iniciando el servidor:", error.message);

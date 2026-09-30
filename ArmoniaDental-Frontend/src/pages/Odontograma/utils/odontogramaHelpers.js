@@ -25,8 +25,8 @@ export function buildBlankTeeth() {
 	return Object.fromEntries(ALL_NUMS.map((n) => [n, blankTooth()]));
 }
 
-export function getActionById(id) {
-	for (const group of CONTEXT_ACTIONS) {
+export function getActionById(id, actionGroups = CONTEXT_ACTIONS) {
+	for (const group of actionGroups) {
 		const match = group.items.find((item) => item.id === id);
 		if (match) return match;
 	}
@@ -53,11 +53,11 @@ export function normalizeText(value = "") {
 		.trim();
 }
 
-export function getTopLabels(marks = []) {
+export function getTopLabels(marks = [], actionGroups = CONTEXT_ACTIONS) {
 	const seen = new Set();
 
 	return marks
-		.map((mark) => getActionById(mark.actionId))
+		.map((mark) => getActionById(mark.actionId, actionGroups))
 		.filter(Boolean)
 		.filter((action) => ["label", "whole"].includes(action.type))
 		.filter((action) => {
@@ -73,20 +73,20 @@ export function getTopLabels(marks = []) {
 		.slice(0, 3);
 }
 
-export function getFaceColor(marks = [], face) {
+export function getFaceColor(marks = [], face, actionGroups = CONTEXT_ACTIONS) {
 	const mark = marks.find((m) => m.area === face);
 
 	if (!mark) return null;
 
-	const action = getActionById(mark.actionId);
+	const action = getActionById(mark.actionId, actionGroups);
 
 	return action?.color || null;
 }
 
-export function getWholeAction(marks = [], ids = []) {
+export function getWholeAction(marks = [], ids = [], actionGroups = CONTEXT_ACTIONS) {
 	const found = marks.find((mark) => ids.includes(mark.actionId));
 
-	return found ? getActionById(found.actionId) : null;
+	return found ? getActionById(found.actionId, actionGroups) : null;
 }
 
 export function formatNow() {
@@ -105,7 +105,9 @@ export function formatISODate() {
 	return new Date().toISOString();
 }
 
-export function getExclusiveGroup(actionId) {
+export function getExclusiveGroup(actionId, actionGroups = CONTEXT_ACTIONS) {
+	const action = getActionById(actionId, actionGroups);
+	if (action?.exclusiveGroup) return action.exclusiveGroup;
 	if (
 		[
 			"ausente",
@@ -150,6 +152,12 @@ export function buildPatientOptions(pacientes = []) {
 			correo: p.correo || "",
 			telefono: p.telefono || "",
 		}));
+}
+
+export function getToothNumbers(dentadura) {
+	return dentadura === "temporal"
+		? [...TEMP_SD, ...TEMP_SI, ...TEMP_II, ...TEMP_ID]
+		: [...SUP_DER, ...SUP_IZQ, ...INF_IZQ, ...INF_DER];
 }
 
 /* =========================================================
@@ -270,12 +278,9 @@ export function buildOdontogramaPayload({
 	dentadura,
 	teeth,
 	notasGenerales,
-	pendingEvents,
+	version,
 }) {
-	const numerosPiezas =
-		dentadura === "temporal"
-			? [...TEMP_SD, ...TEMP_SI, ...TEMP_II, ...TEMP_ID]
-			: [...SUP_DER, ...SUP_IZQ, ...INF_IZQ, ...INF_DER];
+	const numerosPiezas = getToothNumbers(dentadura);
 
 	return {
 		paciente_id: pacienteId,
@@ -291,6 +296,6 @@ export function buildOdontogramaPayload({
 			};
 		}),
 		notas_generales: notasGenerales || "",
-		eventos: pendingEvents || [],
+		version: version ?? null,
 	};
 }

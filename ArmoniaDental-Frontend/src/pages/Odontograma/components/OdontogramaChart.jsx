@@ -21,7 +21,7 @@ import {
 /* =========================================================
    CÍRCULO DE CARAS
 ========================================================= */
-function ObtCircle({ num, tooth, onFaceClick, small }) {
+function ObtCircle({ num, tooth, onFaceClick, small, actionGroups, disabled, isSelected }) {
 	const size = small ? 30 : 40;
 	const clipId = `odontograma-face-clip-${num}`;
 	const marks = tooth?.marks || [];
@@ -64,7 +64,7 @@ function ObtCircle({ num, tooth, onFaceClick, small }) {
 			 * onFaceClick. Únicamente cambia la presentación visual.
 			 */}
 			{Object.entries(CIRCLE_FACES).map(([face, path]) => {
-				const color = getFaceColor(marks, face);
+				const color = getFaceColor(marks, face, actionGroups);
 
 				return (
 					<path
@@ -72,11 +72,20 @@ function ObtCircle({ num, tooth, onFaceClick, small }) {
 						d={path}
 						fill={color || "#ffffff"}
 						clipPath={`url(#${clipId})`}
+						role="button"
+						tabIndex={disabled ? -1 : 0}
+						aria-label={`Cara ${face} de la pieza ${num}`}
 						onClick={(event) => {
 							event.stopPropagation();
-							onFaceClick?.(num, face);
+							if (!disabled) onFaceClick?.(num, face);
 						}}
-						className="cursor-pointer transition-opacity duration-150 hover:opacity-80"
+						onKeyDown={(event) => {
+							if (!disabled && ["Enter", " "].includes(event.key)) {
+								event.preventDefault();
+								onFaceClick?.(num, face);
+							}
+						}}
+						className={`${disabled ? "cursor-not-allowed" : "cursor-pointer"} transition-opacity duration-150 hover:opacity-80`}
 					/>
 				);
 			})}
@@ -108,6 +117,7 @@ function ObtCircle({ num, tooth, onFaceClick, small }) {
 				vectorEffect="non-scaling-stroke"
 				pointerEvents="none"
 			/>
+			{isSelected && <circle cx="20" cy="20" r="20" fill="none" stroke="#0284c7" strokeWidth="2" pointerEvents="none" />}
 		</svg>
 	);
 }
@@ -124,8 +134,10 @@ function ToothCol({
 	onContextMenu,
 	small,
 	isSelected,
+	actionGroups,
+	disabled,
 }) {
-	const labels = getTopLabels(tooth.marks);
+	const labels = getTopLabels(tooth.marks, actionGroups);
 
 	return (
 		<div className="flex flex-col items-center" style={{ gap: 2 }}>
@@ -162,6 +174,8 @@ function ToothCol({
 						onContextMenu={onContextMenu}
 						onClick={onToothClick}
 						small={small}
+						actionGroups={actionGroups}
+						disabled={disabled}
 					/>
 				</div>
 			)}
@@ -171,6 +185,9 @@ function ToothCol({
 				tooth={tooth}
 				onFaceClick={onFaceClick}
 				small={small}
+				actionGroups={actionGroups}
+				disabled={disabled}
+				isSelected={isSelected}
 			/>
 
 			{!upper && (
@@ -186,6 +203,8 @@ function ToothCol({
 						onContextMenu={onContextMenu}
 						onClick={onToothClick}
 						small={small}
+						actionGroups={actionGroups}
+						disabled={disabled}
 					/>
 				</div>
 			)}
@@ -213,6 +232,8 @@ export default function OdontogramaChart({
 	onToothClick,
 	onFaceClick,
 	onContextMenu,
+	actionGroups,
+	disabled = false,
 }) {
 	const isPerm = dentadura === "permanente";
 
@@ -229,6 +250,8 @@ export default function OdontogramaChart({
 					onContextMenu={onContextMenu}
 					small={small}
 					isSelected={selectedTooth === n}
+					actionGroups={actionGroups}
+					disabled={disabled}
 				/>
 			))}
 		</div>
@@ -259,7 +282,7 @@ export default function OdontogramaChart({
 				)}
 			</div>
 
-			<div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 min-w-[920px]">
+			<div className={`relative bg-white border border-gray-200 rounded-2xl shadow-sm p-5 min-w-[920px] ${disabled ? "opacity-70" : ""}`} aria-busy={disabled}>
 				<div className="mb-4">
 					<h1 className="text-xl font-bold text-gray-800">
 						Odontograma clínico

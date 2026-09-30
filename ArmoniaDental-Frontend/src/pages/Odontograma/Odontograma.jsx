@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useBlocker } from "react-router";
 import { obtenerPacientesConExpediente } from "../../services/pacienteService";
 import ModalConfirmarEliminar from "../../components/ModalConfirmarEliminar";
 import OdontogramaChart from "./components/OdontogramaChart";
@@ -18,7 +18,6 @@ import {
   ShieldPlus,
 } from "lucide-react";
 import {
-  CONTEXT_ACTIONS,
   FACE_ACTION_IDS,
   MAIN_LEGEND,
 } from "./data/odontogramaConstants";
@@ -30,14 +29,12 @@ import {
   getExclusiveGroup,
   markEquals,
   buildPatientOptions,
-  buildRegisterEvent,
-  buildRemoveEvent,
-  buildClearToothEvent,
-  buildObservationEvent,
+  getToothNumbers,
   buildOdontogramaPayload,
 } from "./utils/odontogramaHelpers";
 import {
   guardarOdontograma,
+  obtenerAccionesOdontograma,
   obtenerOdontogramaPorPaciente,
 } from "../../services/odontogramaService";
 
@@ -161,7 +158,7 @@ function PatientAutocomplete({
 }
 
 /* ── ContextMenu ─────────────────────────────────────────── */
-function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
+function ContextMenu({ open, x, y, toothNumber, actionGroups, onClose, onSelectAction, onClearTooth, disabled }) {
   if (!open) return null;
   return (
     <>
@@ -172,7 +169,7 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
       >
         <div className="flex items-center justify-between px-4 py-3 border-b bg-[#f0f3ff]">
           <p className="text-sm font-semibold text-[#151c27]">
-            Registrar en pieza
+            Registrar en pieza {toothNumber}
           </p>
           <button
             onClick={onClose}
@@ -183,7 +180,7 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
           </button>
         </div>
         <div className="max-h-[440px] overflow-y-auto">
-          {CONTEXT_ACTIONS.map((group) => (
+          {actionGroups.map((group) => (
             <div key={group.group} className="p-3 border-b last:border-b-0">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#3f484e] mb-2">
                 {group.group}
@@ -194,6 +191,7 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
                     key={item.id}
                     type="button"
                     onClick={() => onSelectAction(item)}
+                    disabled={disabled}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-left hover:bg-[#f0f3ff] transition"
                   >
                     <span
@@ -220,6 +218,7 @@ function ContextMenu({ open, x, y, onClose, onSelectAction, onClearTooth }) {
           <button
             type="button"
             onClick={onClearTooth}
+            disabled={disabled}
             className="w-full py-2 text-xs font-semibold border border-[#bec8ce] rounded-full text-[#3f484e] hover:bg-[#dce2f3] transition"
           >
             Limpiar pieza completa
@@ -237,6 +236,7 @@ function ObservationModal({
   initialValue,
   onClose,
   onSave,
+  disabled,
 }) {
   const [value, setValue] = useState(initialValue || "");
   useEffect(() => {
@@ -264,6 +264,8 @@ function ObservationModal({
               className="w-full h-36 text-sm px-4 py-3 border border-[#bec8ce] rounded-xl focus:outline-none focus:border-[#006686] resize-none bg-white text-[#151c27]"
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              maxLength={1000}
+              disabled={disabled}
               placeholder="Escribe una observación clínica complementaria..."
             />
           </div>
@@ -276,6 +278,7 @@ function ObservationModal({
             </button>
             <button
               onClick={() => onSave(value)}
+              disabled={disabled}
               className="px-6 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition"
             >
               Guardar observación
@@ -288,7 +291,7 @@ function ObservationModal({
 }
 
 /* ── ToothMenu ───────────────────────────────────────────── */
-function ToothMenu({ open, x, y, onClose, onViewInfo, onOpenActions }) {
+function ToothMenu({ open, x, y, toothNumber, onClose, onViewInfo, onOpenActions, disabled }) {
   if (!open) return null;
   return (
     <>
@@ -299,13 +302,14 @@ function ToothMenu({ open, x, y, onClose, onViewInfo, onOpenActions }) {
       >
         <div className="px-4 py-3 border-b bg-[#f0f3ff]">
           <p className="text-sm font-semibold text-[#151c27]">
-            Opciones de pieza
+            Opciones de pieza {toothNumber}
           </p>
         </div>
         <div className="p-2">
           <button
             type="button"
             onClick={onViewInfo}
+            disabled={disabled}
             className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#151c27] hover:bg-[#f0f3ff] transition"
           >
             Ver info
@@ -313,6 +317,7 @@ function ToothMenu({ open, x, y, onClose, onViewInfo, onOpenActions }) {
           <button
             type="button"
             onClick={onOpenActions}
+            disabled={disabled}
             className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#151c27] hover:bg-[#f0f3ff] transition"
           >
             Acciones en pieza
@@ -337,9 +342,14 @@ export default function Odontograma() {
   const [guardando, setGuardando] = useState(false);
   const [cargandoOdontograma, setCargandoOdontograma] = useState(false);
   const [errorOdontograma, setErrorOdontograma] = useState("");
-  const [notasGenerales, setNotasGenerales] = useState("");
-  const [pendingEvents, setPendingEvents] = useState([]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [cargaOdontogramaFallida, setCargaOdontogramaFallida] = useState(false);
+  const [documentos, setDocumentos] = useState({ permanente: null, temporal: null });
+  const [notasPorDenticion, setNotasPorDenticion] = useState({ permanente: "", temporal: "" });
+  const [conteosCambios, setConteosCambios] = useState({ permanente: 0, temporal: 0 });
+  const [actionGroups, setActionGroups] = useState([]);
+  const [cargandoAcciones, setCargandoAcciones] = useState(true);
+  const [errorAcciones, setErrorAcciones] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [contextMenu, setContextMenu] = useState({
     open: false,
     x: 0,
@@ -359,6 +369,47 @@ export default function Odontograma() {
   });
   const [confirmacionPendiente, setConfirmacionPendiente] = useState(null);
   const pageRef = useRef(null);
+  const cargaIdRef = useRef(0);
+  const guardandoRef = useRef(false);
+
+  const cambiosReales = useMemo(() => {
+    const resultado = {};
+    for (const tipo of ["permanente", "temporal"]) {
+      const actuales = getToothNumbers(tipo).map((numero) => ({
+        numero,
+        marks: teeth[numero]?.marks || [],
+        observacion: teeth[numero]?.observacion || "",
+      }));
+      const guardados = getToothNumbers(tipo).map((numero) => ({
+        numero,
+        marks: documentos[tipo]?.teeth?.[numero]?.marks || [],
+        observacion: documentos[tipo]?.teeth?.[numero]?.observacion || "",
+      }));
+      resultado[tipo] = JSON.stringify(actuales) !== JSON.stringify(guardados)
+        || notasPorDenticion[tipo] !== (documentos[tipo]?.notas_generales || "");
+    }
+    return resultado;
+  }, [documentos, notasPorDenticion, teeth]);
+  const hasUnsavedChanges = cambiosReales.permanente || cambiosReales.temporal;
+  const pendingCount = conteosCambios.permanente + conteosCambios.temporal;
+  const notasGenerales = notasPorDenticion[dentadura];
+  const edicionBloqueada = !pacienteId || cargandoOdontograma || cargandoAcciones || guardando
+    || cargaOdontogramaFallida || Boolean(errorAcciones);
+  const blocker = useBlocker(({ nextLocation }) => (
+    hasUnsavedChanges && !guardando && nextLocation.pathname !== "/login"
+  ));
+
+  useEffect(() => {
+    setConteosCambios((prev) => {
+      const siguiente = {
+        permanente: cambiosReales.permanente ? prev.permanente : 0,
+        temporal: cambiosReales.temporal ? prev.temporal : 0,
+      };
+      return siguiente.permanente === prev.permanente && siguiente.temporal === prev.temporal
+        ? prev
+        : siguiente;
+    });
+  }, [cambiosReales.permanente, cambiosReales.temporal]);
 
   const patientOptions = useMemo(
     () => buildPatientOptions(pacientes),
@@ -385,10 +436,42 @@ export default function Odontograma() {
     cargarPacientes();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    async function cargarAcciones() {
+      try {
+        setCargandoAcciones(true);
+        setErrorAcciones("");
+        const respuesta = await obtenerAccionesOdontograma({ signal: controller.signal });
+        setActionGroups(respuesta.data || []);
+      } catch (error) {
+        if (error.name !== "AbortError") setErrorAcciones(error.message);
+      } finally {
+        if (!controller.signal.aborted) setCargandoAcciones(false);
+      }
+    }
+    cargarAcciones();
+    return () => controller.abort();
+  }, [reloadKey]);
+
+  useEffect(() => {
+    const prevenirCierre = (event) => {
+      if (!hasUnsavedChanges) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", prevenirCierre);
+    return () => window.removeEventListener("beforeunload", prevenirCierre);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (blocker.state === "blocked") setConfirmacionPendiente({ tipo: "salir" });
+  }, [blocker.state]);
+
   const selectedToothData = selectedTooth ? teeth[selectedTooth] : null;
   const currentFaceAction = useMemo(
-    () => getActionById(faceActionId),
-    [faceActionId],
+    () => getActionById(faceActionId, actionGroups),
+    [faceActionId, actionGroups],
   );
 
   const visibleTeeth = useMemo(() => {
@@ -407,7 +490,7 @@ export default function Odontograma() {
       filtered[numero] = {
         ...tooth,
         marks: marks.filter((mark) => {
-          const action = getActionById(mark.actionId);
+          const action = getActionById(mark.actionId, actionGroups);
           if (!action) return false;
           if (["whole", "label"].includes(action.type)) return true;
           return mark.actionId === faceActionId;
@@ -415,25 +498,17 @@ export default function Odontograma() {
       };
     }
     return filtered;
-  }, [teeth, faceActionId]);
+  }, [teeth, faceActionId, actionGroups]);
 
   const selectedMarks = useMemo(() => {
     if (!selectedToothData?.marks?.length) return [];
     return selectedToothData.marks
       .map((mark, index) => {
-        const action = getActionById(mark.actionId);
+        const action = getActionById(mark.actionId, actionGroups);
         return { ...mark, index, action };
       })
       .filter((item) => item.action);
-  }, [selectedToothData]);
-
-  const selectedPendingEvents = useMemo(() => {
-    if (!selectedTooth) return [];
-    return pendingEvents
-      .filter((e) => e.pieza_numero === Number(selectedTooth))
-      .slice()
-      .reverse();
-  }, [pendingEvents, selectedTooth]);
+  }, [selectedToothData, actionGroups]);
 
   const selectedSavedHistory = useMemo(() => {
     if (!selectedToothData?.historial?.length) return [];
@@ -446,32 +521,56 @@ export default function Odontograma() {
   }, [selectedPatient]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const cargaId = ++cargaIdRef.current;
     async function cargarOdontogramaPaciente() {
       setTeeth(buildBlankTeeth());
       setSelectedTooth(null);
-      setNotasGenerales("");
-      setDentadura("permanente");
-      setPendingEvents([]);
-      setHasUnsavedChanges(false);
+      setDocumentos({ permanente: null, temporal: null });
+      setNotasPorDenticion({ permanente: "", temporal: "" });
+      setConteosCambios({ permanente: 0, temporal: 0 });
+      setFaceActionId("");
       setErrorOdontograma("");
-      if (!pacienteId) return;
+      setCargaOdontogramaFallida(false);
+      setContextMenu({ open: false, x: 0, y: 0, toothNumber: null });
+      setToothMenu({ open: false, x: 0, y: 0, toothNumber: null });
+      setObservationModal({ open: false, toothNumber: null });
+      if (!pacienteId || !selectedPatient?.expediente_id) return;
       try {
         setCargandoOdontograma(true);
-        const respuesta = await obtenerOdontogramaPorPaciente(pacienteId);
-        const odontograma = respuesta?.data;
-        if (!odontograma) return;
-        setDentadura(odontograma.dentadura || "permanente");
-        setNotasGenerales(odontograma.notas_generales || "");
-        if (odontograma.teeth)
-          setTeeth({ ...buildBlankTeeth(), ...odontograma.teeth });
+        const respuesta = await obtenerOdontogramaPorPaciente(
+          pacienteId,
+          selectedPatient.expediente_id,
+          { signal: controller.signal },
+        );
+        if (controller.signal.aborted || cargaId !== cargaIdRef.current) return;
+        const odontogramas = respuesta?.data?.odontogramas || {};
+        const permanente = odontogramas.permanente || null;
+        const temporal = odontogramas.temporal || null;
+        setDocumentos({ permanente, temporal });
+        setNotasPorDenticion({
+          permanente: permanente?.notas_generales || "",
+          temporal: temporal?.notas_generales || "",
+        });
+        setTeeth({
+          ...buildBlankTeeth(),
+          ...(permanente?.teeth || {}),
+          ...(temporal?.teeth || {}),
+        });
       } catch (error) {
-        setErrorOdontograma(error.message);
+        if (error.name !== "AbortError" && cargaId === cargaIdRef.current) {
+          setErrorOdontograma(error.message);
+          setCargaOdontogramaFallida(true);
+        }
       } finally {
-        setCargandoOdontograma(false);
+        if (!controller.signal.aborted && cargaId === cargaIdRef.current) {
+          setCargandoOdontograma(false);
+        }
       }
     }
     cargarOdontogramaPaciente();
-  }, [pacienteId]);
+    return () => controller.abort();
+  }, [pacienteId, selectedPatient?.expediente_id, reloadKey]);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -484,9 +583,11 @@ export default function Odontograma() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  function addPendingEvent(event) {
-    setPendingEvents((p) => [...p, event]);
-    setHasUnsavedChanges(true);
+  function registrarCambio(contar = true) {
+    setConteosCambios((prev) => ({
+      ...prev,
+      [dentadura]: contar ? prev[dentadura] + 1 : Math.max(prev[dentadura], 1),
+    }));
   }
 
   function getSafeMenuPosition(clientX, clientY, width = 330, height = 520) {
@@ -505,6 +606,7 @@ export default function Odontograma() {
   function openContextMenu(event, toothNumber) {
     event.preventDefault();
     event.stopPropagation();
+    if (edicionBloqueada) return;
     setSelectedTooth(toothNumber);
     setToothMenu((p) => ({ ...p, open: false }));
     const pos = getSafeMenuPosition(event.clientX, event.clientY, 330, 520);
@@ -526,6 +628,7 @@ export default function Odontograma() {
   }
 
   function selectPatient(patient) {
+    if (guardando) return;
     if (hasUnsavedChanges) {
       setConfirmacionPendiente({ tipo: "cambiar-paciente", patient });
       return;
@@ -534,6 +637,7 @@ export default function Odontograma() {
   }
 
   function handleFaceClick(toothNumber, face) {
+    if (edicionBloqueada) return;
     if (!faceActionId) {
       showToast({
         type: "error",
@@ -543,7 +647,7 @@ export default function Odontograma() {
       });
       return;
     }
-    const action = getActionById(faceActionId);
+    const action = getActionById(faceActionId, actionGroups);
     if (!action) return;
     if (!["faces", "shape"].includes(action.type)) {
       showToast({
@@ -572,10 +676,11 @@ export default function Odontograma() {
       ...prev,
       [toothNumber]: { ...prev[toothNumber], marks: newMarks },
     }));
-    addPendingEvent(buildRegisterEvent(toothNumber, action.id, face));
+    registrarCambio();
   }
 
   function handleSelectAction(action) {
+    if (edicionBloqueada) return;
     const toothNumber = contextMenu.toothNumber;
     if (!toothNumber) return;
     setSelectedTooth(toothNumber);
@@ -589,25 +694,31 @@ export default function Odontograma() {
     const area = action.type === "label" ? "label" : "whole";
     const incomingMark = { actionId: action.id, area };
     if (current.marks.some((mark) => markEquals(mark, incomingMark))) {
+      showToast({
+        type: "warning",
+        title: "Acción duplicada",
+        message: `${action.label} ya está registrada en la pieza ${toothNumber}.`,
+      });
       setContextMenu((p) => ({ ...p, open: false }));
       return;
     }
     let newMarks = [...current.marks];
-    const exclusiveGroup = getExclusiveGroup(action.id);
+    const exclusiveGroup = getExclusiveGroup(action.id, actionGroups);
     if (exclusiveGroup)
       newMarks = newMarks.filter(
-        (mark) => getExclusiveGroup(mark.actionId) !== exclusiveGroup,
+        (mark) => getExclusiveGroup(mark.actionId, actionGroups) !== exclusiveGroup,
       );
     newMarks.push(incomingMark);
     setTeeth((prev) => ({
       ...prev,
       [toothNumber]: { ...prev[toothNumber], marks: newMarks },
     }));
-    addPendingEvent(buildRegisterEvent(toothNumber, action.id, area));
+    registrarCambio();
     setContextMenu((p) => ({ ...p, open: false }));
   }
 
   function handleRemoveMark(toothNumber, markToRemove) {
+    if (edicionBloqueada) return;
     const current = teeth[toothNumber];
     if (!current) return;
     const newMarks = current.marks.filter(
@@ -617,17 +728,18 @@ export default function Odontograma() {
       ...prev,
       [toothNumber]: { ...prev[toothNumber], marks: newMarks },
     }));
-    addPendingEvent(buildRemoveEvent(toothNumber, markToRemove));
+    registrarCambio();
   }
 
   function handleClearTooth(toothNumber) {
+    if (edicionBloqueada) return;
     if (!toothNumber) return;
     const current = teeth[toothNumber];
     setTeeth((prev) => ({
       ...prev,
       [toothNumber]: { ...blankTooth(), historial: current?.historial || [] },
     }));
-    addPendingEvent(buildClearToothEvent(toothNumber));
+    registrarCambio();
     setContextMenu((p) => ({ ...p, open: false }));
     setToothMenu((p) => ({ ...p, open: false }));
   }
@@ -635,6 +747,7 @@ export default function Odontograma() {
 
 
   function handleResetAll() {
+    if (edicionBloqueada) return;
     if (!pacienteId) {
       showToast({
         type: "error",
@@ -659,12 +772,14 @@ export default function Odontograma() {
   }
 
   async function confirmarResetAll() {
-
+    if (guardandoRef.current) return;
+    guardandoRef.current = true;
     const dientesVacios = buildBlankTeeth();
 
     try {
       setGuardando(true);
       setErrorOdontograma("");
+      setCargaOdontogramaFallida(false);
 
       const payload = buildOdontogramaPayload({
         pacienteId,
@@ -672,16 +787,17 @@ export default function Odontograma() {
         dentadura,
         teeth: dientesVacios,
         notasGenerales: "",
-        pendingEvents: [],
+        version: documentos[dentadura]?.version ?? null,
       });
 
-      await guardarOdontograma(payload);
+      const respuesta = await guardarOdontograma(payload);
+      const guardadoServidor = respuesta.data;
 
-      setTeeth(dientesVacios);
+      setTeeth((prev) => ({ ...prev, ...(guardadoServidor.teeth || {}) }));
       setSelectedTooth(null);
-      setNotasGenerales("");
-      setPendingEvents([]);
-      setHasUnsavedChanges(false);
+      setDocumentos((prev) => ({ ...prev, [dentadura]: guardadoServidor }));
+      setNotasPorDenticion((prev) => ({ ...prev, [dentadura]: guardadoServidor.notas_generales || "" }));
+      setConteosCambios((prev) => ({ ...prev, [dentadura]: 0 }));
       setFaceActionId("");
 
       setContextMenu((prev) => ({
@@ -700,6 +816,7 @@ export default function Odontograma() {
         open: false,
         toothNumber: null,
       });
+      setConfirmacionPendiente(null);
 
       showToast({
         type: "success",
@@ -708,7 +825,12 @@ export default function Odontograma() {
           "Los registros y observaciones actuales fueron eliminados correctamente.",
       });
     } catch (error) {
-      setErrorOdontograma(error.message);
+      if (error.code === "ODONTOGRAM_CONFLICT") {
+        setConfirmacionPendiente({ tipo: "conflicto" });
+      } else {
+        setErrorOdontograma(error.message);
+        setConfirmacionPendiente(null);
+      }
 
       showToast({
         type: "error",
@@ -718,13 +840,14 @@ export default function Odontograma() {
           "No se pudo vaciar el odontograma. Inténtalo nuevamente.",
       });
     } finally {
+      guardandoRef.current = false;
       setGuardando(false);
-      setConfirmacionPendiente(null);
     }
   }
 
 
   async function handleSaveGeneral() {
+    if (edicionBloqueada || guardandoRef.current) return;
     if (!pacienteId) {
       showToast({
         type: "error",
@@ -743,6 +866,7 @@ export default function Odontograma() {
       });
       return;
     }
+    guardandoRef.current = true;
     try {
       setGuardando(true);
       setErrorOdontograma("");
@@ -752,31 +876,14 @@ export default function Odontograma() {
         dentadura,
         teeth,
         notasGenerales,
-        pendingEvents,
+        version: documentos[dentadura]?.version ?? null,
       });
       const respuesta = await guardarOdontograma(payload);
-      setTeeth((prev) => {
-        const updated = { ...prev };
-        for (const event of pendingEvents) {
-          const n = event.pieza_numero;
-          if (!updated[n]) continue;
-          updated[n] = {
-            ...updated[n],
-            historial: [
-              {
-                fecha: event.fecha_visual,
-                tipo: event.tipo_evento,
-                detalle: event.detalle,
-                pendiente: false,
-              },
-              ...(updated[n].historial || []),
-            ],
-          };
-        }
-        return updated;
-      });
-      setPendingEvents([]);
-      setHasUnsavedChanges(false);
+      const guardadoServidor = respuesta.data;
+      setTeeth((prev) => ({ ...prev, ...(guardadoServidor.teeth || {}) }));
+      setDocumentos((prev) => ({ ...prev, [dentadura]: guardadoServidor }));
+      setNotasPorDenticion((prev) => ({ ...prev, [dentadura]: guardadoServidor.notas_generales || "" }));
+      setConteosCambios((prev) => ({ ...prev, [dentadura]: 0 }));
       setGuardado(true);
       showToast({
         type: "success",
@@ -785,36 +892,80 @@ export default function Odontograma() {
       });
       setTimeout(() => setGuardado(false), 1800);
     } catch (error) {
-      setErrorOdontograma(error.message);
+      if (error.code === "ODONTOGRAM_CONFLICT") {
+        setConfirmacionPendiente({ tipo: "conflicto" });
+      } else {
+        setErrorOdontograma(error.message);
+      }
       showToast({
         type: "error",
         title: "Error al guardar",
         message: error.message,
       });
     } finally {
+      guardandoRef.current = false;
       setGuardando(false);
     }
   }
 
   function openObservationModal() {
-    if (!selectedTooth) return;
+    if (!selectedTooth || edicionBloqueada) return;
     setObservationModal({ open: true, toothNumber: selectedTooth });
   }
 
   function saveObservation(value) {
+    if (edicionBloqueada) return;
     const toothNumber = observationModal.toothNumber;
     if (!toothNumber) return;
     setTeeth((prev) => ({
       ...prev,
       [toothNumber]: { ...prev[toothNumber], observacion: value },
     }));
-    addPendingEvent(buildObservationEvent(toothNumber, value));
+    registrarCambio();
     setObservationModal({ open: false, toothNumber: null });
   }
 
   function handleNotasGeneralesChange(value) {
-    setNotasGenerales(value);
-    setHasUnsavedChanges(true);
+    if (edicionBloqueada) return;
+    setNotasPorDenticion((prev) => ({ ...prev, [dentadura]: value }));
+    registrarCambio(false);
+  }
+
+  async function recargarDenticionDesdeServidor() {
+    if (!pacienteId || !selectedPatient?.expediente_id) return;
+    try {
+      setCargandoOdontograma(true);
+      const respuesta = await obtenerOdontogramaPorPaciente(pacienteId, selectedPatient.expediente_id);
+      const documento = respuesta?.data?.odontogramas?.[dentadura] || null;
+      const numeros = getToothNumbers(dentadura);
+      setTeeth((prev) => {
+        const siguiente = { ...prev };
+        for (const numero of numeros) siguiente[numero] = blankTooth();
+        return { ...siguiente, ...(documento?.teeth || {}) };
+      });
+      setDocumentos((prev) => ({ ...prev, [dentadura]: documento }));
+      setNotasPorDenticion((prev) => ({ ...prev, [dentadura]: documento?.notas_generales || "" }));
+      setConteosCambios((prev) => ({ ...prev, [dentadura]: 0 }));
+      setSelectedTooth(null);
+      setFaceActionId("");
+      setErrorOdontograma("");
+      showToast({ type: "success", title: "Datos actualizados", message: "Se cargó la versión más reciente de esta dentición." });
+    } catch (error) {
+      setErrorOdontograma(error.message);
+    } finally {
+      setCargandoOdontograma(false);
+      setConfirmacionPendiente(null);
+    }
+  }
+
+  function formatHistoryDate(value) {
+    const fecha = new Date(value);
+    if (Number.isNaN(fecha.getTime())) return "Fecha no disponible";
+    return new Intl.DateTimeFormat("es-CR", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "America/Costa_Rica",
+    }).format(fecha);
   }
 
   const showToast = ({ type = "info", title, message }) => {
@@ -929,7 +1080,7 @@ export default function Odontograma() {
             <span className="material-symbols-outlined text-[14px]">
               pending
             </span>
-            {pendingEvents.length} cambio{pendingEvents.length !== 1 ? "s" : ""}{" "}
+            {pendingCount} cambio{pendingCount !== 1 ? "s" : ""}{" "}
             sin guardar
           </span>
         )}
@@ -940,6 +1091,9 @@ export default function Odontograma() {
         open={contextMenu.open}
         x={contextMenu.x}
         y={contextMenu.y}
+        toothNumber={contextMenu.toothNumber}
+        actionGroups={actionGroups}
+        disabled={edicionBloqueada}
         onClose={() => setContextMenu((p) => ({ ...p, open: false }))}
         onSelectAction={handleSelectAction}
         onClearTooth={() => handleClearTooth(contextMenu.toothNumber)}
@@ -949,6 +1103,8 @@ export default function Odontograma() {
         open={toothMenu.open}
         x={toothMenu.x}
         y={toothMenu.y}
+        toothNumber={toothMenu.toothNumber}
+        disabled={edicionBloqueada}
         onClose={() => setToothMenu((p) => ({ ...p, open: false }))}
         onViewInfo={() => {
           setSelectedTooth(toothMenu.toothNumber);
@@ -975,24 +1131,37 @@ export default function Odontograma() {
         }
         onClose={() => setObservationModal({ open: false, toothNumber: null })}
         onSave={saveObservation}
+        disabled={edicionBloqueada}
       />
 
       <ModalConfirmarEliminar
         open={!!confirmacionPendiente}
         titulo={
           confirmacionPendiente?.tipo === "restablecer"
-            ? "Restablecer odontograma"
-            : "Cambiar de paciente"
+            ? "Restablecer dentición"
+            : confirmacionPendiente?.tipo === "conflicto"
+              ? "El odontograma cambió"
+              : confirmacionPendiente?.tipo === "salir"
+                ? "Salir sin guardar"
+                : "Cambiar de paciente"
         }
         mensaje={
           confirmacionPendiente?.tipo === "restablecer"
-            ? "Se eliminarán todos los registros y observaciones actuales de las piezas. ¿Deseas continuar?"
-            : "Tienes cambios pendientes sin guardar. Si cambias de paciente, se perderán. ¿Deseas continuar?"
+            ? "Se eliminarán los registros y observaciones de la dentición actual. La otra dentición se conservará. ¿Deseas continuar?"
+            : confirmacionPendiente?.tipo === "conflicto"
+              ? "Otra sesión modificó esta dentición. Para evitar sobrescribir datos, debes cargar la versión más reciente; los cambios locales de esta dentición se descartarán."
+              : confirmacionPendiente?.tipo === "salir"
+                ? "Tienes cambios pendientes sin guardar. ¿Deseas salir y descartarlos?"
+                : "Tienes cambios pendientes sin guardar. Si cambias de paciente, se perderán. ¿Deseas continuar?"
         }
         textoConfirmar={
           confirmacionPendiente?.tipo === "restablecer"
             ? "Restablecer"
-            : "Cambiar paciente"
+            : confirmacionPendiente?.tipo === "conflicto"
+              ? "Cargar versión reciente"
+              : confirmacionPendiente?.tipo === "salir"
+                ? "Salir"
+                : "Cambiar paciente"
         }
         icono={
           confirmacionPendiente?.tipo === "restablecer"
@@ -1008,12 +1177,26 @@ export default function Odontograma() {
             return;
           }
 
+          if (confirmacionPendiente?.tipo === "conflicto") {
+            recargarDenticionDesdeServidor();
+            return;
+          }
+
+          if (confirmacionPendiente?.tipo === "salir") {
+            setConfirmacionPendiente(null);
+            blocker.proceed();
+            return;
+          }
+
           if (confirmacionPendiente?.patient) {
             aplicarSeleccionPaciente(confirmacionPendiente.patient);
           }
           setConfirmacionPendiente(null);
         }}
-        onCancelar={() => setConfirmacionPendiente(null)}
+        onCancelar={() => {
+          if (confirmacionPendiente?.tipo === "salir" && blocker.state === "blocked") blocker.reset();
+          setConfirmacionPendiente(null);
+        }}
       />
 
       {/* ── Layout ── */}
@@ -1071,16 +1254,20 @@ export default function Odontograma() {
             </div>
             <div className="flex gap-4">
               {["permanente", "temporal"].map((tipo) => (
-                <label
+                <button
+                  type="button"
                   key={tipo}
-                  className="flex items-center gap-2 cursor-pointer"
+                  disabled={guardando || cargandoOdontograma}
+                  onClick={() => {
+                    setDentadura(tipo);
+                    setSelectedTooth(null);
+                    setFaceActionId("");
+                  }}
+                  aria-pressed={dentadura === tipo}
+                  className="flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <div
                     className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${dentadura === tipo ? "border-[#006686]" : "border-[#bec8ce]"}`}
-                    onClick={() => {
-                      setDentadura(tipo);
-                      setHasUnsavedChanges(true);
-                    }}
                   >
                     {dentadura === tipo && (
                       <div className="w-2 h-2 rounded-full bg-[#006686]" />
@@ -1089,7 +1276,7 @@ export default function Odontograma() {
                   <span className="text-sm text-[#151c27] capitalize">
                     {tipo}
                   </span>
-                </label>
+                </button>
               ))}
             </div>
           </div>
@@ -1111,13 +1298,14 @@ export default function Odontograma() {
             </div>
             <div className="grid grid-cols-1 gap-2">
               {FACE_ACTION_IDS.map((id) => {
-                const item = getActionById(id);
+                const item = getActionById(id, actionGroups);
                 if (!item) return null;
                 return (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => setFaceActionId(item.id)}
+                    disabled={edicionBloqueada}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition text-left ${faceActionId === item.id ? "border-[#006686] bg-[#7dd3fc20]" : "border-[#bec8ce] hover:bg-[#f0f3ff]"}`}
                   >
                     <span
@@ -1128,6 +1316,16 @@ export default function Odontograma() {
                   </button>
                 );
               })}
+              {faceActionId && (
+                <button
+                  type="button"
+                  onClick={() => setFaceActionId("")}
+                  disabled={edicionBloqueada}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-[#bec8ce] text-xs font-semibold text-[#3f484e] hover:bg-[#f0f3ff] disabled:opacity-60"
+                >
+                  <X size={14} /> Cancelar acción activa
+                </button>
+              )}
             </div>
           </div>
 
@@ -1166,6 +1364,7 @@ export default function Odontograma() {
                         <button
                           type="button"
                           onClick={() => handleRemoveMark(selectedTooth, item)}
+                          disabled={edicionBloqueada}
                           className="text-[#bec8ce] hover:text-[#ba1a1a] transition"
                         >
                           <X size={14} />
@@ -1182,6 +1381,7 @@ export default function Odontograma() {
                   <button
                     type="button"
                     onClick={openObservationModal}
+                    disabled={edicionBloqueada}
                     className="flex items-center gap-2 px-3 py-2 border border-[#bec8ce] rounded-full text-xs font-semibold text-[#3f484e] hover:bg-[#f0f3ff] transition"
                   >
                     <FileText size={14} />
@@ -1190,6 +1390,7 @@ export default function Odontograma() {
                   <button
                     type="button"
                     onClick={() => handleClearTooth(selectedTooth)}
+                    disabled={edicionBloqueada}
                     className="flex items-center gap-2 px-3 py-2 border border-[#bec8ce] rounded-full text-xs font-semibold text-[#3f484e] hover:bg-[#f0f3ff] transition"
                   >
                     <X size={14} />
@@ -1209,15 +1410,16 @@ export default function Odontograma() {
             <button
               type="button"
               onClick={handleResetAll}
+              disabled={edicionBloqueada}
               className="flex items-center justify-center gap-2 py-2.5 border border-[#bec8ce] rounded-full text-xs font-semibold text-[#3f484e] hover:bg-[#f0f3ff] transition"
             >
               <RotateCcw size={15} />
-              Restablecer todo
+              Restablecer dentición actual
             </button>
             <button
               type="button"
               onClick={handleSaveGeneral}
-              disabled={guardando}
+              disabled={edicionBloqueada || !cambiosReales[dentadura]}
               className="flex items-center justify-center gap-2 py-2.5 bg-[#006686] text-white rounded-full text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
             >
               <Save size={15} />
@@ -1238,8 +1440,32 @@ export default function Odontograma() {
             </div>
           )}
           {errorOdontograma && (
-            <div className="mb-4 rounded-xl border border-[#ba1a1a]/20 bg-[#ffdad6]/40 px-4 py-3 text-sm text-[#ba1a1a]">
-              {errorOdontograma}
+            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-[#ba1a1a]/20 bg-[#ffdad6]/40 px-4 py-3 text-sm text-[#ba1a1a]">
+              <span>{errorOdontograma}</span>
+              <button type="button" className="font-semibold underline" onClick={() => {
+                setErrorOdontograma("");
+                if (cargaOdontogramaFallida) setReloadKey((value) => value + 1);
+              }}>
+                {cargaOdontogramaFallida ? "Reintentar" : "Cerrar"}
+              </button>
+            </div>
+          )}
+          {errorAcciones && (
+            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-[#ba1a1a]/20 bg-[#ffdad6]/40 px-4 py-3 text-sm text-[#ba1a1a]">
+              <span>No se pudo cargar el catálogo de acciones: {errorAcciones}</span>
+              <button type="button" className="font-semibold underline" onClick={() => setReloadKey((value) => value + 1)}>
+                Reintentar
+              </button>
+            </div>
+          )}
+          {!pacienteId && !cargandoOdontograma && (
+            <div className="mb-4 rounded-xl border border-dashed border-[#bec8ce] bg-white px-4 py-3 text-sm text-[#3f484e]">
+              Selecciona un paciente con expediente para consultar o registrar su odontograma.
+            </div>
+          )}
+          {pacienteId && !cargandoOdontograma && !errorOdontograma && !documentos[dentadura] && (
+            <div className="mb-4 rounded-xl border border-[#006686]/20 bg-[#7dd3fc20] px-4 py-3 text-sm text-[#006686]">
+              Este paciente aún no tiene odontograma de dentición {dentadura}. Se creará al guardar el primer cambio.
             </div>
           )}
 
@@ -1252,6 +1478,8 @@ export default function Odontograma() {
             onToothClick={handleToothClick}
             onFaceClick={handleFaceClick}
             onContextMenu={openContextMenu}
+            actionGroups={actionGroups}
+            disabled={edicionBloqueada}
           />
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
@@ -1266,6 +1494,8 @@ export default function Odontograma() {
                 placeholder="Observaciones generales del odontograma..."
                 value={notasGenerales}
                 onChange={(e) => handleNotasGeneralesChange(e.target.value)}
+                maxLength={2000}
+                disabled={edicionBloqueada}
               />
             </div>
 
@@ -1300,11 +1530,12 @@ export default function Odontograma() {
                       key={`${item.fecha}-${index}`}
                       className="rounded-xl border border-[#bec8ce] p-3 bg-[#f9f9ff]"
                     >
-                      <p className="text-xs text-[#bec8ce]">{item.fecha}</p>
+                      <p className="text-xs text-[#bec8ce]">{formatHistoryDate(item.fecha)}</p>
                       <p className="text-sm font-semibold text-[#151c27]">
                         {item.tipo}
                       </p>
                       <p className="text-sm text-[#3f484e]">{item.detalle}</p>
+                      <p className="mt-1 text-xs text-[#3f484e]">Registrado por: {item.usuario || "Usuario no disponible"}</p>
                     </div>
                   ))}
                 </div>
