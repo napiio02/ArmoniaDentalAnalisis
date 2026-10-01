@@ -1,5 +1,9 @@
 import CitaModel from "../models/CitaModel.js";
 import { enviarMensajePlantilla } from "./WhatsappService.js";
+import {
+  notificarCancelacionCita,
+  flagsRecordatorioPara,
+} from "./RecordatorioService.js";
 
 const DURACIONES = {
   Limpieza: 45,
@@ -157,6 +161,7 @@ export const crearCitaService = async (datos) => {
     throw error;
   }
 
+  // Los flags de recordatorio se ajustan solos en el hook pre("save") del modelo
   const nueva = await CitaModel.create({
     paciente_id,
     usuario_id,
@@ -225,22 +230,30 @@ export const actualizarCitaService = async (id, datos) => {
     }
   }
 
-  return CitaModel.findByIdAndUpdate(
-    id,
-    {
-      fecha_hora,
-      tipo,
-      estado,
-      motivo,
-      observaciones,
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
-  )
+  const actualizacion = { fecha_hora, tipo, estado, motivo, observaciones };
+
+  // Si la cita se reagenda, los recordatorios se reinician para la nueva fecha
+  const cambioFecha =
+    fecha_hora &&
+    new Date(fecha_hora).getTime() !== new Date(cita.fecha_hora).getTime();
+
+  if (cambioFecha) {
+    Object.assign(actualizacion, flagsRecordatorioPara(fecha_hora));
+  }
+
+  const seCancela = estado === "Cancelada" && cita.estado !== "Cancelada";
+
+  const actualizada = await CitaModel.findByIdAndUpdate(id, actualizacion, {
+    new: true,
+    runValidators: true,
+  })
     .populate("paciente_id", "nombre cedula telefono")
     .populate("usuario_id", "nombre email");
+
+  // Sin await: no debe bloquear ni romper la respuesta si WhatsApp falla
+  if (seCancela) notificarCancelacionCita(id);
+
+  return actualizada;
 }
 
 export const cancelarCitaService = async (id) => {
@@ -260,6 +273,9 @@ export const cancelarCitaService = async (id) => {
 
   cita.estado = "Cancelada";
   await cita.save();
+
+  // Sin await: no debe bloquear ni romper la cancelación si WhatsApp falla
+  notificarCancelacionCita(cita._id);
 
   return cita;
 }

@@ -22,6 +22,7 @@ import { MarcaRoutes } from "./routes/MarcaRoutes.js";
 import { ComprobantesRoutes } from "./routes/ComprobantesRoutes.js";
 import { WhatsappRoutes } from "./routes/WhatsappRoutes.js";
 import { ReportesRoutes } from "./routes/ReportesRoutes.js";
+import { iniciarJobRecordatorios, RecordatoriosRoutes } from "./jobs/RecordatoriosJob.js";
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ MarcaRoutes(app);
 ComprobantesRoutes(app);
 WhatsappRoutes(app);
 ReportesRoutes(app);
+RecordatoriosRoutes(app);
 
 app.get("/", (req, res) => {
   res.json({
@@ -81,6 +83,7 @@ try {
   await prepararSeguridad();
   await prepararOdontograma();
   app.listen(port, () => console.log(`Server started on port ${port}`));
+  iniciarJobRecordatorios();
 } catch (error) {
   console.error("Error iniciando el servidor:", error.message);
   process.exit(1);
