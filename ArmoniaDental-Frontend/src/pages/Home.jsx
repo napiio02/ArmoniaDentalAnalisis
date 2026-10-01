@@ -3,6 +3,7 @@ import { apiFetch } from "../services/apiClient";
 import { Link } from "react-router";
 import { getCitas } from "../services/citaService";
 import Sidebar from "../components/Sidebar";
+import NotificacionCitasDia from "../components/NotificacionCitasDia";
 
 const VERSION = "v1";
 const BASE_URL = `https://armoniadentalbackend.onrender.com/${VERSION}`;
@@ -33,6 +34,35 @@ const formatearFechaHora = (fecha) =>
     minute: "2-digit",
   });
 
+const ESTADOS_NO_NOTIFICAR = ["Cancelada", "No asistió", "Atendida"];
+
+const mismoDia = (a, b) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
+const construirNotificacion = (usuario, citas, hayError) => {
+  const idDoctor = usuario?._id ?? usuario?.id;
+
+  // HU 3: error al consultar citas (o sesión no disponible)
+  if (hayError || !idDoctor) return { estado: "error", citas: [] };
+
+  const hoy = new Date();
+  const delDia = citas
+    .filter((c) => {
+      const idCita = c.usuario_id?._id ?? c.usuario_id;
+      return (
+        String(idCita) === String(idDoctor) &&
+        mismoDia(new Date(c.fecha_hora), hoy) &&
+        !ESTADOS_NO_NOTIFICAR.includes(c.estado)
+      );
+    })
+    .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+
+  // HU 1 y HU 2
+  return { estado: delDia.length ? "con-citas" : "sin-citas", citas: delDia };
+};
+
 const Home = () => {
   const [citasHoy, setCitasHoy] = useState([]);
   const [citasMes, setCitasMes] = useState(0);
@@ -43,6 +73,9 @@ const Home = () => {
   const [actividadReciente, setActividadReciente] = useState([]);
   const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [notificacion, setNotificacion] = useState(null); // { estado, citas }
+
+
 
   const getSaludo = () => {
     const hora = new Date().getHours();
@@ -69,7 +102,26 @@ const Home = () => {
         }
 
         // ── Citas ──
-        const todasLasCitas = await getCitas({ pasadas: "true" });
+        let todasLasCitas = [];
+        let errorCitas = false;
+        try {
+          todasLasCitas = await getCitas({ pasadas: "true" });
+        } catch (err) {
+          console.error("Error al cargar citas:", err);
+          errorCitas = true;
+        }
+
+        // ── Notificación diaria (una vez por doctor y día en esta sesión) ──
+        const idDoctor = usuarioSesion?._id ?? usuarioSesion?.id;
+        const claveNotif = `notificacionCitas_${idDoctor}_${new Date().toDateString()}`;
+        const yaMostrada = idDoctor && sessionStorage.getItem(claveNotif);
+
+        if (!yaMostrada) {
+          const notif = construirNotificacion(usuarioSesion, todasLasCitas, errorCitas);
+          setNotificacion(notif);
+          // Si hubo error NO se marca como mostrada, para reintentar en la próxima visita
+          if (notif.estado !== "error") sessionStorage.setItem(claveNotif, "1");
+        }
 
         const citasDeHoy = todasLasCitas.filter((c) => {
           const f = new Date(c.fecha_hora);
@@ -151,6 +203,15 @@ const Home = () => {
       } finally {
         setCargando(false);
       }
+
+
+      let usuarioSesion = null;
+      const resSesion = await apiFetch(`${BASE_URL}/auth/me`, { headers, credentials: "include" });
+      if (resSesion.ok) {
+        const sesion = await resSesion.json();
+        usuarioSesion = sesion.data?.usuario || null;
+        setUsuario(usuarioSesion);
+      }
     };
     cargarDatos();
   }, []);
@@ -198,6 +259,13 @@ const Home = () => {
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <Sidebar activeItem="home" />
+      {notificacion && (
+        <NotificacionCitasDia
+          estado={notificacion.estado}
+          citas={notificacion.citas}
+          onCerrar={() => setNotificacion(null)}
+        />
+      )}
 
       <main className="flex-1 h-screen overflow-y-auto p-8">
         <div className="max-w-screen-2xl mx-auto">
