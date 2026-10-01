@@ -91,14 +91,16 @@ const Home = () => {
       try {
         const headers = getAuthHeaders();
 
-        // ── Sesión del usuario ──
+       // ── Sesión del usuario ──
+        let usuarioSesion = null;
         const resSesion = await apiFetch(`${BASE_URL}/auth/me`, {
           headers,
           credentials: "include",
         });
         if (resSesion.ok) {
           const sesion = await resSesion.json();
-          setUsuario(sesion.data?.usuario || null);
+          usuarioSesion = sesion.data?.usuario || null;
+          setUsuario(usuarioSesion);
         }
 
         // ── Citas ──
@@ -204,14 +206,6 @@ const Home = () => {
         setCargando(false);
       }
 
-
-      let usuarioSesion = null;
-      const resSesion = await apiFetch(`${BASE_URL}/auth/me`, { headers, credentials: "include" });
-      if (resSesion.ok) {
-        const sesion = await resSesion.json();
-        usuarioSesion = sesion.data?.usuario || null;
-        setUsuario(usuarioSesion);
-      }
     };
     cargarDatos();
   }, []);
