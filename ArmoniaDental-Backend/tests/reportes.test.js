@@ -64,7 +64,7 @@ test("Reportes usa un período común y conserva errores por sección", async (t
     InsumoModel.aggregate = async () => [{ _id: new mongoose.Types.ObjectId(), nombre: "Guantes" }];
 
     const reporte = await obtenerReporteService(
-      { _id: new mongoose.Types.ObjectId(), rol: "Asistente" },
+      { _id: new mongoose.Types.ObjectId(), rol: "Asistente Dental" },
       { desde: "2026-09-01", hasta: "2026-10-01" },
     );
 

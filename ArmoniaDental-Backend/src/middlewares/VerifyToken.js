@@ -19,7 +19,7 @@ export const verifyToken = async (req, res, next) => {
       Sesion.findOne({ sid: decoded.sid, usuario_id: decoded.userId, revoked_at: null, expires_at: { $gt: new Date() } }),
     ]);
     if (!usuario || !sesion || !usuario.activo || usuario.estado_cuenta !== "Activa" ||
-      !usuario.rol_id?.activo || !["Admin", "Dentista", "Asistente"].includes(usuario.rol_id.nombre) ||
+      !usuario.rol_id?.activo || !["Admin", "Dentista", "Asistente Dental"].includes(usuario.rol_id.nombre) ||
       decoded.version !== (usuario.session_version ?? 0) || sesion.version !== decoded.version) return invalidar(res);
     req.sessionId = decoded.sid;
     req.user = { _id: usuario._id, nombre: usuario.nombre, email: usuario.email,

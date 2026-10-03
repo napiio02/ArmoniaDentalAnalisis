@@ -9,7 +9,7 @@ import Comprobante from "../models/ComprobanteModel.js";
 import Odontograma from "../models/Odontograma/OdontogramaModel.js";
 import Historial from "../models/Odontograma/HistorialModel.js";
 
-const ROLES_USUARIOS = ["Admin", "Dentista", "Asistente"];
+const ROLES_USUARIOS = ["Admin", "Dentista", "Asistente Dental"];
 
 const crearError = (mensaje, statusCode = 400) => {
   const error = new Error(mensaje);
@@ -46,7 +46,7 @@ const validarRol = async (id) => {
   validarId(id);
   const rol = await Rol.findById(id);
   if (!rol || !rol.activo || !ROLES_USUARIOS.includes(rol.nombre)) {
-    throw crearError("Seleccione un rol disponible: Admin, Dentista o Asistente.");
+    throw crearError("Seleccione un rol disponible: Admin, Dentista o Asistente Dental.");
   }
   return rol;
 };

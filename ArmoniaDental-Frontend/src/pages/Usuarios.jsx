@@ -9,7 +9,7 @@ import {
 
 const BADGE_ROL = {
   Dentista: "bg-[#7dd3fc20] text-[#006686] border-[#006686]/20",
-  "Asistente": "bg-[#6df5e120] text-[#006b5f] border-[#6df5e1]/30",
+  "Asistente Dental": "bg-[#6df5e120] text-[#006b5f] border-[#6df5e1]/30",
   Admin: "bg-[#ffddb820] text-[#855300] border-[#855300]/20",
 };
 const inputCls = "w-full px-4 py-2.5 border border-[#bec8ce] rounded-lg text-sm focus:outline-none focus:border-[#006686] bg-white text-[#151c27] disabled:opacity-60";
@@ -140,7 +140,7 @@ export default function Usuarios() {
         </div>
         {mensaje && <p role="status" className="mb-5 rounded-xl border border-[#6df5e1]/30 bg-[#6df5e120] px-5 py-3 text-sm text-[#006b5f]">{mensaje}</p>}
         <div className="mb-5"><ErrorMensaje mensaje={error} /></div>
-        {!cargando && roles.length === 0 && <p className="mb-5 text-sm text-[#855300]">No hay roles disponibles. Revise los roles Admin, Dentista y Asistente en el sistema.</p>}
+        {!cargando && roles.length === 0 && <p className="mb-5 text-sm text-[#855300]">No hay roles disponibles. Revise los roles Admin, Dentista y Asistente Dental en el sistema.</p>}
         <div className="bg-white border border-[#bec8ce] rounded-xl p-4 mb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#3f484e] text-[18px]">search</span><input aria-label="Buscar usuarios" placeholder="Buscar por nombre, correo o cédula..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className={`${inputCls} pl-10`} /></div>
           <select aria-label="Filtrar por rol" value={rolFiltro} onChange={(e) => setRolFiltro(e.target.value)} className={inputCls}><option value="todo">Todos los roles</option>{roles.map((r) => <option key={r._id} value={r._id}>{r.nombre}</option>)}</select>

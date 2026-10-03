@@ -13,13 +13,13 @@ const storage = () => {
 };
 test("matriz de rutas y última ruta por usuario", () => {
   const comunes = ["/", "/citas", "/pacientes", "/inventario", "/control-marcas", "/reportes", "/odontograma", "/expedientes"];
-  for (const rol of ["Admin", "Dentista", "Asistente"]) {
+  for (const rol of ["Admin", "Dentista", "Asistente Dental"]) {
     const usuario = { _id: "1", rol };
     assert.ok(comunes.every((ruta) => puedeAcceder(usuario, ruta)));
     for (const ruta of ["/administracion/usuarios", "/administracion/usuarios/", "/usuarios", "/administracion"]) {
       assert.equal(puedeAcceder(usuario, ruta), rol === "Admin");
     }
-    assert.equal(puedeAcceder(usuario, "/comprobantes?pagina=1"), rol !== "Asistente");
+    assert.equal(puedeAcceder(usuario, "/comprobantes?pagina=1"), rol !== "Asistente Dental");
   }
   assert.equal(puedeAcceder({ rol: "Desconocido" }, "/"), false);
   const almacen = storage(), usuario = { _id: "1", rol: { nombre: "Dentista" } };
@@ -82,7 +82,7 @@ test("rutas, Sidebar y sesiones con componentes reales de React", async (t) => {
     await desmontar();
   });
   await t.test("Asistente: ambas opciones ocultas; recarga en URL prohibida conserva última ruta", async () => {
-    rol = "Asistente"; await montar("/comprobantes");
+    rol = "Asistente Dental"; await montar("/comprobantes");
     assert.equal(rutaActual(), "/citas"); assert.deepEqual(pantalla(), ["/citas"]);
     await abrirAdmin(); assert.equal(links().includes("/comprobantes"), false); assert.equal(links().includes("/administracion/usuarios"), false);
     await act(async () => control.navigate("/administracion/usuarios")); assert.equal(rutaActual(), "/citas");
@@ -134,7 +134,7 @@ test("rutas, Sidebar y sesiones con componentes reales de React", async (t) => {
   });
   await t.test("si el rol vigente pierde acceso durante el sondeo se abandona la pantalla restringida", async () => {
     rol = "Dentista"; await montar("/comprobantes");
-    rol = "Asistente";
+    rol = "Asistente Dental";
     await act(async () => { for (const cb of [...polls.values()]) await cb(); });
     assert.equal(rutaActual(), "/"); assert.deepEqual(pantalla(), ["/"]); assert.match(popup().join(""), /Acceso denegado/);
     await desmontar();
