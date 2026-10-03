@@ -1,4 +1,5 @@
 import { autorizarRoles } from "../middlewares/AutorizarRoles.js";
+import { verifyToken } from "../middlewares/VerifyToken.js";
 import {
   crearComprobante,
   descargarPdfComprobante,
@@ -6,8 +7,6 @@ import {
   listarComprobantes,
   obtenerComprobante,
 } from "../controllers/ComprobanteController.js";
-import { verifyToken } from "../middlewares/VerifyToken.js";
-import { autorizarRoles } from "../middlewares/AutorizarRoles.js";
 
 const autorizarProfesional = autorizarRoles("Admin", "Dentista");
 
