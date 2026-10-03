@@ -12,6 +12,12 @@ const opcionesAdministracion = [
   { icono: "bar_chart", nombre: "Reportes", ruta: "/reportes" },
 ];
 
+const opcionesExpedientes = [
+  { nombre: "Pacientes", ruta: "/pacientes" },
+  { nombre: "Historial Clínico", ruta: "/expedientes" },
+  { nombre: "Odontograma", ruta: "/odontograma" },
+];
+
 export default function Sidebar({ activeItem = "citas" }) {
   const location = useLocation();
   const pathname = location.pathname.replace(/\/+$/, "") || "/";
@@ -146,26 +152,17 @@ export default function Sidebar({ activeItem = "citas" }) {
 
           {openExpedientes && (
             <div className="pl-10 space-y-1 mt-1">
-              <Link
-                to="/pacientes"
-                className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
-              >
-                Pacientes
-              </Link>
-
-              <Link
-                to="/expedientes"
-                className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
-              >
-                Historial Clínico
-              </Link>
-
-              <Link
-                to="/odontograma"
-                className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
-              >
-                Odontograma
-              </Link>
+              {opcionesExpedientes
+                .filter((opcion) => puedeAcceder(usuario, opcion.ruta))
+                .map((opcion) => (
+                  <Link
+                    key={opcion.ruta}
+                    to={opcion.ruta}
+                    className="block py-2 text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
+                  >
+                    {opcion.nombre}
+                  </Link>
+                ))}
             </div>
           )}
         </div>

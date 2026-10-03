@@ -7,6 +7,8 @@ export const puedeAcceder = (usuario, ruta) => {
   const pathname = ruta.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
   if (/^\/(administracion(?:\/usuarios)?|usuarios)(?:\/|$)/.test(pathname)) return rol === "Admin";
   if (/^\/comprobantes(?:\/|$)/.test(pathname)) return rol !== "Asistente Dental";
+  // Información clínica: solo profesionales (Admin y Dentista)
+  if (/^\/(expedientes|odontograma)(?:\/|$)/.test(pathname)) return rol !== "Asistente Dental";
   return true;
 };
 export const ultimaRutaPermitida = (usuario, storage) => {

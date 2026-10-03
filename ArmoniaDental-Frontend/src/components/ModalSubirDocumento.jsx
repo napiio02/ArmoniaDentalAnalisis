@@ -10,6 +10,12 @@ const TIPOS_DOCUMENTO = [
 ];
 
 const FORMATOS_ACEPTADOS = ".pdf,.doc,.docx,.jpg,.jpeg,.png";
+const EXTENSIONES_PERMITIDAS = FORMATOS_ACEPTADOS.split(",");
+
+const extensionDe = (nombreArchivo = "") => {
+  const i = nombreArchivo.lastIndexOf(".");
+  return i >= 0 ? nombreArchivo.slice(i).toLowerCase() : "";
+};
 
 const inputCls = (error) =>
   `w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none bg-white text-[#151c27] transition-colors ${
@@ -47,6 +53,8 @@ export default function ModalSubirDocumento({ expedienteId, pacienteId, onClose,
     const e = {};
     if (!tipo) e.tipo = "Seleccione el tipo de documento";
     if (!archivo) e.archivo = "Debe seleccionar un archivo";
+    else if (!EXTENSIONES_PERMITIDAS.includes(extensionDe(archivo.name)))
+      e.archivo = "Formato de archivo no permitido. Solo se aceptan PDF, Word, JPG o PNG.";
     else if (archivo.size > 15 * 1024 * 1024) e.archivo = "El archivo no puede superar los 15MB";
     setErrores(e);
     return Object.keys(e).length === 0;
