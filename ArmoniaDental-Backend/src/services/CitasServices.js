@@ -5,6 +5,9 @@ import {
   flagsRecordatorioPara,
 } from "./RecordatorioService.js";
 
+const ZONA_HORARIA = "America/Costa_Rica";
+const TZ_OFFSET = "-06:00"; // Costa Rica no usa horario de verano
+
 const DURACIONES = {
   Limpieza: 45,
   Revisión: 30,
@@ -19,8 +22,22 @@ const ESTADOS_INACTIVOS = ["Cancelada", "No asistió"];
 
 const duracionMs = (tipo) => (DURACIONES[tipo] ?? 30) * 60 * 1000;
 
-const MAX_DURACION_MS =
-  Math.max(...Object.values(DURACIONES)) * 60 * 1000;
+const MAX_DURACION_MS = Math.max(...Object.values(DURACIONES)) * 60 * 1000;
+
+// Convierte a Date. Si el texto no trae zona horaria (ej. "2026-10-01T09:00"),
+// se interpreta como hora de Costa Rica y no como la hora del servidor (UTC).
+const aFechaCR = (valor) => {
+  if (!valor || valor instanceof Date) return valor;
+  const texto = String(valor);
+  if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(texto)) return new Date(texto);
+  return new Date(`${texto}${texto.length === 16 ? ":00" : ""}${TZ_OFFSET}`);
+};
+
+const lanzarError = (mensaje, statusCode) => {
+  const error = new Error(mensaje);
+  error.statusCode = statusCode;
+  throw error;
+};
 
 const horarioChoque = async (fecha_hora, tipo, excludeId = null) => {
   const inicio = new Date(fecha_hora);
@@ -42,15 +59,30 @@ const horarioChoque = async (fecha_hora, tipo, excludeId = null) => {
       return inicio < fini && fin > ini;
     }) ?? null
   );
-}
+};
 
-
-
-const mensajeChoque = (choque) => {
-  return `Horario ocupado, ya hay una cita de ${choque.tipo} con ${
+const mensajeChoque = (choque) =>
+  `Horario ocupado, ya hay una cita de ${choque.tipo} con ${
     choque.paciente_id?.nombre ?? "otro paciente"
   }.`;
-}
+
+const formatearFechaHora = (fecha_hora) => {
+  const fecha = new Date(fecha_hora);
+  return {
+    fechaTexto: fecha.toLocaleDateString("es-CR", {
+      timeZone: ZONA_HORARIA,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }),
+    horaTexto: fecha.toLocaleTimeString("es-CR", {
+      timeZone: ZONA_HORARIA,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }),
+  };
+};
 
 export const obtenerCitasService = async ({ fecha, estado, tipo, pasadas }) => {
   const filtro = {};
@@ -59,12 +91,9 @@ export const obtenerCitasService = async ({ fecha, estado, tipo, pasadas }) => {
   if (tipo) filtro.tipo = tipo;
 
   if (fecha) {
-    const inicio = new Date(`${fecha}T00:00:00`);
-    const fin = new Date(`${fecha}T23:59:59.999`);
-
     filtro.fecha_hora = {
-      $gte: inicio,
-      $lte: fin,
+      $gte: new Date(`${fecha}T00:00:00${TZ_OFFSET}`),
+      $lte: new Date(`${fecha}T23:59:59.999${TZ_OFFSET}`),
     };
   } else if (pasadas !== "true") {
     filtro.fecha_hora = { $gte: new Date() };
@@ -74,20 +103,16 @@ export const obtenerCitasService = async ({ fecha, estado, tipo, pasadas }) => {
     .populate("paciente_id", "nombre cedula telefono")
     .populate("usuario_id", "nombre email")
     .sort({ fecha_hora: 1 });
-}
+};
 
 export const obtenerDisponibilidadService = async ({ fecha, tipo }) => {
-  if (!fecha || !tipo) {
-    const error = new Error("Fecha y tipo son requeridos");
-    error.statusCode = 400;
-    throw error;
-  }
+  if (!fecha || !tipo) lanzarError("Fecha y tipo son requeridos", 400);
 
   const slots = [];
   const ahora = new Date();
 
-  const inicioDia = new Date(`${fecha}T08:00:00`);
-  const finDia = new Date(`${fecha}T17:00:00`);
+  const inicioDia = new Date(`${fecha}T08:00:00${TZ_OFFSET}`);
+  const finDia = new Date(`${fecha}T17:00:00${TZ_OFFSET}`);
 
   for (
     let actual = new Date(inicioDia);
@@ -97,69 +122,32 @@ export const obtenerDisponibilidadService = async ({ fecha, tipo }) => {
     if (actual < ahora) continue;
 
     const choque = await horarioChoque(actual, tipo);
-
-    slots.push({
-      fecha_hora: actual,
-      disponible: !choque,
-    });
+    slots.push({ fecha_hora: actual, disponible: !choque });
   }
 
   return slots;
-}
+};
 
 export const obtenerCitaPorIdService = async (id) => {
   const cita = await CitaModel.findById(id)
     .populate("paciente_id", "nombre cedula telefono correo")
     .populate("usuario_id", "nombre email");
 
-  if (!cita) {
-    const error = new Error("Cita no encontrada");
-    error.statusCode = 404;
-    throw error;
-  }
+  if (!cita) lanzarError("Cita no encontrada", 404);
 
   return cita;
-}
-
-export const formatearTelefono = (telefono) => {
-  const limpio = telefono.replace(/\D/g, "");
-  return limpio.startsWith("506") ? limpio : `506${limpio}`;
-};
-
-const formatearFechaHora = (fecha_hora) => {
-  const fecha = new Date(fecha_hora);
-  const fechaTexto = fecha.toLocaleDateString("es-CR", {
-    timeZone: "America/Costa_Rica",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-  const horaTexto = fecha.toLocaleTimeString("es-CR", {
-    timeZone: "America/Costa_Rica",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-  return { fechaTexto, horaTexto };
 };
 
 export const crearCitaService = async (datos) => {
-  const { paciente_id, usuario_id, fecha_hora, tipo, motivo, observaciones } =
-    datos;
+  const { paciente_id, usuario_id, tipo, motivo, observaciones } = datos;
+  const fecha_hora = aFechaCR(datos.fecha_hora);
 
-  if (new Date(fecha_hora) < new Date()) {
-    const error = new Error("No se pueden ingresar fechas pasadas");
-    error.statusCode = 400;
-    throw error;
+  if (fecha_hora < new Date()) {
+    lanzarError("No se pueden ingresar fechas pasadas", 400);
   }
 
   const choque = await horarioChoque(fecha_hora, tipo);
-
-  if (choque) {
-    const error = new Error(mensajeChoque(choque));
-    error.statusCode = 409;
-    throw error;
-  }
+  if (choque) lanzarError(mensajeChoque(choque), 409);
 
   // Los flags de recordatorio se ajustan solos en el hook pre("save") del modelo
   const nueva = await CitaModel.create({
@@ -177,10 +165,11 @@ export const crearCitaService = async (datos) => {
     .populate("usuario_id", "nombre email");
 
   if (citaCompleta.paciente_id?.telefono) {
-  const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
+    const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
 
+    // WhatsappService normaliza el teléfono (agrega 506 si hace falta)
     enviarMensajePlantilla({
-      telefono: formatearTelefono(citaCompleta.paciente_id.telefono),
+      telefono: citaCompleta.paciente_id.telefono,
       nombrePlantilla: "confirmacion_cita",
       parametrosNombrados: {
         nombre_paciente: citaCompleta.paciente_id.nombre,
@@ -198,48 +187,40 @@ export const crearCitaService = async (datos) => {
 };
 
 export const actualizarCitaService = async (id, datos) => {
-  const { fecha_hora, tipo, estado, motivo, observaciones } = datos;
+  const { tipo, estado, motivo, observaciones } = datos;
+  const fecha_hora = aFechaCR(datos.fecha_hora);
 
   const cita = await CitaModel.findById(id);
 
-  if (!cita) {
-    const error = new Error("Cita no encontrada");
-    error.statusCode = 404;
-    throw error;
-  }
-
+  if (!cita) lanzarError("Cita no encontrada", 404);
   if (cita.estado === "Cancelada") {
-    const error = new Error("No se puede actualizar una cita cancelada");
-    error.statusCode = 400;
-    throw error;
+    lanzarError("No se puede actualizar una cita cancelada", 400);
   }
 
-  if (fecha_hora && new Date(fecha_hora) < new Date()) {
-    const error = new Error("No se pueden ingresar fechas pasadas");
-    error.statusCode = 400;
-    throw error;
+  const cambioFecha =
+    Boolean(fecha_hora) &&
+    fecha_hora.getTime() !== new Date(cita.fecha_hora).getTime();
+  const cambioTipo = Boolean(tipo) && tipo !== cita.tipo;
+
+  // Solo se valida la fecha y el choque de horario si realmente cambió la fecha o el tipo.
+  // Así se puede, por ejemplo, marcar como Atendida una cita que ya pasó.
+  if (cambioFecha && fecha_hora < new Date()) {
+    lanzarError("No se pueden ingresar fechas pasadas", 400);
   }
 
-  if (fecha_hora) {
-    const choque = await horarioChoque(fecha_hora, tipo ?? cita.tipo, id);
-
-    if (choque) {
-      const error = new Error(mensajeChoque(choque));
-      error.statusCode = 409;
-      throw error;
-    }
+  if (cambioFecha || cambioTipo) {
+    const choque = await horarioChoque(
+      fecha_hora ?? cita.fecha_hora,
+      tipo ?? cita.tipo,
+      id
+    );
+    if (choque) lanzarError(mensajeChoque(choque), 409);
   }
 
   const actualizacion = { fecha_hora, tipo, estado, motivo, observaciones };
 
   // Si la cita se reagenda, los recordatorios se reinician para la nueva fecha
-  const cambioFecha =
-    fecha_hora &&
-    new Date(fecha_hora).getTime() !== new Date(cita.fecha_hora).getTime();
-
-  if (cambioFecha) {
-    Object.assign(actualizacion, flagsRecordatorioPara(fecha_hora));
-  }
+  if (cambioFecha) Object.assign(actualizacion, flagsRecordatorioPara(fecha_hora));
 
   const seCancela = estado === "Cancelada" && cita.estado !== "Cancelada";
 
@@ -254,22 +235,13 @@ export const actualizarCitaService = async (id, datos) => {
   if (seCancela) notificarCancelacionCita(id);
 
   return actualizada;
-}
+};
 
 export const cancelarCitaService = async (id) => {
   const cita = await CitaModel.findById(id);
 
-  if (!cita) {
-    const error = new Error("Cita no encontrada");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  if (cita.estado === "Cancelada") {
-    const error = new Error("La cita ya está cancelada");
-    error.statusCode = 400;
-    throw error;
-  }
+  if (!cita) lanzarError("Cita no encontrada", 404);
+  if (cita.estado === "Cancelada") lanzarError("La cita ya está cancelada", 400);
 
   cita.estado = "Cancelada";
   await cita.save();
@@ -278,13 +250,9 @@ export const cancelarCitaService = async (id) => {
   notificarCancelacionCita(cita._id);
 
   return cita;
-}
+};
 
-export const getCitasAtendidasPorPacienteService = async (paciente_id) => {
-  return await CitaModel.find({
-    paciente_id,
-    estado: "Atendida",
-  })
+export const getCitasAtendidasPorPacienteService = (paciente_id) =>
+  CitaModel.find({ paciente_id, estado: "Atendida" })
     .sort({ fecha_hora: -1 })
     .lean();
-};
