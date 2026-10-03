@@ -1,4 +1,4 @@
-export const ROLES = ["Admin", "Dentista", "Asistente Dental"];
+export const ROLES = ["Admin", "Dentista", "Asistente"];
 export const ACCESO_DENEGADO = "Acceso denegado. Por favor comuníquese con la administración para solicitar asistencia.";
 export const nombreRol = (usuario) => typeof usuario?.rol === "string" ? usuario.rol : usuario?.rol?.nombre;
 export const puedeAcceder = (usuario, ruta) => {
@@ -6,9 +6,9 @@ export const puedeAcceder = (usuario, ruta) => {
   if (!ROLES.includes(rol)) return false;
   const pathname = ruta.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
   if (/^\/(administracion(?:\/usuarios)?|usuarios)(?:\/|$)/.test(pathname)) return rol === "Admin";
-  if (/^\/comprobantes(?:\/|$)/.test(pathname)) return rol !== "Asistente Dental";
+  if (/^\/comprobantes(?:\/|$)/.test(pathname)) return rol !== "Asistente";
   // Información clínica: solo profesionales (Admin y Dentista)
-  if (/^\/(expedientes|odontograma)(?:\/|$)/.test(pathname)) return rol !== "Asistente Dental";
+  if (/^\/(expedientes|odontograma)(?:\/|$)/.test(pathname)) return rol !== "Asistente";
   return true;
 };
 export const ultimaRutaPermitida = (usuario, storage) => {

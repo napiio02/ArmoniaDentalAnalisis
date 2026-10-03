@@ -9,7 +9,7 @@ import {
 const autorizarProfesional = autorizarRoles("Admin", "Dentista");
 
 // La Asistente Dental también puede REGISTRARLA (al crear un paciente nuevo)
-const autorizarRegistro = autorizarRoles("Admin", "Dentista", "Asistente Dental");
+const autorizarRegistro = autorizarRoles("Admin", "Dentista", "Asistente");
 
 export const HistoriaClinicaRoutes = (app) => {
   const version = process.env.VERSION || "v1";
