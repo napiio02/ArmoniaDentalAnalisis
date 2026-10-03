@@ -18,7 +18,7 @@ En el frontend se consulta `/auth/me` antes de montar cada ruta privada, incluso
 | --- | --- | --- | --- |
 | Admin | Sí | Sí, incluidas creación y envío | Sí |
 | Dentista | No | Sí | Sí |
-| Asistente Dental | No | No, incluidos detalle/PDF/envío | Sí |
+| Asistente | No | No, incluidos detalle/PDF/envío | Sí |
 
 El CRUD administrativo y la lista de roles son exclusivos del Admin. El endpoint autenticado `/v1/personal` devuelve únicamente identificadores, nombres, estado y rol para los selectores de Citas y Control de Marcas, sin exponer la administración de usuarios. Admin tiene también la visibilidad y revisión de marcas que antes estaban limitadas a Dentista. Se conservan las reglas operativas existentes de marcas para Asistente.
 

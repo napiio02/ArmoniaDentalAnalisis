@@ -6,7 +6,7 @@ import Usuario from "../models/Usuario.js";
 import { enviarCorreoRecuperacion } from "./EmailService.js";
 
 const SALT_ROUNDS = 10;
-const ROL_ASISTENTE = "Asistente Dental";
+const ROL_ASISTENTE = "Asistente";
 
 const crearError = (mensaje, statusCode = 400) => {
   const error = new Error(mensaje);
@@ -210,7 +210,7 @@ export const iniciarSesion = async (data) => {
     );
   }
 
-  if (!usuario.rol_id || !usuario.rol_id.activo || !["Admin", "Dentista", "Asistente Dental"].includes(usuario.rol_id.nombre)) {
+  if (!usuario.rol_id || !usuario.rol_id.activo || !["Admin", "Dentista", "Asistente"].includes(usuario.rol_id.nombre)) {
     throw crearError(
       "El rol asignado al usuario no está disponible.",
       403

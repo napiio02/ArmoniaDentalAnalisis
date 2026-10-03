@@ -39,7 +39,7 @@ test("Seguridad y Administración a través de HTTP", async (t) => {
   process.env.VERSION = "v1"; process.env.JWT_SECRET = crypto.randomBytes(32).toString("hex"); process.env.JWT_EXPIRES_IN = "8h";
   stub(console, "error", () => {});
   stub(mongoose.Query.prototype, "exec", async () => { throw new Error("Real database calls forbidden"); });
-  const roles = ["Admin", "Dentista", "Asistente Dental"].map((nombre) => ({
+  const roles = ["Admin", "Dentista", "Asistente"].map((nombre) => ({
     _id: String(new mongoose.Types.ObjectId()), nombre, descripcion: nombre, activo: true,
   }));
   const usuarios = new Map(), sesiones = new Map(), historial = new Set();
@@ -183,7 +183,7 @@ test("Seguridad y Administración a través de HTTP", async (t) => {
     assert.equal((await request("/auth/me")).body.data.usuario.rol, "Admin");
   });
   await t.test("lista los tres roles, crea Dentista y Asistente con contraseña utilizable", async () => {
-    assert.deepEqual((await request("/roles/list")).body.map((r) => r.nombre), ["Admin", "Dentista", "Asistente Dental"]);
+    assert.deepEqual((await request("/roles/list")).body.map((r) => r.nombre), ["Admin", "Dentista", "Asistente"]);
     for (const index of [1, 2]) {
       const res = await request("/users", "POST", crear(index, { email: ` NUEVO${index}@example.invalid ` }));
       assert.equal(res.status, 201); assert.equal(res.body.usuario.password_hash, undefined);
