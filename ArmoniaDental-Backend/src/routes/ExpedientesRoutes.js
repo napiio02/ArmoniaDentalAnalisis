@@ -8,7 +8,7 @@ export const ExpedientesRoutes = (app) => {
   const version = process.env.VERSION || "v1";
 
   app.get(
-    `/${version}/pacientes/:id/expedientes`,
+    `/${version}/pacientes/:paciente_id/expedientes`,
     verifyToken,
     autorizarProfesional,
     obtenerExpedientesPorPaciente
