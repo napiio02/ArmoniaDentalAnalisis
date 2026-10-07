@@ -301,6 +301,9 @@ export const obtenerMarcasPendientesService = async () => {
     .sort({ createdAt: 1 });
 };
 
+const esContable = (m) => m.estado === "Completa";
+const redondear = (n) => Math.round(n * 100) / 100;
+
 export const obtenerResumenMarcasService = async (usuarioSolicitante) => {
   const filtro = esVisibilidadTotal(usuarioSolicitante.rol)
     ? {}
@@ -310,7 +313,9 @@ export const obtenerResumenMarcasService = async (usuarioSolicitante) => {
   const hoy = hoyISO();
 
   const marcasHoy = marcas.filter((m) => m.fecha === hoy);
-  const horasHoy = marcasHoy.reduce((acc, m) => acc + (m.horas_trabajadas || 0), 0);
+  const horasHoy = redondear(
+    marcasHoy.filter(esContable).reduce((acc, m) => acc + (m.horas_trabajadas || 0), 0),
+  );
   const enJornada = marcas.filter((m) => m.estado === "En curso").length;
   const marcasManuales = marcas.filter((m) => m.tipo_registro === "Manual").length;
 
@@ -325,12 +330,14 @@ export const obtenerResumenMarcasService = async (usuarioSolicitante) => {
         nombre: m.usuario_id.nombre,
         rol: nombreRol(m.usuario_id),
         totalHoras: 0,
-        diasTrabajados: 0,
+        _dias: new Set(),
       };
     }
 
+    if (!esContable(m)) return; // pendientes y rechazadas no suman horas ni días
+
     resumenPorEmpleado[id].totalHoras += m.horas_trabajadas || 0;
-    resumenPorEmpleado[id].diasTrabajados += 1;
+    resumenPorEmpleado[id]._dias.add(m.fecha);
   });
 
   return {
@@ -338,6 +345,10 @@ export const obtenerResumenMarcasService = async (usuarioSolicitante) => {
     horasHoy,
     marcasHoy: marcasHoy.length,
     marcasManuales,
-    porEmpleado: Object.values(resumenPorEmpleado),
+    porEmpleado: Object.values(resumenPorEmpleado).map(({ _dias, ...e }) => ({
+      ...e,
+      totalHoras: redondear(e.totalHoras),
+      diasTrabajados: _dias.size,
+    })),
   };
 };
