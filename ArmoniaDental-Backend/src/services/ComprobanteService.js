@@ -369,14 +369,11 @@ export const crearComprobanteService = async (
     correo_destino === undefined || correo_destino === null
       ? paciente.correo
       : correo_destino;
-  const correoDestino = normalizarCorreo(
-    correoSolicitado
-  );
+  const correoDestino = normalizarCorreo(correoSolicitado);
 
-  if (!correoDestino) {
-    throw crearError(
-      "El paciente no tiene un correo disponible para el comprobante."
-    );
+  // Solo se valida el formato si hay un correo
+  if (correoDestino) {
+    validarCorreo(correoDestino);
   }
 
   validarCorreo(correoDestino);
@@ -544,23 +541,26 @@ export const generarPdfComprobanteService = async (
   return Buffer.from(bytes);
 };
 
-export const enviarComprobanteService = async (
-  id,
-  correoDestinoOpcional
-) => {
+export const enviarComprobanteService = async (id, correoDestinoOpcional) => {
   const comprobante = await obtenerComprobante(id);
   const tieneCorreoOpcional =
-    correoDestinoOpcional !== undefined &&
-    correoDestinoOpcional !== null;
+    correoDestinoOpcional !== undefined && correoDestinoOpcional !== null;
+
+  let correoBase = comprobante.correo_destino;
+
+  // Si el comprobante no tiene correo, intenta con el del paciente
+  if (!tieneCorreoOpcional && !normalizarCorreo(correoBase)) {
+    const paciente = await PacienteModel.findById(comprobante.paciente_id);
+    correoBase = paciente?.correo || "";
+  }
+
   const correoDestino = normalizarCorreo(
-    tieneCorreoOpcional
-      ? correoDestinoOpcional
-      : comprobante.correo_destino
+    tieneCorreoOpcional ? correoDestinoOpcional : correoBase
   );
 
   if (!correoDestino) {
     throw crearError(
-      "No existe un correo disponible para enviar el comprobante."
+      "El paciente no tiene un correo registrado. No se pudo enviar el comprobante."
     );
   }
 
