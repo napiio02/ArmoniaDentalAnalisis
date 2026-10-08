@@ -369,11 +369,11 @@ export const crearComprobanteService = async (
     correo_destino === undefined || correo_destino === null
       ? paciente.correo
       : correo_destino;
-  const correoDestino = normalizarCorreo(correoSolicitado);
+  let correoDestino = normalizarCorreo(correoSolicitado);
 
-  // Solo se valida el formato si hay un correo
-  if (correoDestino) {
-    validarCorreo(correoDestino);
+  // Al crear, el correo es opcional: si no es válido, se guarda vacío
+  if (correoDestino && !FORMATO_CORREO.test(correoDestino)) {
+    correoDestino = "";
   }
 
   validarCorreo(correoDestino);
