@@ -376,8 +376,6 @@ export const crearComprobanteService = async (
     correoDestino = "";
   }
 
-  validarCorreo(correoDestino);
-
   const numero = await generarNumeroComprobante(
     datosValidados.fecha
   );
