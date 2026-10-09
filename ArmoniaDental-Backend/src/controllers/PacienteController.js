@@ -1,6 +1,21 @@
 import { obtenerPacientesConExpedienteService, crearPacienteService, obtenerPacientePorIdService, actualizarPacientes, toggleActivoPacienteService } from "../services/PacienteService.js";
 import PacienteModel from "../models/PacienteModel.js";
 
+const responderError = (res, error, mensajeDefault) => {
+  console.error(mensajeDefault, error);
+
+  if (error.code === 11000) {
+    return res.status(409).json({ ok: false, message: "Ya existe un paciente con esa cédula." });
+  }
+  if (error.name === "ValidationError") {
+    return res.status(400).json({ ok: false, message: error.message });
+  }
+  if (error.statusCode) {
+    return res.status(error.statusCode).json({ ok: false, message: error.message });
+  }
+  return res.status(500).json({ ok: false, message: mensajeDefault, error: error.message });
+};
+
 export async function obtenerPacientesConExpediente(req, res) {
   try {
     const pacientes = await obtenerPacientesConExpedienteService();
@@ -41,12 +56,7 @@ export async function crearPaciente(req, res) {
       data: paciente,
     });
   } catch (error) {
-    console.error("Error al crear paciente:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Ocurrió un error al registrar el paciente.",
-      error: error.message,
-    });
+   return responderError(res, error, "Ocurrió un error al registrar el paciente.");
   }
 }
 
@@ -90,14 +100,8 @@ export async function actualizarPaciente(req, res) {
       message: "Paciente actualizado correctamente.",
       data: pacienteActualizado,
     });
-  }
-  catch (error) {
-    console.error("Error al actualizar paciente:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Ocurrió un error al actualizar el paciente.",
-      error: error.message,
-    });
+  } catch (error) {
+   return responderError(res, error, "Ocurrió un error al actualizar el paciente.");
   }
 }
 

@@ -13,7 +13,6 @@ const pacienteSchema = new mongoose.Schema(
       trim: true,
       default: "",
       maxlength: 50,
-      index: true,
     },
     telefono: {
       type: String,
@@ -49,6 +48,17 @@ const pacienteSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "pacientes",
+  },
+);
+
+// La cédula es única por paciente. El índice es parcial para ignorar las cédulas vacías
+// (varios pacientes antiguos pueden tener cedula = "").
+pacienteSchema.index(
+  { cedula: 1 },
+  {
+    name: "cedula_unica",
+    unique: true,
+    partialFilterExpression: { cedula: { $gt: "" } },
   },
 );
 
