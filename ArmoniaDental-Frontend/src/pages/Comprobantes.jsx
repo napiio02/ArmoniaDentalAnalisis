@@ -168,8 +168,19 @@ const Comprobantes = () => {
 
   const handleEnviar = async () => {
     if (estadoEnvio === "sending") return;
-    setEstadoEnvio("sending");
+    
+    if (!tieneCorreo(mostrarDetalle)) {
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo enviar el comprobante",
+        mensaje:
+        "El paciente no tiene un correo registrado. Puedes imprimir o guardar el comprobante como PDF.",
+      });
+      return; // no se marca como enviado
+    }
 
+    setEstadoEnvio("sending");
+    
     try {
       const resultado = await enviarComprobante(
         mostrarDetalle._id
@@ -193,6 +204,36 @@ const Comprobantes = () => {
         mensaje: error.message || "Inténtalo nuevamente.",
       });
     }
+  };
+
+  const escapar = (t = "") =>
+  String(t).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+
+  const imprimirComprobante = (comp) => {
+    const w = window.open("", "_blank", "width=800,height=900");
+    if (!w) return;
+    w.document.write(`
+      <html><head><title>Comprobante ${escapar(comp.numero)}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:40px;color:#151c27}
+        h1{text-align:center;margin:0} .c{text-align:center;color:#555;font-size:13px}
+        hr{margin:20px 0} .r{display:flex;justify-content:space-between;margin:8px 0}
+        .d{background:#f0f3ff;padding:12px;border-radius:8px;margin-top:12px}
+      </style></head><body>
+        <h1>Armonía Dental</h1>
+        <p class="c">Teléfono: 61119106<br/>lau_ure@icloud.com</p><hr/>
+        <div class="r"><b>Número:</b><span>${escapar(comp.numero)}</span></div>
+        <div class="r"><b>Tipo:</b><span>${escapar(comp.tipo)}</span></div>
+        <div class="r"><b>Paciente:</b><span>${escapar(comp.paciente_nombre)}</span></div>
+        <div class="r"><b>Fecha:</b><span>${escapar(formatearFecha(comp.fecha))}</span></div>
+        <div class="r"><b>Horario:</b><span>${escapar(comp.hora_inicio)} – ${escapar(comp.hora_fin)}</span></div>
+        <div class="r"><b>Doctor(a):</b><span>${escapar(comp.profesional_nombre)}</span></div>
+        <div class="d"><b>Descripción:</b><br/>${escapar(comp.descripcion)}</div>
+        <script>window.onload=()=>{window.print()}</script>
+      </body></html>`);
+    w.document.close();
   };
 
   const handleVerDetalle = async (comprobante) => {
@@ -223,9 +264,21 @@ const Comprobantes = () => {
     }
   };
 
-  const getCorreo = (comp) => {
-    return comp?.correo_destino || comp?.enviado_a || "No indicado";
+  const obtenerCorreoValido = (comp) => {
+    const pacienteId = comp?.paciente_id?._id || comp?.paciente_id;
+    const paciente = pacientes.find((p) => p._id === pacienteId);
+
+    const candidato =
+      comp?.correo_destino ||
+      comp?.enviado_a ||
+      paciente?.correo ||
+      "";
+
+    return typeof candidato === "string" ? candidato.trim() : "";
   };
+
+  const tieneCorreo = (comp) => Boolean(obtenerCorreoValido(comp));
+  const getCorreo = (comp) => obtenerCorreoValido(comp) || "No indicado";
 
   return (
     <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
@@ -354,8 +407,10 @@ const Comprobantes = () => {
                         <td className="px-5 py-4">
                           <button
                             onClick={() => handleVerDetalle(comp)}
-                            className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-all"
+                            aria-label="Ver"
+                            data-testid={`ver-comprobante-${comp._id}`}
                             title="Ver"
+                            className="p-1.5 rounded border border-[#bec8ce] text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-all"
                           >
                             <span className="material-symbols-outlined text-[18px]">
                               visibility
@@ -619,6 +674,16 @@ const Comprobantes = () => {
               </div>
             </div>
 
+            {!tieneCorreo(mostrarDetalle) && estadoEnvio === "idle" && (
+              <div className="rounded-xl border border-[#855300]/20 bg-[#ffddb820] px-4 py-3 mb-4 flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#855300]">warning</span>
+                <p className="text-xs text-[#3f484e]">
+                  Este paciente no tiene correo registrado. Puedes imprimir o guardar el
+                  comprobante como PDF para entregárselo.
+                </p>
+              </div>
+            )}
+
             {/* Estado envío */}
             {estadoEnvio !== "idle" && (
               <div
@@ -661,6 +726,16 @@ const Comprobantes = () => {
               >
                 Cerrar
               </button>
+
+              {/* Nuevo botón */}
+              <button
+                onClick={() => imprimirComprobante(mostrarDetalle)}
+                className="px-5 py-2.5 text-xs font-semibold text-[#006686] bg-white border border-[#006686] rounded-full hover:bg-[#f0f3ff] transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">print</span>
+                Imprimir / PDF
+              </button>
+
               <button
                 onClick={handleEnviar}
                 disabled={estadoEnvio === "sending"}

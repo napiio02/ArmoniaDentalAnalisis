@@ -39,9 +39,9 @@ const comprobanteSchema = new mongoose.Schema(
     },
     correo_destino: {
       type: String,
-      required: true,
       trim: true,
       lowercase: true,
+      default: "",
       maxlength: 120,
     },
     usuario_id: {
