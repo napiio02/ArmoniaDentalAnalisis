@@ -242,14 +242,17 @@ export default function OdontogramaResumen({ pacienteId, expedienteId }) {
       setCargando(true);
       setError(null);
 
-      const [resOdonto, resAcciones] = await Promise.all([
+      const [rawOdonto, rawAcciones] = await Promise.all([
         obtenerOdontogramaPorPaciente(pacienteId, expedienteId),
         obtenerAccionesOdontograma(),
       ]);
 
-      // El servicio usa procesarRespuesta que retorna el body completo:
-      // resOdonto = { ok, data: { odontogramas: { permanente, temporal } } }
-      // resAcciones = { ok, data: [acciones...] }
+      // apiFetch retorna Response crudo — hay que parsear el JSON manualmente
+      const resOdonto   = rawOdonto   instanceof Response ? await rawOdonto.json()   : rawOdonto;
+      const resAcciones = rawAcciones instanceof Response ? await rawAcciones.json() : rawAcciones;
+
+      // resOdonto = { ok, data: { paciente, expediente_id, odontogramas: { permanente, temporal } } }
+      // resAcciones = { ok, data: [...acciones] }
       setData(resOdonto?.data?.odontogramas || null);
       setAcciones(resAcciones?.data || []);
     } catch (err) {
