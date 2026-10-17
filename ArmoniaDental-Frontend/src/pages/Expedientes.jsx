@@ -22,6 +22,7 @@ import {
 import VisorPDF from "../components/VisorPDF";
 import ModalHistoriaClinica from "../components/ModalHistoriaClinica";
 import FichaHistoriaClinica from "../components/FichaHistoriaClinica";
+import OdontogramaResumen from "../components/OdontogramaResumen";
 
 const getInitials = (nombre = "") =>
   nombre
@@ -544,6 +545,12 @@ const Expedientes = () => {
                       onRegistrar={() => setMostrarModalHistoria(true)}
                     />
                   )}
+
+                  {/* ── Odontograma ── */}
+                  <OdontogramaResumen
+                    pacienteId={pacienteSeleccionado._id}
+                    expedienteId={pacienteSeleccionado.expediente_id}
+                  />
 
                   {/* ── Documentos ── */}
                   <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm">
