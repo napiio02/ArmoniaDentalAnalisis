@@ -9,7 +9,10 @@ import {
   getPacientes,
   getUsuarios,
   getDisponibilidad,
+  getConfiguracionAgenda,
 } from "../services/citaService";
+import { obtenerSesion } from "../services/authService";
+import ModalConfiguracionAgenda from "../components/ModalConfiguracionAgenda";
 
 const DURACIONES = {
   Limpieza: 45,
@@ -65,6 +68,33 @@ const MESES = [
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+// Horario de atención por defecto (se reemplaza con el configurado en el sistema)
+const CONFIG_AGENDA_DEFECTO = {
+  horaInicio: "09:00",
+  horaFin: "18:00",
+  diasNoLaborables: [0], // 0 = domingo ... 6 = sábado
+  fechasNoLaborables: [],
+};
+
+const formatoHora12 = (hhmm) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "p. m." : "a. m."}`;
+};
+
+// "Lun a Sáb · 9:00 a. m. – 6:00 p. m."
+const resumenAtencion = (config) => {
+  const orden = [1, 2, 3, 4, 5, 6, 0];
+  const abiertos = orden.filter((d) => !config.diasNoLaborables.includes(d));
+  const nombres = abiertos.map((d) => DIAS_SEMANA[d === 0 ? 6 : d - 1]);
+  const seguidos = abiertos.every((d, i) => i === 0 || orden.indexOf(d) === orden.indexOf(abiertos[i - 1]) + 1);
+  const dias =
+    nombres.length > 2 && seguidos ? `${nombres[0]} a ${nombres[nombres.length - 1]}` : nombres.join(", ");
+  return `${dias} · ${formatoHora12(config.horaInicio)} – ${formatoHora12(config.horaFin)}`;
+};
+
+const PATRON_SIN_ATENCION =
+  "repeating-linear-gradient(135deg, #f0f3ff 0, #f0f3ff 6px, #f9f9ff 6px, #f9f9ff 12px)";
+
 const Label = ({ children }) => (
   <label className="block text-xs font-semibold text-[#3f484e] uppercase tracking-wider mb-1.5">
     {children}
@@ -99,6 +129,12 @@ const Citas = () => {
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
 
   const [mostrarModal, setMostrarModal] = useState(false);
+
+  // Horario de atención y días sin atención
+  const [configAgenda, setConfigAgenda] = useState(CONFIG_AGENDA_DEFECTO);
+  const [mostrarConfigAgenda, setMostrarConfigAgenda] = useState(false);
+  const [puedeEditarAgenda, setPuedeEditarAgenda] = useState(false);
+  const [mensajeExito, setMensajeExito] = useState("");
   const [citaEditando, setCitaEditando] = useState(null);
   const [citaACancelar, setCitaACancelar] = useState(null);
   const [cancelandoCita, setCancelandoCita] = useState(false);
@@ -130,6 +166,18 @@ const Citas = () => {
     setTimeout(() => setMensajeError(""), 4000);
   };
 
+  // ¿Se atiende ese día (AAAA-MM-DD)? Considera los días fijos y las fechas específicas sin atención
+  const infoDiaAgenda = (clave) => {
+    const extra = configAgenda.fechasNoLaborables.find((f) => f.fecha === clave);
+    if (extra) return { cerrado: true, motivo: extra.motivo || "Día sin atención" };
+
+    const [anio, mes, dia] = clave.split("-").map(Number);
+    if (configAgenda.diasNoLaborables.includes(new Date(anio, mes - 1, dia).getDay())) {
+      return { cerrado: true, motivo: "Sin atención" };
+    }
+    return { cerrado: false, motivo: "" };
+  };
+
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -141,6 +189,22 @@ const Citas = () => {
         setCitas(citasData);
         setPacientes(pacientesData);
         setUsuarios(usuariosData);
+
+        // El horario de atención y el rol no deben impedir que cargue la agenda si fallan
+        try {
+          const respuesta = await getConfiguracionAgenda();
+          if (respuesta?.data) setConfigAgenda(respuesta.data);
+        } catch (err) {
+          console.error("No se pudo cargar el horario de atención:", err.message);
+        }
+        try {
+          const sesion = await obtenerSesion();
+          const u = sesion?.data?.usuario ?? sesion?.usuario ?? sesion?.data ?? sesion;
+          const rol = u?.rol_id?.nombre || u?.rol?.nombre || u?.rol;
+          setPuedeEditarAgenda(["Admin", "Dentista"].includes(rol));
+        } catch {
+          /* sin sesión: el horario queda en modo lectura */
+        }
         if (usuariosData.length > 0)
           setFormNueva((p) => ({ ...p, usuario_id: usuariosData[0]._id }));
       } catch (err) {
@@ -154,7 +218,7 @@ const Citas = () => {
 
   useEffect(() => {
     const cargarDisponibilidad = async () => {
-      if (!fechaSeleccionada || !formNueva.tipo) {
+      if (!fechaSeleccionada || !formNueva.tipo || infoDiaAgenda(fechaSeleccionada).cerrado) {
         setHorariosDisponibles([]);
         return;
       }
@@ -176,7 +240,7 @@ const Citas = () => {
     };
 
     cargarDisponibilidad();
-  }, [fechaSeleccionada, formNueva.tipo]);
+  }, [fechaSeleccionada, formNueva.tipo, configAgenda]);
 
   const formatearFecha = (f) =>
     new Date(f).toLocaleString("es-CR", {
@@ -438,7 +502,25 @@ const Citas = () => {
                 Programa y controla limpiezas, cirugías, revisiones y
                 blanqueamientos
               </p>
+              <p className="text-xs text-[#3f484e] mt-1.5 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px] text-[#006686]">
+                  schedule
+                </span>
+                Atención: {resumenAtencion(configAgenda)}
+              </p>
             </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMostrarConfigAgenda(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#bec8ce] bg-white text-xs font-semibold text-[#3f484e] hover:border-[#006686] hover:text-[#006686] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  event_busy
+                </span>
+                Horario y días sin atención
+              </button>
 
             {/* Toggle Lista / Calendario */}
             <div className="flex items-center gap-1 bg-[#f0f3ff] border border-[#bec8ce] rounded-full p-1 w-fit">
@@ -469,7 +551,17 @@ const Citas = () => {
                 Calendario
               </button>
             </div>
+            </div>
           </div>
+
+          {mensajeExito && (
+            <div className="bg-[#6df5e120] border border-[#6df5e1]/40 rounded-xl px-5 py-3 flex items-center gap-3 mb-5 text-sm text-[#006b5f]">
+              <span className="material-symbols-outlined text-[18px]">
+                check_circle
+              </span>
+              {mensajeExito}
+            </div>
+          )}
 
           {mensajeError && (
             <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-xl px-5 py-3 flex items-center gap-3 mb-5 text-sm text-[#ba1a1a]">
@@ -577,7 +669,7 @@ const Citas = () => {
                       <input
                         type="date"
                         value={fechaSeleccionada}
-                        min={new Date().toISOString().split("T")[0]}
+                        min={claveFechaLocal(new Date())}
                         onChange={(e) => {
                           setFechaSeleccionada(e.target.value);
 
@@ -609,6 +701,11 @@ const Citas = () => {
                     {!fechaSeleccionada ? (
                       <div className="rounded-lg border border-dashed border-[#bec8ce] bg-[#f9f9ff] px-4 py-4 text-sm text-[#3f484e]">
                         Selecciona una fecha para ver los horarios disponibles.
+                      </div>
+                    ) : infoDiaAgenda(fechaSeleccionada).cerrado ? (
+                      <div className="rounded-lg border border-[#ba1a1a]/30 bg-[#ffdad6]/40 px-4 py-4 text-sm text-[#ba1a1a] flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">event_busy</span>
+                        No hay atención ese día ({infoDiaAgenda(fechaSeleccionada).motivo}). Elige otra fecha.
                       </div>
                     ) : cargandoHorarios ? (
                       <div className="rounded-lg border border-[#bec8ce] bg-[#f9f9ff] py-5 text-center">
@@ -931,6 +1028,7 @@ const Citas = () => {
                         const totalFilas = Math.ceil(celdasMes.length / 7);
                         const alinearDerecha = columna >= 5; // sáb/dom: abrir hacia la izquierda
                         const alinearArriba = fila >= totalFilas - 2; // últimas 2 filas: abrir hacia arriba
+                        const diaInfo = infoDiaAgenda(clave);
 
                         return (
                           <div
@@ -938,6 +1036,12 @@ const Citas = () => {
                             className={`relative min-h-[112px] border-b border-r border-[#bec8ce] p-1.5 flex flex-col gap-1 [&:nth-child(7n)]:border-r-0 ${
                               enMesActual ? "bg-white" : "bg-[#f9f9ff]"
                             }`}
+                            style={
+                              diaInfo.cerrado
+                                ? { backgroundImage: PATRON_SIN_ATENCION }
+                                : undefined
+                            }
+                            title={diaInfo.cerrado ? `Sin atención: ${diaInfo.motivo}` : undefined}
                           >
                             <button
                               type="button"
@@ -956,6 +1060,12 @@ const Citas = () => {
                             >
                               {fecha.getDate()}
                             </button>
+
+                            {diaInfo.cerrado && citasDelDia.length === 0 && (
+                              <span className="text-[10px] font-semibold leading-tight text-[#3f484e]/70 px-1.5">
+                                {diaInfo.motivo}
+                              </span>
+                            )}
 
                             <div className="flex flex-col gap-1 overflow-hidden">
                               {visibles.map((cita) => (
@@ -1066,6 +1176,13 @@ const Citas = () => {
                         {estado}
                       </div>
                     ))}
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#3f484e]">
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm inline-block border border-[#bec8ce]"
+                        style={{ backgroundImage: PATRON_SIN_ATENCION }}
+                      />
+                      Sin atención
+                    </div>
                   </div>
                 </>
               )}
@@ -1227,6 +1344,19 @@ const Citas = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {mostrarConfigAgenda && (
+        <ModalConfiguracionAgenda
+          config={configAgenda}
+          puedeEditar={puedeEditarAgenda}
+          onClose={() => setMostrarConfigAgenda(false)}
+          onGuardada={(nueva) => {
+            setConfigAgenda(nueva);
+            setMensajeExito("Horario de atención actualizado.");
+            setTimeout(() => setMensajeExito(""), 4000);
+          }}
+        />
       )}
 
       <ModalConfirmarEliminar

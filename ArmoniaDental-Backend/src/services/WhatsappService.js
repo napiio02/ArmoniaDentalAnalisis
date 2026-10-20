@@ -22,6 +22,18 @@ export const normalizarTelefono = (telefono = "") => {
   return digitos.length === 8 ? `506${digitos}` : digitos;
 };
 
+/*
+ * Para pruebas: si WHATSAPP_LISTA_BLANCA tiene números (separados por coma), las plantillas
+ * solo se envían a esos números. Así se pueden crear citas de prueba sin escribirle a nadie más.
+ */
+const telefonoPermitido = (telefono) => {
+  const lista = (process.env.WHATSAPP_LISTA_BLANCA || "")
+    .split(",")
+    .map((n) => normalizarTelefono(n.trim()))
+    .filter(Boolean);
+  return lista.length === 0 || lista.includes(normalizarTelefono(telefono));
+};
+
 const enviar = async (body, mensajeError) => {
   try {
     const response = await axios.post(getApiUrl(), body, {
@@ -51,6 +63,11 @@ export const enviarMensajePlantilla = async ({
   citaId,
   conBotones = true,
 }) => {
+  if (!telefonoPermitido(telefono)) {
+    console.log(`[WhatsApp] Envío omitido: ${normalizarTelefono(telefono)} no está en WHATSAPP_LISTA_BLANCA.`);
+    return { omitido: true };
+  }
+
   const parametrosBody = Object.entries(parametrosNombrados).map(
     ([nombre, valor]) => ({
       type: "text",
@@ -121,6 +138,8 @@ export const enviarMensajeTexto = async ({ telefono, mensaje }) => {
 export const procesarRespuestaBoton = async (payload, telefonoPaciente) => {
   const CitaModel = (await import("../models/CitaModel.js")).default;
 
+  console.log(`[WhatsApp] Respuesta de botón recibida: ${payload} (de ${telefonoPaciente})`);
+
   const [accion, citaId] = String(payload).split("_");
   const responder = (mensaje) =>
     enviarMensajeTexto({ telefono: telefonoPaciente, mensaje });
@@ -165,16 +184,31 @@ export const procesarRespuestaBoton = async (payload, telefonoPaciente) => {
       return;
     }
 
-    cita.estado = "Confirmada";
-    await cita.save();
+    // Actualización atómica: solo cambia si la cita sigue "Programada"
+    const resultado = await CitaModel.updateOne(
+      { _id: citaId, estado: "Programada" },
+      { $set: { estado: "Confirmada" } }
+    );
+    if (resultado.modifiedCount === 0) {
+      await responder("No pudimos confirmar tu cita. Por favor comunícate con la clínica.");
+      return;
+    }
+
     await responder("¡Gracias! Tu cita ha sido confirmada. Te estaremos esperando.");
     console.log(`Cita ${citaId} confirmada por el paciente.`);
     return;
   }
 
   // accion === "CANCELAR" (también aplica a citas ya confirmadas)
-  cita.estado = "Cancelada";
-  await cita.save();
+  const resultado = await CitaModel.updateOne(
+    { _id: citaId, estado: { $in: ["Programada", "Confirmada"] } },
+    { $set: { estado: "Cancelada" } }
+  );
+  if (resultado.modifiedCount === 0) {
+    await responder("No pudimos cancelar tu cita. Por favor comunícate con la clínica.");
+    return;
+  }
+
   await responder(
     "Tu cita ha sido cancelada. Si deseas reagendar, comunícate con la clínica."
   );

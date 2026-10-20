@@ -13,12 +13,12 @@ export const ejecutarRecordatorios = async () => {
 
   try {
     const resultado = await enviarRecordatoriosPendientes();
-    const { recordatorio24: r24, recordatorio12: r12 } = resultado;
+    const { vispera, manana } = resultado;
 
-    if (r24.encontradas || r12.encontradas) {
+    if (vispera.encontradas || manana.encontradas) {
       console.log(
-        `[Recordatorios] 24h: ${r24.enviados} enviados, ${r24.fallidos} fallidos | ` +
-          `12h: ${r12.enviados} enviados, ${r12.fallidos} fallidos`
+        `[Recordatorios] Víspera: ${vispera.enviados} enviados, ${vispera.fallidos} fallidos | ` +
+          `Mañana: ${manana.enviados} enviados, ${manana.fallidos} fallidos`
       );
     }
 

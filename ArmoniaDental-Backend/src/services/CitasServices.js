@@ -1,32 +1,29 @@
 import CitaModel from "../models/CitaModel.js";
 import { enviarMensajePlantilla } from "./WhatsappService.js";
+import { notificarCancelacionCita } from "./RecordatorioService.js";
+import { obtenerConfiguracionAgenda } from "./ConfiguracionAgendaService.js";
 import {
-  notificarCancelacionCita,
-  flagsRecordatorioPara,
-} from "./RecordatorioService.js";
-
-const ZONA_HORARIA = "America/Costa_Rica";
-const TZ_OFFSET = "-06:00"; // Costa Rica no usa horario de verano
-
-const DURACIONES = {
-  Limpieza: 45,
-  Revisión: 30,
-  Cirugía: 120,
-  Blanqueamiento: 60,
-  Ortodoncia: 30,
-  Empaste: 60,
-  Radiografía: 20,
-};
+  DURACIONES,
+  TZ_OFFSET,
+  ZONA_HORARIA,
+  aFechaCR,
+  calcularFlagsRecordatorio,
+  duracionCita,
+  fechaValida,
+  generarSlots,
+  sumarDiasISO,
+  validarHorarioCita,
+} from "../utils/AgendaUtils.js";
 
 const ESTADOS_INACTIVOS = ["Cancelada", "No asistió"];
 
-const duracionMs = (tipo) => (DURACIONES[tipo] ?? 30) * 60 * 1000;
+const duracionMs = (tipo) => duracionCita(tipo) * 60 * 1000;
 
 const MAX_DURACION_MS = Math.max(...Object.values(DURACIONES)) * 60 * 1000;
 
 // Convierte a Date. Si el texto no trae zona horaria (ej. "2026-10-01T09:00"),
 // se interpreta como hora de Costa Rica y no como la hora del servidor (UTC).
-const aFechaCR = (valor) => {
+const aFechaHoraCR = (valor) => {
   if (!valor || valor instanceof Date) return valor;
   const texto = String(valor);
   if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(texto)) return new Date(texto);
@@ -105,27 +102,39 @@ export const obtenerCitasService = async ({ fecha, estado, tipo, pasadas }) => {
     .sort({ fecha_hora: 1 });
 };
 
+// Horarios de inicio del día según el horario de atención configurado, marcando los ocupados
 export const obtenerDisponibilidadService = async ({ fecha, tipo }) => {
   if (!fecha || !tipo) lanzarError("Fecha y tipo son requeridos", 400);
+  if (!fechaValida(fecha)) lanzarError("La fecha no es válida", 400);
 
-  const slots = [];
-  const ahora = new Date();
+  const config = await obtenerConfiguracionAgenda();
+  const inicios = generarSlots({ fecha, duracionMin: duracionCita(tipo), config });
 
-  const inicioDia = new Date(`${fecha}T08:00:00${TZ_OFFSET}`);
-  const finDia = new Date(`${fecha}T17:00:00${TZ_OFFSET}`);
+  // Día sin atención, o ya no quedan horarios hoy
+  if (inicios.length === 0) return [];
 
-  for (
-    let actual = new Date(inicioDia);
-    actual < finDia;
-    actual = new Date(actual.getTime() + 30 * 60 * 1000)
-  ) {
-    if (actual < ahora) continue;
+  // Una sola consulta para todo el día (antes era una por cada horario)
+  const citas = await CitaModel.find({
+    estado: { $nin: ESTADOS_INACTIVOS },
+    fecha_hora: {
+      $gte: new Date(aFechaCR(fecha).getTime() - MAX_DURACION_MS),
+      $lt: aFechaCR(sumarDiasISO(fecha, 1)),
+    },
+  })
+    .select("fecha_hora tipo")
+    .lean();
 
-    const choque = await horarioChoque(actual, tipo);
-    slots.push({ fecha_hora: actual, disponible: !choque });
-  }
+  const ocupadas = citas.map((c) => {
+    const ini = new Date(c.fecha_hora).getTime();
+    return [ini, ini + duracionMs(c.tipo)];
+  });
 
-  return slots;
+  return inicios.map((inicio) => {
+    const ini = inicio.getTime();
+    const fin = ini + duracionMs(tipo);
+    const choque = ocupadas.some(([a, b]) => ini < b && fin > a);
+    return { fecha_hora: inicio, disponible: !choque };
+  });
 };
 
 export const obtenerCitaPorIdService = async (id) => {
@@ -140,16 +149,20 @@ export const obtenerCitaPorIdService = async (id) => {
 
 export const crearCitaService = async (datos) => {
   const { paciente_id, usuario_id, tipo, motivo, observaciones } = datos;
-  const fecha_hora = aFechaCR(datos.fecha_hora);
+  const fecha_hora = aFechaHoraCR(datos.fecha_hora);
 
   if (fecha_hora < new Date()) {
     lanzarError("No se pueden ingresar fechas pasadas", 400);
   }
 
+  const config = await obtenerConfiguracionAgenda();
+  const errorHorario = validarHorarioCita(fecha_hora, duracionCita(tipo), config);
+  if (errorHorario) lanzarError(errorHorario, 400);
+
   const choque = await horarioChoque(fecha_hora, tipo);
   if (choque) lanzarError(mensajeChoque(choque), 409);
 
-  // Los flags de recordatorio se ajustan solos en el hook pre("save") del modelo
+  // Las banderas de recordatorio omiten los que ya no tienen sentido (ej. cita creada para mañana a las 3 p. m.)
   const nueva = await CitaModel.create({
     paciente_id,
     usuario_id,
@@ -158,6 +171,7 @@ export const crearCitaService = async (datos) => {
     motivo,
     observaciones: observaciones || "",
     estado: "Programada",
+    ...calcularFlagsRecordatorio(fecha_hora, config),
   });
 
   const citaCompleta = await CitaModel.findById(nueva._id)
@@ -188,7 +202,7 @@ export const crearCitaService = async (datos) => {
 
 export const actualizarCitaService = async (id, datos) => {
   const { tipo, estado, motivo, observaciones } = datos;
-  const fecha_hora = aFechaCR(datos.fecha_hora);
+  const fecha_hora = aFechaHoraCR(datos.fecha_hora);
 
   const cita = await CitaModel.findById(id);
 
@@ -202,25 +216,28 @@ export const actualizarCitaService = async (id, datos) => {
     fecha_hora.getTime() !== new Date(cita.fecha_hora).getTime();
   const cambioTipo = Boolean(tipo) && tipo !== cita.tipo;
 
-  // Solo se valida la fecha y el choque de horario si realmente cambió la fecha o el tipo.
+  // Solo se valida la fecha, el horario de atención y el choque si realmente cambió la fecha o el tipo.
   // Así se puede, por ejemplo, marcar como Atendida una cita que ya pasó.
   if (cambioFecha && fecha_hora < new Date()) {
     lanzarError("No se pueden ingresar fechas pasadas", 400);
   }
 
-  if (cambioFecha || cambioTipo) {
-    const choque = await horarioChoque(
-      fecha_hora ?? cita.fecha_hora,
-      tipo ?? cita.tipo,
-      id
-    );
-    if (choque) lanzarError(mensajeChoque(choque), 409);
-  }
-
   const actualizacion = { fecha_hora, tipo, estado, motivo, observaciones };
 
-  // Si la cita se reagenda, los recordatorios se reinician para la nueva fecha
-  if (cambioFecha) Object.assign(actualizacion, flagsRecordatorioPara(fecha_hora));
+  if (cambioFecha || cambioTipo) {
+    const nuevaFecha = fecha_hora ?? cita.fecha_hora;
+    const nuevoTipo = tipo ?? cita.tipo;
+
+    const config = await obtenerConfiguracionAgenda();
+    const errorHorario = validarHorarioCita(nuevaFecha, duracionCita(nuevoTipo), config);
+    if (errorHorario) lanzarError(errorHorario, 400);
+
+    const choque = await horarioChoque(nuevaFecha, nuevoTipo, id);
+    if (choque) lanzarError(mensajeChoque(choque), 409);
+
+    // Si la cita se reagenda, los recordatorios se reinician para la nueva fecha
+    if (cambioFecha) Object.assign(actualizacion, calcularFlagsRecordatorio(fecha_hora, config));
+  }
 
   const seCancela = estado === "Cancelada" && cita.estado !== "Cancelada";
 

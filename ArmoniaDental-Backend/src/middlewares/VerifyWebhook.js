@@ -6,13 +6,20 @@ export const capturarCuerpoWebhook = (req, res, buffer) => {
 };
 export const verifyWebhook = (req, res, next) => {
   const secret = process.env.WHATSAPP_APP_SECRET;
-  if (!secret) return res.status(503).json({ message: "El webhook de WhatsApp no está configurado." });
+  if (!secret) {
+    console.error("[WhatsApp] WHATSAPP_APP_SECRET no está configurado: se rechazan todos los webhooks.");
+    return res.status(503).json({ message: "El webhook de WhatsApp no está configurado." });
+  }
   const firma = req.get("x-hub-signature-256");
   if (!Buffer.isBuffer(req.rawBody) || !/^sha256=[a-f0-9]{64}$/.test(firma || "")) {
+    console.warn("[WhatsApp] Webhook rechazado: llegó sin firma válida o sin cuerpo.");
     return res.status(403).json({ message: "Firma de webhook inválida." });
   }
   const recibida = Buffer.from(firma.slice(7), "hex");
   const esperada = crypto.createHmac("sha256", secret).update(req.rawBody).digest();
-  if (!crypto.timingSafeEqual(recibida, esperada)) return res.status(403).json({ message: "Firma de webhook inválida." });
+  if (!crypto.timingSafeEqual(recibida, esperada)) {
+    console.warn("[WhatsApp] Webhook rechazado: la firma no coincide. Revisa que WHATSAPP_APP_SECRET sea el App Secret de la app de Meta.");
+    return res.status(403).json({ message: "Firma de webhook inválida." });
+  }
   next();
 };

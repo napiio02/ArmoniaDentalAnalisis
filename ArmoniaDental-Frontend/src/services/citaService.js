@@ -109,3 +109,24 @@ export const getCitasAtendidasPorPaciente = async (pacienteId) => {
   );
   return handleResponse(response);
 };
+
+const AGENDA_URL = `https://armoniadentalbackend.onrender.com/${VERSION}/agenda/configuracion`;
+
+// Horario de atención, días fijos sin atención y fechas específicas sin atención
+export async function getConfiguracionAgenda() {
+  const response = await apiFetch(AGENDA_URL, {
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+  return handleResponse(response); // { ok, data }
+}
+
+export async function updateConfiguracionAgenda(datos) {
+  const response = await apiFetch(AGENDA_URL, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    credentials: "include",
+    body: JSON.stringify(datos),
+  });
+  return handleResponse(response); // { ok, data, citasAfectadas }
+}
