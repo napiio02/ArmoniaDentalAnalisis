@@ -221,6 +221,9 @@ const VisualizarPaciente = () => {
                   </span>
                   Información clínica
                 </h4>
+                <p className="text-xs text-[#3f484e] -mt-2 mb-3">
+                  Se registran y actualizan desde la historia clínica del paciente (módulo Expedientes).
+                </p>
                 <div className="grid grid-cols-1 gap-3">
                   <div className="bg-[#f9f9ff] border border-[#bec8ce] rounded-xl p-4">
                     <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider mb-2">

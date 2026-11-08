@@ -17,6 +17,15 @@ export async function crearHistoriaClinica(req, res) {
   } catch (error) {
     console.error("Error al guardar historia clínica:", error);
 
+    // Datos con formato inválido (ej. una frecuencia que no existe): 400 con el detalle
+    if (error.name === "ValidationError" || error.name === "CastError") {
+      return res.status(400).json({
+        ok: false,
+        message: "Algunos datos de la historia clínica no son válidos.",
+        error: error.message,
+      });
+    }
+
     return res.status(error.status || 500).json({
       ok: false,
       message: error.status === 404

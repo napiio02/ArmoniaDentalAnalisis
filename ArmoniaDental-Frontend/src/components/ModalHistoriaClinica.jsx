@@ -3,6 +3,10 @@ import { crearHistoriaClinica } from "../services/pacienteService";
 
 const FRECUENCIAS = ["Nunca", "Rara vez", "A veces", "Frecuente", "Diario"];
 
+// Opciones frecuentes (se puede agregar cualquier otra con "Otra")
+const ALERGIAS = ["Penicilina", "Amoxicilina", "Anestesia", "Látex", "Ibuprofeno", "Aspirina", "Mariscos", "Polen"];
+const ENFERMEDADES = ["Diabetes", "Hipertensión", "Asma", "Enfermedad cardíaca", "Epilepsia", "Artritis", "Tiroides"];
+
 const inputCls =
   "w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none bg-white text-[#151c27] border-[#bec8ce] focus:border-[#006686] transition-colors";
 
@@ -44,6 +48,89 @@ const ToggleSiNo = ({ label, value, onChange }) => (
     </div>
   </div>
 );
+
+// Etiqueta seleccionable (alergia / enfermedad). Definida fuera del selector para que React no la recree en cada cambio.
+const Chip = ({ texto, tono, seleccionado, onClick, quitable }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={seleccionado}
+    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+      seleccionado
+        ? tono === "alerta"
+          ? "bg-[#ffddb8] text-[#855300] border-[#855300]/40"
+          : "bg-[#7dd3fc40] text-[#006686] border-[#006686]/40"
+        : "bg-white text-[#3f484e] border-[#bec8ce] hover:border-[#006686]"
+    }`}
+  >
+    {seleccionado && !quitable && <span className="material-symbols-outlined text-[14px]">check</span>}
+    {texto}
+    {quitable && <span className="material-symbols-outlined text-[14px]">close</span>}
+  </button>
+);
+
+// Selector de alergias / enfermedades: opciones frecuentes, "Ninguna" y valores propios.
+// "Ninguna" es excluyente: si se marca otra opción, "Ninguna" se quita, y viceversa.
+const SelectorEtiquetas = ({ id, titulo, opciones, valores, onChange, tono, placeholderOtra }) => {
+  const [otra, setOtra] = useState("");
+  const clave = (t) => t.trim().toLocaleLowerCase("es");
+  const incluye = (t) => valores.some((v) => clave(v) === clave(t));
+
+  const alternar = (opcion) => {
+    if (opcion === "Ninguna") return onChange(incluye("Ninguna") ? [] : ["Ninguna"]);
+    const sinNinguna = valores.filter((v) => clave(v) !== "ninguna");
+    onChange(incluye(opcion) ? sinNinguna.filter((v) => clave(v) !== clave(opcion)) : [...sinNinguna, opcion]);
+  };
+
+  const agregarOtra = () => {
+    const texto = otra.trim().replace(/\s+/g, " ");
+    if (!texto) return;
+    const canonica = [...opciones, "Ninguna"].find((o) => clave(o) === clave(texto)) ?? texto;
+    if (!incluye(canonica)) alternar(canonica);
+    setOtra("");
+  };
+
+  const propias = valores.filter((v) => clave(v) !== "ninguna" && !opciones.some((o) => clave(o) === clave(v)));
+
+  return (
+    <div>
+      <Label>{titulo}</Label>
+      <div className="flex flex-wrap gap-2" role="group" aria-label={titulo}>
+        {opciones.map((o) => (
+          <Chip key={o} texto={o} tono={tono} seleccionado={incluye(o)} onClick={() => alternar(o)} />
+        ))}
+        {propias.map((v) => (
+          <Chip key={v} texto={v} tono={tono} seleccionado quitable onClick={() => alternar(v)} />
+        ))}
+        <Chip texto="Ninguna" tono={tono} seleccionado={incluye("Ninguna")} onClick={() => alternar("Ninguna")} />
+      </div>
+      <div className="flex gap-2 mt-2">
+        <input
+          id={id}
+          type="text"
+          value={otra}
+          maxLength={60}
+          onChange={(e) => setOtra(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              agregarOtra();
+            }
+          }}
+          placeholder={placeholderOtra}
+          className={inputCls}
+        />
+        <button
+          type="button"
+          onClick={agregarOtra}
+          className="px-4 py-2 border border-[#006686] text-[#006686] rounded-lg text-xs font-semibold hover:bg-[#7dd3fc20] transition-colors whitespace-nowrap"
+        >
+          Agregar
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const FORM_INICIAL = {
   contacto_emergencia_nombre: "",
@@ -91,17 +178,33 @@ const soloFecha = (fecha) => {
   return new Date(fecha).toISOString().split("T")[0];
 };
 
-export default function ModalHistoriaClinica({ pacienteId, historiaExistente, onClose, onGuardado }) {
-  const [formData, setFormData] = useState(() =>
-    historiaExistente
-      ? {
-          ...FORM_INICIAL,
-          ...historiaExistente,
-          fecha_ultima_limpieza: soloFecha(historiaExistente.fecha_ultima_limpieza),
-          horas_sueno: historiaExistente.horas_sueno ?? "",
-          veces_cepillado_dia: historiaExistente.veces_cepillado_dia ?? "",
-        }
-      : FORM_INICIAL
+export default function ModalHistoriaClinica({
+  pacienteId,
+  pacienteNombre,
+  historiaExistente,
+  alergiasIniciales = [],
+  enfermedadesIniciales = [],
+  pasoRegistro = false, // true cuando se abre como segundo paso de "Nuevo paciente"
+  onClose,
+  onGuardado,
+}) {
+  const [formData, setFormData] = useState(() => {
+    if (!historiaExistente) return FORM_INICIAL;
+    // Solo los campos del cuestionario (sin _id, fechas internas, etc.)
+    const datos = Object.fromEntries(
+      Object.keys(FORM_INICIAL).map((k) => [k, historiaExistente[k] ?? FORM_INICIAL[k]]),
+    );
+    return {
+      ...datos,
+      fecha_ultima_limpieza: soloFecha(historiaExistente.fecha_ultima_limpieza),
+      horas_sueno: historiaExistente.horas_sueno ?? "",
+      veces_cepillado_dia: historiaExistente.veces_cepillado_dia ?? "",
+    };
+  });
+  // Alergias y enfermedades se guardan en el paciente; aquí es el único lugar donde se editan
+  const [alergias, setAlergias] = useState(() => historiaExistente?.alergias ?? alergiasIniciales ?? []);
+  const [enfermedades, setEnfermedades] = useState(
+    () => historiaExistente?.enfermedades ?? enfermedadesIniciales ?? [],
   );
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
@@ -117,6 +220,8 @@ export default function ModalHistoriaClinica({ pacienteId, historiaExistente, on
     try {
       const datos = {
         ...formData,
+        alergias,
+        enfermedades,
         horas_sueno: formData.horas_sueno === "" ? null : Number(formData.horas_sueno),
         veces_cepillado_dia:
           formData.veces_cepillado_dia === "" ? null : Number(formData.veces_cepillado_dia),
@@ -141,9 +246,11 @@ export default function ModalHistoriaClinica({ pacienteId, historiaExistente, on
               {historiaExistente ? "Editar historia clínica" : "Historia clínica del paciente"}
             </h3>
             <p className="text-xs text-[#3f484e] mt-0.5">
+              {pasoRegistro && <span className="font-semibold text-[#006686]">Paso 2 de 2 · </span>}
               {historiaExistente
                 ? "Actualice el cuestionario de salud del paciente"
-                : "Complete el cuestionario de salud del paciente recién registrado"}
+                : "Complete el cuestionario de salud del paciente"}
+              {pacienteNombre && <> · <span className="font-semibold text-[#151c27]">{pacienteNombre}</span></>}
             </p>
           </div>
           <button
@@ -178,21 +285,43 @@ export default function ModalHistoriaClinica({ pacienteId, historiaExistente, on
             </div>
           </div>
 
+          <SeccionTitulo>Alergias y enfermedades</SeccionTitulo>
+          <div className="grid grid-cols-1 gap-5">
+            <SelectorEtiquetas
+              id="hc-alergia-otra"
+              titulo="Alergias"
+              opciones={ALERGIAS}
+              valores={alergias}
+              onChange={setAlergias}
+              tono="alerta"
+              placeholderOtra="Otra alergia (Ej: Sulfas)"
+            />
+            <div>
+              <Label>Detalle de alergias</Label>
+              <textarea name="antecedentes_alergicos" value={formData.antecedentes_alergicos} onChange={onChangeTexto}
+                className={inputCls} rows={2} placeholder="Ej: Penicilina: urticaria y dificultad para respirar" />
+            </div>
+            <SelectorEtiquetas
+              id="hc-enfermedad-otra"
+              titulo="Enfermedades relevantes"
+              opciones={ENFERMEDADES}
+              valores={enfermedades}
+              onChange={setEnfermedades}
+              tono="info"
+              placeholderOtra="Otra enfermedad (Ej: Hepatitis)"
+            />
+            <div>
+              <Label>Otros padecimientos o detalle</Label>
+              <textarea name="padecimientos" value={formData.padecimientos} onChange={onChangeTexto}
+                className={inputCls} rows={2} placeholder="Ej: Diabetes tipo 2 controlada con medicamento" />
+            </div>
+          </div>
+
           <SeccionTitulo>Antecedentes médicos</SeccionTitulo>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <Label>Padecimientos</Label>
-              <textarea name="padecimientos" value={formData.padecimientos} onChange={onChangeTexto}
-                className={inputCls} rows={2} placeholder="Ej: Hipertensión, diabetes..." />
-            </div>
-            <div>
               <Label>Medicamentos que toma</Label>
               <textarea name="medicamentos" value={formData.medicamentos} onChange={onChangeTexto}
-                className={inputCls} rows={2} />
-            </div>
-            <div>
-              <Label>Antecedentes alérgicos</Label>
-              <textarea name="antecedentes_alergicos" value={formData.antecedentes_alergicos} onChange={onChangeTexto}
                 className={inputCls} rows={2} />
             </div>
             <div>

@@ -234,6 +234,16 @@ const Expedientes = () => {
 
   const handleHistoriaGuardada = (nuevaHistoria) => {
     setHistoriaClinica(nuevaHistoria);
+    // Las alergias y enfermedades se editan en la historia clínica: refrescar la tarjeta del paciente
+    setDetallePaciente((prev) =>
+      prev
+        ? {
+            ...prev,
+            alergias: nuevaHistoria?.alergias ?? prev.alergias,
+            enfermedades: nuevaHistoria?.enfermedades ?? prev.enfermedades,
+          }
+        : prev,
+    );
     setMostrarModalHistoria(false);
   };
 
@@ -529,6 +539,14 @@ const Expedientes = () => {
                             )}
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setMostrarModalHistoria(true)}
+                          className="mt-3 text-xs font-semibold text-[#006686] hover:underline flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                          Actualizar alergias y enfermedades en la historia clínica
+                        </button>
                       </>
                     )}
                   </div>
@@ -818,7 +836,10 @@ const Expedientes = () => {
       {mostrarModalHistoria && pacienteSeleccionado && (
         <ModalHistoriaClinica
           pacienteId={pacienteSeleccionado._id}
+          pacienteNombre={pacienteSeleccionado.nombre}
           historiaExistente={historiaClinica}
+          alergiasIniciales={detallePaciente?.alergias ?? []}
+          enfermedadesIniciales={detallePaciente?.enfermedades ?? []}
           onClose={() => setMostrarModalHistoria(false)}
           onGuardado={handleHistoriaGuardada}
         />

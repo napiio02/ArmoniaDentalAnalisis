@@ -117,9 +117,9 @@ export default function FichaHistoriaClinica({ historia, onEditar, onRegistrar }
 
           <SeccionTitulo>Antecedentes médicos</SeccionTitulo>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Dato label="Padecimientos" value={historia.padecimientos} />
+            <Dato label="Otros padecimientos o detalle" value={historia.padecimientos} />
             <Dato label="Medicamentos que toma" value={historia.medicamentos} />
-            <Dato label="Antecedentes alérgicos" value={historia.antecedentes_alergicos} />
+            <Dato label="Detalle de alergias" value={historia.antecedentes_alergicos} />
             <Dato label="Procedimientos quirúrgicos" value={historia.procedimientos_quirurgicos} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">

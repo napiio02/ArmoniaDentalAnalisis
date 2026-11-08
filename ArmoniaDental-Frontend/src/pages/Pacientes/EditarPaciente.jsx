@@ -2,15 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { obtenerPacientePorId, actualizarPaciente } from "../../services/pacienteService";
 
-const ALERGIAS = [
-  "Penicilina", "Látex", "Anestesia", "Ibuprofeno",
-  "Amoxicilina", "Polen", "Mariscos", "Ninguna",
-];
-const ENFERMEDADES = [
-  "Diabetes", "Hipertensión", "Asma", "Enfermedad cardíaca",
-  "Epilepsia", "Artritis", "Tiroides", "Ninguna",
-];
-
 const inputCls = (error) =>
   `w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none bg-white text-[#151c27] transition-colors ${
     error ? "border-[#ba1a1a] focus:border-[#ba1a1a]" : "border-[#bec8ce] focus:border-[#006686]"
@@ -43,7 +34,7 @@ const formatearTelefono = (valor) => {
 
 const FORM_VACIO = {
   nombre: "", cedula: "", telefono: "", correo: "",
-  fecha_nacimiento: "", alergias: [], enfermedades: [],
+  fecha_nacimiento: "",
 };
 
 const EditarPaciente = () => {
@@ -57,8 +48,6 @@ const EditarPaciente = () => {
   const [guardando, setGuardando] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [exito, setExito] = useState(false);
-  const [alergiaSeleccionada, setAlergiaSeleccionada] = useState("");
-  const [enfermedadSeleccionada, setEnfermedadSeleccionada] = useState("");
 
   const mostrarError = (mensaje) => {
     setError(mensaje);
@@ -79,8 +68,6 @@ const EditarPaciente = () => {
           telefono: p.telefono || "",
           correo: p.correo || "",
           fecha_nacimiento: aFechaInput(p.fecha_nacimiento),
-          alergias: p.alergias || [],
-          enfermedades: p.enfermedades || [],
         });
         setActivo(p.activo !== false);
       } catch (err) {
@@ -97,26 +84,6 @@ const EditarPaciente = () => {
     if (name === "cedula") valorFinal = formatearCedula(value);
     if (name === "telefono") valorFinal = formatearTelefono(value);
     setFormData((prev) => ({ ...prev, [name]: valorFinal }));
-  };
-
-  const agregarAlergia = (alergia) => {
-    if (!alergia) return;
-    setFormData((prev) => {
-      if (alergia === "Ninguna") return { ...prev, alergias: ["Ninguna"] };
-      const actuales = prev.alergias.filter((a) => a !== "Ninguna");
-      if (actuales.includes(alergia)) return prev;
-      return { ...prev, alergias: [...actuales, alergia] };
-    });
-  };
-
-  const agregarEnfermedad = (enf) => {
-    if (!enf) return;
-    setFormData((prev) => {
-      if (enf === "Ninguna") return { ...prev, enfermedades: ["Ninguna"] };
-      const actuales = prev.enfermedades.filter((e) => e !== "Ninguna");
-      if (actuales.includes(enf)) return prev;
-      return { ...prev, enfermedades: [...actuales, enf] };
-    });
   };
 
   const handleSubmit = async (e) => {
@@ -203,68 +170,12 @@ const EditarPaciente = () => {
                       value={formData.correo} onChange={onChange} className={inputCls(false)} />
                   </div>
 
-                  {/* Alergias */}
-                  <div className="md:col-span-2">
-                    <Label>Alergias</Label>
-                    <div className="flex gap-2">
-                      <select value={alergiaSeleccionada}
-                        onChange={(e) => setAlergiaSeleccionada(e.target.value)}
-                        className={inputCls(false)}>
-                        <option value="">Seleccione una alergia</option>
-                        {ALERGIAS.map((a) => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                      <button type="button"
-                        onClick={() => { agregarAlergia(alergiaSeleccionada); setAlergiaSeleccionada(""); }}
-                        className="px-5 py-2.5 bg-[#006686] text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity whitespace-nowrap">
-                        Agregar
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3 min-h-[32px]">
-                      {formData.alergias.length > 0 ? (
-                        formData.alergias.map((a) => (
-                          <span key={a} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-[#ffddb820] text-[#855300] border border-[#855300]/20">
-                            {a}
-                            <button type="button"
-                              onClick={() => setFormData((p) => ({ ...p, alergias: p.alergias.filter((x) => x !== a) }))}
-                              className="hover:opacity-70 font-bold">✕</button>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-[#bec8ce]">No se han agregado alergias</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Enfermedades */}
-                  <div className="md:col-span-2">
-                    <Label>Enfermedades relevantes</Label>
-                    <div className="flex gap-2">
-                      <select value={enfermedadSeleccionada}
-                        onChange={(e) => setEnfermedadSeleccionada(e.target.value)}
-                        className={inputCls(false)}>
-                        <option value="">Seleccione una enfermedad</option>
-                        {ENFERMEDADES.map((e) => <option key={e} value={e}>{e}</option>)}
-                      </select>
-                      <button type="button"
-                        onClick={() => { agregarEnfermedad(enfermedadSeleccionada); setEnfermedadSeleccionada(""); }}
-                        className="px-5 py-2.5 bg-[#006686] text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity whitespace-nowrap">
-                        Agregar
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3 min-h-[32px]">
-                      {formData.enfermedades.length > 0 ? (
-                        formData.enfermedades.map((enf) => (
-                          <span key={enf} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-[#7dd3fc20] text-[#006686] border border-[#006686]/20">
-                            {enf}
-                            <button type="button"
-                              onClick={() => setFormData((p) => ({ ...p, enfermedades: p.enfermedades.filter((x) => x !== enf) }))}
-                              className="hover:opacity-70 font-bold">✕</button>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-[#bec8ce]">No se han agregado enfermedades</span>
-                      )}
-                    </div>
+                  <div className="md:col-span-2 rounded-xl border border-[#006686]/20 bg-[#7dd3fc20] px-4 py-3 text-xs text-[#006686] flex items-start gap-2">
+                    <span className="material-symbols-outlined text-[16px]">info</span>
+                    <span>
+                      Las alergias, enfermedades y antecedentes médicos se actualizan en la historia clínica del
+                      paciente (módulo Expedientes).
+                    </span>
                   </div>
                 </div>
 
