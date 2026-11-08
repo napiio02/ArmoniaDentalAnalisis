@@ -130,9 +130,9 @@ export default function Usuarios() {
   const cambioForm = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
   const accionConfirmacion = confirmacion?.accion === "eliminar" ? "Eliminar" : confirmacion?.usuario.activo ? "Desactivar" : "Activar";
 
-  return <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+  return <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
     <Sidebar activeItem="usuarios" />
-    <main className="flex-1 h-screen overflow-y-auto p-8">
+    <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
       <div className="max-w-screen-2xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div><p className="text-xs font-semibold text-[#006686] uppercase tracking-wider mb-1">Administración</p><h2 className="text-[28px] font-bold leading-[36px] text-[#151c27]">Usuarios</h2><p className="text-sm text-[#3f484e] mt-1">Gestión del personal de Armonía Dental</p></div>
@@ -149,7 +149,7 @@ export default function Usuarios() {
         <div className="bg-white border border-[#bec8ce] rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             {cargando ? <p className="text-center py-16 text-sm text-[#3f484e]">Cargando usuarios…</p> : filtrados.length === 0 ? <div className="text-center py-16"><span className="material-symbols-outlined text-5xl text-[#bec8ce] block mb-3">group</span><p className="text-sm text-[#3f484e]">No se encontraron usuarios</p></div> :
-              <table className="w-full text-left border-collapse">
+              <table className="w-full min-w-[900px] whitespace-nowrap text-left border-collapse">
                 <thead><tr className="bg-[#f0f3ff] border-b border-[#bec8ce]">{["#", "Nombre", "Cédula", "Correo", "Teléfono", "Rol", "Estado cuenta", "Activo", "Acciones"].map((h) => <th key={h} className="px-5 py-3 text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider whitespace-nowrap">{h}</th>)}</tr></thead>
                 <tbody className="divide-y divide-[#bec8ce]/40">{filtrados.map((usuario, index) => <tr key={usuario._id} className={`hover:bg-[#e7eefe]/30 transition-colors ${!usuario.activo ? "opacity-60" : ""}`}>
                   <td className="px-5 py-4 text-sm text-[#3f484e]">{index + 1}</td>

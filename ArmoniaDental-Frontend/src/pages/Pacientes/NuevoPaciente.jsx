@@ -163,20 +163,20 @@ const NuevoPaciente = () => {
   return (
     <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+      <header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
         <Link to="/pacientes" aria-label="Volver a Pacientes" className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]">
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
         <span className="text-2xl">ꨄ︎</span>
-        <span className="font-bold text-[#151c27]">Armonía Dental</span>
-        <span className="text-[#bec8ce] mx-1">/</span>
+        <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
+        <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link to="/pacientes" className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors">Pacientes</Link>
         <span className="text-[#bec8ce] mx-1">/</span>
         <span className="text-sm font-semibold text-[#006686]">Nuevo Paciente</span>
       </header>
 
-      <div className="flex-1 flex items-start justify-center px-6 py-10">
+      <div className="flex-1 flex items-start justify-center px-4 py-6 sm:px-6 sm:py-10">
         <div className="w-full max-w-3xl">
           <div className="mb-6">
             <h2 className="text-[28px] font-bold text-[#151c27]">Nuevo Paciente</h2>
@@ -220,7 +220,7 @@ const NuevoPaciente = () => {
             noValidate
             className="bg-white border border-[#bec8ce] rounded-2xl shadow-sm divide-y divide-[#bec8ce]/60"
           >
-            <div className="p-8 space-y-8">
+            <div className="p-5 sm:p-8 space-y-8">
               <Seccion icono="badge" titulo="Datos personales" descripcion="Identificación del paciente">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="md:col-span-2">
@@ -280,7 +280,7 @@ const NuevoPaciente = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-8 py-5 bg-[#f9f9ff] rounded-b-2xl">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 px-5 py-4 sm:px-8 sm:py-5 bg-[#f9f9ff] rounded-b-2xl">
               <button type="button" onClick={() => navigate("/pacientes")}
                 className="px-5 py-2.5 text-xs font-semibold text-[#3f484e] bg-white border border-[#bec8ce] rounded-full hover:bg-[#dce2f3] transition-colors">
                 Cancelar

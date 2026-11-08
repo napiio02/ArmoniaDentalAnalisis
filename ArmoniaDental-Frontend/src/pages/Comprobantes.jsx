@@ -281,11 +281,11 @@ const Comprobantes = () => {
   const getCorreo = (comp) => obtenerCorreoValido(comp) || "No indicado";
 
   return (
-    <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+    <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <CentroNotificaciones />
       <Sidebar activeItem="comprobantes" />
 
-      <main className="flex-1 h-screen overflow-y-auto p-8">
+      <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
@@ -351,7 +351,7 @@ const Comprobantes = () => {
                   </p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[760px] whitespace-nowrap text-left border-collapse">
                   <thead>
                     <tr className="bg-[#f0f3ff] border-b border-[#bec8ce]">
                       {[

@@ -261,7 +261,8 @@ export default function OdontogramaChart({
 		<>
 			<div className="flex flex-wrap items-center gap-3 mb-4">
 				<div className="badge badge-lg badge-outline bg-white">
-					Clic derecho en una pieza para registrar
+					<span className="hidden lg:inline">Clic derecho en una pieza para registrar</span>
+					<span className="lg:hidden">Toque una pieza para registrar</span>
 				</div>
 
 				{currentFaceAction && (

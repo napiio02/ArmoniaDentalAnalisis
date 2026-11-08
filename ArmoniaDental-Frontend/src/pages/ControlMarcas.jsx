@@ -850,9 +850,9 @@ const ControlMarcas = () => {
 
   if (cargandoSesion) {
     return (
-      <div className="flex overflow-hidden h-screen bg-[#f9f9ff]">
+      <div className="flex overflow-hidden h-dvh bg-[#f9f9ff]">
         <Sidebar activeItem="control-marcas" />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center pt-14 lg:pt-0">
           <div className="flex flex-col items-center gap-3">
             <span className="loading loading-spinner loading-lg text-[#006686]" />
             <p className="text-sm text-[#3f484e]">Cargando sesión…</p>
@@ -863,7 +863,7 @@ const ControlMarcas = () => {
   }
 
   return (
-    <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+    <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <Toaster
         position="top-right"
         gutter={12}
@@ -875,7 +875,7 @@ const ControlMarcas = () => {
       />
       <Sidebar activeItem="control-marcas" />
 
-      <main className="flex-1 h-screen overflow-y-auto p-8">
+      <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto space-y-6">
           {/* ── Encabezado ── */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
@@ -1441,7 +1441,7 @@ const ControlMarcas = () => {
                 </div>
               ) : (
                 <div className="max-h-[560px] overflow-y-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full min-w-[880px] text-left border-collapse">
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-[#f0f3ff] border-b border-[#bec8ce]">
                         {[

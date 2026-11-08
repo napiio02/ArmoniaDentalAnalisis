@@ -102,20 +102,20 @@ const EditarPaciente = () => {
 
   return (
     <div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
-      <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+      <header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
         <Link to="/pacientes" className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]">
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
         <span className="text-2xl">ꨄ︎</span>
-        <span className="font-bold text-[#151c27]">Armonía Dental</span>
-        <span className="text-[#bec8ce] mx-1">/</span>
+        <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
+        <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link to="/pacientes" className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors">Pacientes</Link>
         <span className="text-[#bec8ce] mx-1">/</span>
         <span className="text-sm font-semibold text-[#006686]">Editar Paciente</span>
       </header>
 
-      <div className="flex-1 flex items-start justify-center px-6 py-10">
+      <div className="flex-1 flex items-start justify-center px-4 py-6 sm:px-6 sm:py-10">
         <div className="w-full max-w-2xl">
           <div className="mb-8 flex items-start justify-between">
             <div>
@@ -131,7 +131,7 @@ const EditarPaciente = () => {
             </div>
           )}
 
-          <div className="bg-white border border-[#bec8ce] rounded-2xl p-8 shadow-sm">
+          <div className="bg-white border border-[#bec8ce] rounded-2xl p-5 sm:p-8 shadow-sm">
             {cargando ? (
               <div className="flex justify-center py-10">
                 <span className="loading loading-spinner loading-lg text-[#006686]" />

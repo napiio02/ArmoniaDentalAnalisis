@@ -90,12 +90,12 @@ const Inventario = () => {
 	};
 
 	return (
-		<div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+		<div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
 			<CentroNotificaciones />
 			<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 			<Sidebar activeItem="inventario" />
 
-			<main className="flex-1 h-screen overflow-y-auto p-8">
+			<main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
 				<div className="max-w-screen-2xl mx-auto">
 
 					{/* Header */}
@@ -172,7 +172,7 @@ const Inventario = () => {
 									<button onClick={cargarInsumos} className="underline font-semibold ml-2">Reintentar</button>
 								</div>
 							) : (
-								<table className="w-full text-left border-collapse">
+								<table className="w-full min-w-[760px] whitespace-nowrap text-left border-collapse">
 									<thead>
 										<tr className="bg-[#f0f3ff] border-b border-[#bec8ce]">
 											{["CÓDIGO", "NOMBRE", "CATEGORÍA", "STOCK", "MÍN", "UNIDAD", "PROVEEDOR", "VENCIMIENTO", "ESTADO", "ACCIONES"].map((h) => (

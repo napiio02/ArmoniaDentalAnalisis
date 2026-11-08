@@ -251,7 +251,7 @@ const Home = () => {
   const nombreUsuario = usuario?.nombre ? usuario.nombre.split(" ")[0] : "—";
 
   return (
-    <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+    <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <Sidebar activeItem="home" />
       {notificacion && (
         <NotificacionCitasDia
@@ -261,7 +261,7 @@ const Home = () => {
         />
       )}
 
-      <main className="flex-1 h-screen overflow-y-auto p-8">
+      <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
@@ -392,12 +392,12 @@ const Home = () => {
             {/* Left col */}
             <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
               {/* Accesos rápidos */}
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4">
                 {ACCESOS_RAPIDOS.map(({ icon, label, to, primary }) => (
                   <Link
                     key={label}
                     to={to}
-                    className={`rounded-xl p-4 flex flex-col items-center justify-center text-center hover:scale-105 transition-all cursor-pointer group h-32 ${
+                    className={`rounded-xl p-3 sm:p-4 flex flex-col items-center justify-center text-center hover:scale-105 transition-all cursor-pointer group h-24 sm:h-32 ${
                       primary
                         ? "bg-[#7dd3fc20] border border-[#006686]/20 hover:bg-[#7dd3fc40]"
                         : "bg-white border border-[#bec8ce] hover:border-[#006686]"
@@ -442,7 +442,7 @@ const Home = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-4 gap-4 pb-2 border-b border-[#bec8ce] mb-2">
+                    <div className="hidden sm:grid grid-cols-4 gap-4 pb-2 border-b border-[#bec8ce] mb-2">
                       {["Paciente", "Hora", "Tratamiento", "Estado"].map(
                         (h) => (
                           <p
@@ -458,7 +458,7 @@ const Home = () => {
                       {citasHoy.slice(0, 5).map((cita) => (
                         <div
                           key={cita._id}
-                          className="grid grid-cols-4 gap-4 items-center py-2 hover:bg-[#f0f3ff] rounded-lg px-2 transition-colors"
+                          className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-4 gap-x-3 gap-y-1 sm:gap-4 items-center py-2 hover:bg-[#f0f3ff] rounded-lg px-2 transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded bg-[#e7eefe] flex items-center justify-center text-[#006686] text-xs font-bold flex-shrink-0">
@@ -468,14 +468,14 @@ const Home = () => {
                               {cita.paciente_id?.nombre ?? "Paciente"}
                             </span>
                           </div>
-                          <span className="text-sm text-[#3f484e]">
+                          <span className="text-sm text-[#3f484e] text-right sm:text-left">
                             {formatearHora(cita.fecha_hora)}
                           </span>
-                          <span className="text-sm text-[#3f484e] truncate">
+                          <span className="text-sm text-[#3f484e] truncate pl-10 sm:pl-0">
                             {cita.tipo}
                           </span>
                           <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${getBadgeEstado(cita.estado)}`}
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit justify-self-end sm:justify-self-start ${getBadgeEstado(cita.estado)}`}
                           >
                             {cita.estado}
                           </span>

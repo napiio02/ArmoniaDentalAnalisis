@@ -285,10 +285,10 @@ const Reportes = () => {
 	};
 
 	return (
-		<div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+		<div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
 			<Sidebar activeItem="reportes" />
 
-			<main className="flex-1 h-screen overflow-y-auto p-8">
+			<main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
 				<div className="max-w-screen-2xl mx-auto">
 					<div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
 						<div>
@@ -439,7 +439,7 @@ const Reportes = () => {
 								{!reporte.stockCritico ? <ErrorSeccion mensaje={reporte.errores.stockCritico} /> : insumosCriticos.length === 0 ? (
 									<p className="text-sm text-[#3f484e]">No hay insumos activos con stock crítico.</p>
 								) : (
-									<div className="overflow-x-auto"><table className="w-full text-left border-collapse">
+									<div className="overflow-x-auto"><table className="w-full min-w-[560px] whitespace-nowrap text-left border-collapse">
 										<thead><tr className="bg-[#ffdad6]/30 border-b border-[#ba1a1a]/10">{["Insumo", "Categoría", "Stock actual", "Stock mínimo", "Proveedor"].map((titulo) => <th key={titulo} className="px-4 py-3 text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">{titulo}</th>)}</tr></thead>
 										<tbody className="divide-y divide-[#bec8ce]/40">{insumosCriticos.map((item) => (
 											<tr key={item._id} className="hover:bg-[#ffdad6]/10 transition-colors"><td className="px-4 py-3 text-sm font-semibold text-[#151c27]">{item.nombre}</td><td className="px-4 py-3"><span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#bec8ce] text-[#3f484e] bg-[#dce2f3]">{item.categoria}</span></td><td className="px-4 py-3 font-bold text-[#ba1a1a] text-sm">{item.stock_actual} {item.unidad}</td><td className="px-4 py-3 text-sm text-[#3f484e]">{item.stock_minimo}</td><td className="px-4 py-3 text-sm text-[#3f484e]">{item.proveedor || "—"}</td></tr>

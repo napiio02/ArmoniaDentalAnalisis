@@ -28,6 +28,7 @@ export default function Sidebar({ activeItem = "citas" }) {
   const [openExpedientes, setOpenExpedientes] = useState(false);
   const [openAdmin, setOpenAdmin] = useState(esRutaAdministracion);
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false); // menú en teléfono/tableta
   const [errorSesion, setErrorSesion] = useState("");
 
   useEffect(() => {
@@ -35,6 +36,24 @@ export default function Sidebar({ activeItem = "citas" }) {
       setOpenAdmin(true);
     }
   }, [pathname, esRutaAdministracion]);
+
+  // En teléfono el menú se cierra al navegar
+  useEffect(() => {
+    setMenuAbierto(false);
+  }, [pathname]);
+
+  // Con el menú abierto: Escape lo cierra y el fondo no se desplaza
+  useEffect(() => {
+    if (!menuAbierto) return undefined;
+    const alPresionar = (e) => e.key === "Escape" && setMenuAbierto(false);
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", alPresionar);
+    return () => {
+      document.body.style.overflow = overflowPrevio;
+      window.removeEventListener("keydown", alPresionar);
+    };
+  }, [menuAbierto]);
 
   const { usuario, salir } = useAuth();
 
@@ -105,8 +124,8 @@ export default function Sidebar({ activeItem = "citas" }) {
     </Link>
   );
 
-  return (
-    <aside className="w-[260px] h-screen bg-white border-r border-[#bec8ce] flex flex-col flex-shrink-0 z-50">
+  const contenido = (
+    <>
       {/* Logo */}
       <Link
         to="/"
@@ -271,6 +290,68 @@ export default function Sidebar({ activeItem = "citas" }) {
           )}
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Barra superior: solo en teléfono y tableta */}
+      <header
+        className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-b border-[#bec8ce]"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        <div className="h-14 flex items-center gap-2 px-3">
+          <button
+            type="button"
+            onClick={() => setMenuAbierto(true)}
+            aria-label="Abrir menú"
+            aria-expanded={menuAbierto}
+            className="p-2 rounded-lg text-[#151c27] hover:bg-[#f0f3ff] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[24px]">menu</span>
+          </button>
+          <Link to="/" className="flex items-center gap-2 min-w-0">
+            <span className="text-xl">ꨄ︎</span>
+            <span className="font-bold text-[#151c27] truncate">Armonía Dental</span>
+          </Link>
+          <div
+            className="ml-auto w-8 h-8 rounded-full bg-[#006686] flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
+            title={`${nombreUsuario} · ${nombreRol}`}
+          >
+            {obtenerIniciales(nombreUsuario)}
+          </div>
+        </div>
+      </header>
+
+      {/* Escritorio: menú fijo a la izquierda */}
+      <aside className="hidden lg:flex w-[260px] h-dvh bg-white border-r border-[#bec8ce] flex-col flex-shrink-0 z-50">
+        {contenido}
+      </aside>
+
+      {/* Teléfono y tableta: menú deslizable */}
+      {menuAbierto && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMenuAbierto(false)} aria-hidden="true" />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú principal"
+            className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-white flex flex-col shadow-2xl"
+            style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setMenuAbierto(false)}
+              aria-label="Cerrar menú"
+              className="absolute top-3 right-3 p-2 rounded-lg text-[#3f484e] hover:bg-[#f0f3ff] transition-colors"
+              style={{ marginTop: "env(safe-area-inset-top)" }}
+            >
+              <span className="material-symbols-outlined text-[22px]">close</span>
+            </button>
+            {contenido}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

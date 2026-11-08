@@ -478,19 +478,19 @@ const Citas = () => {
 
   if (cargando)
     return (
-      <div className="flex overflow-hidden h-screen bg-[#f9f9ff]">
+      <div className="flex overflow-hidden h-dvh bg-[#f9f9ff]">
         <Sidebar activeItem="citas" />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center pt-14 lg:pt-0">
           <span className="loading loading-spinner loading-lg text-[#006686]" />
         </main>
       </div>
     );
 
   return (
-    <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+    <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <Sidebar activeItem="citas" />
 
-      <main className="flex-1 h-screen overflow-y-auto p-8">
+      <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto">
           {/* Header */}
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -511,6 +511,16 @@ const Citas = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById("form-nueva-cita")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className="lg:hidden flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#006686] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                Nueva cita
+              </button>
               <button
                 type="button"
                 onClick={() => setMostrarConfigAgenda(true)}
@@ -574,7 +584,7 @@ const Citas = () => {
 
           <div className="grid lg:grid-cols-[2fr,3fr] gap-6">
             {/* ── Formulario nueva cita ── */}
-            <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm h-fit">
+            <div id="form-nueva-cita" className="order-2 lg:order-1 scroll-mt-20 bg-white border border-[#bec8ce] rounded-xl p-4 sm:p-6 shadow-sm h-fit">
               <h3 className="font-semibold text-[#151c27] mb-5 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#006686] text-[20px]">
                   add_circle
@@ -822,7 +832,7 @@ const Citas = () => {
             </div>
 
             {/* ── Vista Lista o Calendario ── */}
-            <div className="bg-white border border-[#bec8ce] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+            <div className="order-1 lg:order-2 min-w-0 bg-white border border-[#bec8ce] rounded-xl p-4 sm:p-6 shadow-sm flex flex-col gap-4">
               {/* ── Encabezado compartido: navegación de mes + filtros ── */}
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
@@ -945,7 +955,7 @@ const Citas = () => {
                           key={cita._id}
                           className="border border-[#bec8ce] rounded-xl p-4 hover:shadow-md hover:border-[#006686]/30 transition-all"
                         >
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div className="flex flex-col gap-1 min-w-0">
                               <div className="flex items-center gap-2 text-xs text-[#3f484e]">
                                 <span className="material-symbols-outlined text-[16px] text-[#006686]">
@@ -968,7 +978,7 @@ const Citas = () => {
                                 {cita.usuario_id?.nombre || "N/A"}
                               </p>
                             </div>
-                            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                            <div className="flex flex-row-reverse sm:flex-col items-center sm:items-end justify-between gap-2 sm:flex-shrink-0">
                               <span
                                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${BADGE_ESTADO[cita.estado] || "bg-[#dce2f3] text-[#3f484e] border-[#bec8ce]"}`}
                               >
@@ -1033,7 +1043,7 @@ const Citas = () => {
                         return (
                           <div
                             key={clave}
-                            className={`relative min-h-[112px] border-b border-r border-[#bec8ce] p-1.5 flex flex-col gap-1 [&:nth-child(7n)]:border-r-0 ${
+                            className={`relative min-h-[64px] sm:min-h-[112px] border-b border-r border-[#bec8ce] p-1 sm:p-1.5 flex flex-col gap-1 [&:nth-child(7n)]:border-r-0 ${
                               enMesActual ? "bg-white" : "bg-[#f9f9ff]"
                             }`}
                             style={
@@ -1061,13 +1071,28 @@ const Citas = () => {
                               {fecha.getDate()}
                             </button>
 
+                            {/* Teléfono: cantidad de citas del día; al tocarla abre la lista de ese día */}
+                            {citasDelDia.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFiltroFecha(clave);
+                                  setVista("lista");
+                                }}
+                                className="sm:hidden mx-auto mt-0.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#006686] text-white text-[11px] font-bold"
+                                aria-label={`${citasDelDia.length} citas, ver lista del día`}
+                              >
+                                {citasDelDia.length}
+                              </button>
+                            )}
+
                             {diaInfo.cerrado && citasDelDia.length === 0 && (
-                              <span className="text-[10px] font-semibold leading-tight text-[#3f484e]/70 px-1.5">
+                              <span className="hidden sm:inline text-[10px] font-semibold leading-tight text-[#3f484e]/70 px-1.5">
                                 {diaInfo.motivo}
                               </span>
                             )}
 
-                            <div className="flex flex-col gap-1 overflow-hidden">
+                            <div className="hidden sm:flex flex-col gap-1 overflow-hidden">
                               {visibles.map((cita) => (
                                 <button
                                   key={cita._id}

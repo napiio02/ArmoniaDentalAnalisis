@@ -85,11 +85,11 @@ const Pacientes = () => {
 };
 
   return (
-    <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+    <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <CentroNotificaciones />
       <Sidebar activeItem="pacientes" />
 
-      <main className="flex-1 h-screen overflow-y-auto p-8">
+      <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
@@ -168,7 +168,72 @@ const Pacientes = () => {
                 </div>
               ) : (
                 <>
-                  <table className="w-full text-left border-collapse">
+                  {/* Teléfono y tableta: una tarjeta por paciente */}
+                  <ul className="lg:hidden divide-y divide-[#bec8ce]/40">
+                    {pacientesActuales.map((paciente) => (
+                      <li key={paciente._id} className={`p-4 ${!paciente.activo ? "opacity-60" : ""}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#7dd3fc20] border border-[#006686]/20 flex items-center justify-center text-[#006686] font-bold text-sm flex-shrink-0">
+                            {getInitials(paciente.nombre)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-semibold text-[#151c27]">{paciente.nombre}</p>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border flex-shrink-0 ${
+                                  paciente.activo
+                                    ? "bg-[#6df5e120] text-[#006b5f] border-[#6df5e1]/30"
+                                    : "bg-[#ffdad6] text-[#ba1a1a] border-[#ba1a1a]/20"
+                                }`}
+                              >
+                                {paciente.activo ? "Activo" : "Inactivo"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#3f484e] mt-0.5 font-mono">{paciente.cedula || "—"}</p>
+                            <p className="text-xs text-[#3f484e] mt-0.5 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">call</span>
+                              {paciente.telefono || "—"}
+                            </p>
+                            {paciente.correo && (
+                              <p className="text-xs text-[#3f484e] mt-0.5 flex items-center gap-1 truncate">
+                                <span className="material-symbols-outlined text-[14px]">mail</span>
+                                {paciente.correo}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-3">
+                          <Link
+                            to={`/pacientes/${paciente._id}`}
+                            className="flex items-center justify-center gap-1 py-2 rounded-lg border border-[#bec8ce] text-xs font-semibold text-[#3f484e] hover:border-[#006686] hover:text-[#006686]"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">visibility</span>
+                            Ver
+                          </Link>
+                          <Link
+                            to={`/pacientes/editar/${paciente._id}`}
+                            className="flex items-center justify-center gap-1 py-2 rounded-lg border border-[#bec8ce] text-xs font-semibold text-[#3f484e] hover:border-[#006686] hover:text-[#006686]"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                            Editar
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActivo(paciente._id, paciente.activo)}
+                            className="flex items-center justify-center gap-1 py-2 rounded-lg border border-[#bec8ce] text-xs font-semibold text-[#3f484e] hover:border-[#006686] hover:text-[#006686]"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">
+                              {paciente.activo ? "toggle_on" : "toggle_off"}
+                            </span>
+                            {paciente.activo ? "Desactivar" : "Activar"}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Computadora: tabla */}
+                  <table className="hidden lg:table w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#f0f3ff] border-b border-[#bec8ce]">
                         {[
@@ -273,7 +338,7 @@ const Pacientes = () => {
 
                   {/* Paginación */}
                   {totalPaginas > 1 && (
-                    <div className="px-5 py-3 flex items-center justify-between bg-[#f0f3ff] border-t border-[#bec8ce]">
+                    <div className="px-4 sm:px-5 py-3 flex flex-col sm:flex-row items-center gap-2 sm:justify-between bg-[#f0f3ff] border-t border-[#bec8ce]">
                       <span className="text-xs font-semibold text-[#3f484e]">
                         Mostrando {indicePrimero + 1} a{" "}
                         {Math.min(indicePrimero + POR_PAGINA, filtrados.length)}{" "}

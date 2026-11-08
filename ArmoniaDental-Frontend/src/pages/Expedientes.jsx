@@ -1,5 +1,5 @@
 import { apiFetch } from "../services/apiClient";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import ModalSubirDocumento from "../components/ModalSubirDocumento";
 import ModalConfirmarEliminar from "../components/ModalConfirmarEliminar";
@@ -119,6 +119,14 @@ const Expedientes = () => {
     setToastError(mensaje);
     setTimeout(() => setToastError(null), 3500);
   };
+
+  // En teléfono el detalle queda debajo de la lista: al elegir un paciente se desplaza hasta él
+  const detalleRef = useRef(null);
+  useEffect(() => {
+    if (pacienteSeleccionado && window.matchMedia("(max-width: 1023px)").matches) {
+      detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [pacienteSeleccionado]);
 
   // ── Cargar pacientes al montar ──
   useEffect(() => {
@@ -315,11 +323,11 @@ const Expedientes = () => {
   ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
   return (
-    <div className="flex overflow-hidden h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
+    <div className="flex overflow-hidden h-dvh bg-[#f9f9ff] font-[Nunito_Sans,sans-serif]">
       <CentroNotificaciones />
       <Sidebar activeItem="expedientes" />
 
-      <main className="flex-1 h-screen overflow-y-auto p-8">
+      <main className="flex-1 h-dvh overflow-y-auto px-4 pt-20 pb-10 sm:px-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto">
           <div className="mb-8">
             <h2 className="text-[28px] font-bold leading-[36px] text-[#151c27]">
@@ -451,7 +459,7 @@ const Expedientes = () => {
             </div>
 
             {/* ── Detalle del expediente ── */}
-            <div className="lg:col-span-5">
+            <div ref={detalleRef} className="lg:col-span-5 scroll-mt-20">
               {pacienteSeleccionado ? (
                 <div className="space-y-5">
                   {/* Info del paciente */}

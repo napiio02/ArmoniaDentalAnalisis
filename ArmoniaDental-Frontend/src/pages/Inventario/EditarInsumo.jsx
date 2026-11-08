@@ -152,7 +152,7 @@ const EditarInsumo = () => {
 	// ── Cargando ──
 	if (cargando) return (
 		<div className="min-h-screen bg-[#f9f9ff] flex flex-col">
-			<header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+			<header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
 				<span className="text-2xl">ꨄ︎</span>
 				<span className="font-bold text-[#151c27]">Armonía Dental</span>
 			</header>
@@ -165,7 +165,7 @@ const EditarInsumo = () => {
 	// ── Error / no encontrado ──
 	if (error && !insumoOriginal) return (
 		<div className="min-h-screen bg-[#f9f9ff] flex flex-col">
-			<header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+			<header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
 				<span className="text-2xl">ꨄ︎</span>
 				<span className="font-bold text-[#151c27]">Armonía Dental</span>
 			</header>
@@ -187,22 +187,22 @@ const EditarInsumo = () => {
 		<div className="min-h-screen bg-[#f9f9ff] font-[Nunito_Sans,sans-serif] flex flex-col">
 
 			{/* Header */}
-			<header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3">
+			<header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
 				<Link to="/inventario"
 					className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]">
 					<span className="material-symbols-outlined text-[20px]">arrow_back</span>
 				</Link>
 				<div className="w-px h-5 bg-[#bec8ce]" />
 				<span className="text-2xl">ꨄ︎</span>
-				<span className="font-bold text-[#151c27]">Armonía Dental</span>
-				<span className="text-[#bec8ce] mx-1">/</span>
+				<span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
+				<span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
 				<Link to="/inventario" className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors">Inventario</Link>
 				<span className="text-[#bec8ce] mx-1">/</span>
 				<span className="text-sm font-semibold text-[#006686]">Editar Insumo</span>
 			</header>
 
 			{/* Contenido */}
-			<div className="flex-1 flex items-start justify-center px-6 py-10">
+			<div className="flex-1 flex items-start justify-center px-4 py-6 sm:px-6 sm:py-10">
 				<div className="w-full max-w-2xl">
 
 					<div className="mb-8">
@@ -217,7 +217,7 @@ const EditarInsumo = () => {
 						</div>
 					)}
 
-					<div className="bg-white border border-[#bec8ce] rounded-2xl p-8 shadow-sm">
+					<div className="bg-white border border-[#bec8ce] rounded-2xl p-5 sm:p-8 shadow-sm">
 
 						{/* Código solo lectura */}
 						<div className="bg-[#f0f3ff] rounded-xl p-4 mb-6 flex items-center gap-3">
@@ -312,7 +312,7 @@ const EditarInsumo = () => {
 					</div>
 
 					{/* ── Historial de movimientos ── */}
-					<div className="bg-white border border-[#bec8ce] rounded-2xl p-8 shadow-sm mt-6">
+					<div className="bg-white border border-[#bec8ce] rounded-2xl p-5 sm:p-8 shadow-sm mt-6">
 						<h3 className="text-sm font-semibold text-[#151c27] mb-4 flex items-center gap-2">
 							<span className="material-symbols-outlined text-[#006686] text-[18px]">history</span>
 							Historial de movimientos

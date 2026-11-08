@@ -1051,7 +1051,7 @@ export default function Odontograma() {
       />
 
       {/* ── Header minimalista ── */}
-      <header className="bg-white border-b border-[#bec8ce] px-8 py-4 flex items-center gap-3 sticky top-0 z-30">
+      <header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3 sticky top-0 z-30">
         <Link
           to="/expedientes"
           className="p-1.5 rounded-lg hover:bg-[#f0f3ff] transition-colors text-[#3f484e]"
@@ -1062,8 +1062,8 @@ export default function Odontograma() {
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
         <span className="text-2xl">ꨄ︎</span>
-        <span className="font-bold text-[#151c27]">Armonía Dental</span>
-        <span className="text-[#bec8ce] mx-1">/</span>
+        <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
+        <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link
           to="/expedientes"
           className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors"
@@ -1200,9 +1200,9 @@ export default function Odontograma() {
       />
 
       {/* ── Layout ── */}
-      <div className="flex">
+      <div className="flex flex-col lg:flex-row">
         {/* Sidebar */}
-        <aside className="w-[340px] flex-shrink-0 bg-white border-r border-[#bec8ce] min-h-[calc(100vh-65px)] p-4 flex flex-col gap-4">
+        <aside className="w-full lg:w-[340px] flex-shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-[#bec8ce] lg:min-h-[calc(100vh-65px)] p-4 flex flex-col gap-4">
           {/* Paciente */}
           <div className="rounded-xl border border-[#bec8ce] bg-[#f0f3ff] p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -1433,7 +1433,7 @@ export default function Odontograma() {
         </aside>
 
         {/* Main */}
-        <main className="flex-1 p-5 overflow-x-auto">
+        <main className="flex-1 min-w-0 p-3 sm:p-5 overflow-x-auto">
           {cargandoOdontograma && (
             <div className="mb-4 rounded-xl border border-[#006686]/20 bg-[#7dd3fc20] px-4 py-3 text-sm text-[#006686]">
               Cargando odontograma del paciente...

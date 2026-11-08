@@ -125,7 +125,7 @@ const ModalConfiguracionAgenda = ({ config, puedeEditar, onClose, onGuardada }) 
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-config-agenda"
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-3 sm:mx-4 p-5 sm:p-6 max-h-[90dvh] overflow-y-auto"
       >
         <div className="flex justify-between items-start mb-6">
           <div>
@@ -338,7 +338,7 @@ const ModalConfiguracionAgenda = ({ config, puedeEditar, onClose, onGuardada }) 
               )}
 
               {puedeEditar && (
-                <div className="mt-3 grid grid-cols-[auto,1fr,auto] gap-2 items-end">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-[auto,1fr,auto] gap-2 sm:items-end">
                   <div>
                     <label htmlFor="cfg-fecha" className="block text-xs text-[#3f484e] mb-1">
                       Fecha
