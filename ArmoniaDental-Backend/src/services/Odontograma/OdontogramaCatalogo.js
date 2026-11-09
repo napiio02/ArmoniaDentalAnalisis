@@ -22,6 +22,10 @@ export const ACCIONES_ODONTOGRAMA = [
   { codigo: "endodoncia", nombre: "Endodoncia", grupo: "Restauraciones y tratamientos", color: "#2563eb", abreviatura: "ENDO", tipo_render: "whole" },
   { codigo: "implante", nombre: "Implante", grupo: "Restauraciones y tratamientos", color: "#111827", abreviatura: "IMP", tipo_render: "whole", grupo_exclusivo: "estado_estructural" },
   { codigo: "brackets", nombre: "Ortodoncia fija", grupo: "Restauraciones y tratamientos", color: "#111827", abreviatura: "ORTO", tipo_render: "label" },
+  { codigo: "poste", nombre: "Poste intrarradicular", grupo: "Restauraciones y tratamientos", color: "#2563eb", abreviatura: "POS", tipo_render: "whole" },
+  // Puente fijo: se marcan las piezas que lo sostienen (pilares) y las que reemplaza (pónticos)
+  { codigo: "pilar_puente", nombre: "Pilar de puente", grupo: "Puentes", color: "#2563eb", abreviatura: "PIL", tipo_render: "whole" },
+  { codigo: "pontico", nombre: "Póntico", grupo: "Puentes", color: "#2563eb", abreviatura: "PON", tipo_render: "whole", grupo_exclusivo: "estado_estructural" },
   { codigo: "corona_metal_porcelana", nombre: "Corona metal porcelana", grupo: "Coronas", color: "#2563eb", abreviatura: "CMP", tipo_render: "whole", grupo_exclusivo: "coronas" },
   { codigo: "corona_libre_metal", nombre: "Corona libre de metal", grupo: "Coronas", color: "#2563eb", abreviatura: "CLM", tipo_render: "whole", grupo_exclusivo: "coronas" },
   { codigo: "corona_acero_cromado", nombre: "Corona de acero cromado", grupo: "Coronas", color: "#2563eb", abreviatura: "CAC", tipo_render: "whole", grupo_exclusivo: "coronas" },

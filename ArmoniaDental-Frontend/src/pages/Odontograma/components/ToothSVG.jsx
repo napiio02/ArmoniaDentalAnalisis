@@ -99,6 +99,10 @@ export default function ToothSVG({
   const exodoncia = getWholeAction(marks, ["indicada_exodoncia"], actionGroups);
   const brackets = getWholeAction(marks, ["brackets"], actionGroups);
   const sellante = getWholeAction(marks, ["sellante"], actionGroups);
+  const poste = getWholeAction(marks, ["poste"], actionGroups);
+  const pilarPuente = getWholeAction(marks, ["pilar_puente"], actionGroups);
+  const pontico = getWholeAction(marks, ["pontico"], actionGroups);
+  const puente = pilarPuente || pontico;
 
   const corona =
     getWholeAction(marks, [
@@ -182,11 +186,12 @@ export default function ToothSVG({
               width="46"
               height="94"
               preserveAspectRatio="xMidYMid meet"
+              clipPath={pontico ? `url(#${crownClipId})` : undefined}
               filter={`url(#${filterBaseId})`}
               pointerEvents="none"
             />
 
-            {rootColor && (
+            {rootColor && !pontico && (
               <image
                 href={sprite}
                 x="1"
@@ -306,6 +311,45 @@ export default function ToothSVG({
               stroke={brackets.color}
               strokeWidth="1"
             />
+          </>
+        )}
+
+        {poste && !ausente && !implante && !pontico && (
+          <rect
+            x="22"
+            y="27"
+            width="4"
+            height="36"
+            rx="1.5"
+            fill={poste.color}
+            pointerEvents="none"
+          />
+        )}
+
+        {puente && !ausente && (
+          <>
+            {/* Barra del puente: sobresale a los lados para unirse con las piezas vecinas */}
+            <line
+              x1="-3"
+              y1="1.5"
+              x2="51"
+              y2="1.5"
+              stroke={puente.color}
+              strokeWidth="2.4"
+              pointerEvents="none"
+            />
+            {pilarPuente && (
+              <line
+                x1="24"
+                y1="1.5"
+                x2="24"
+                y2="9"
+                stroke={pilarPuente.color}
+                strokeWidth="2"
+                strokeLinecap="round"
+                pointerEvents="none"
+              />
+            )}
           </>
         )}
 

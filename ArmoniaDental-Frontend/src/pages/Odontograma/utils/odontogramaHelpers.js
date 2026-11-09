@@ -114,6 +114,7 @@ export function getExclusiveGroup(actionId, actionGroups = CONTEXT_ACTIONS) {
 			"implante",
 			"resto_radicular",
 			"indicada_exodoncia",
+			"pontico",
 		].includes(actionId)
 	) {
 		return "estado_estructural";

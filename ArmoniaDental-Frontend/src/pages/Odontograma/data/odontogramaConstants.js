@@ -142,11 +142,38 @@ export const CONTEXT_ACTIONS = [
 				type: "whole",
 			},
 			{
+				id: "poste",
+				label: "Poste intrarradicular",
+				color: STATUS_COLORS.azul,
+				shortLabel: "POS",
+				type: "whole",
+			},
+			{
 				id: "brackets",
 				label: "Ortodoncia fija",
 				color: STATUS_COLORS.negro,
 				shortLabel: "ORTO",
 				type: "label",
+			},
+		],
+	},
+	{
+		group: "Puentes",
+		items: [
+			{
+				id: "pilar_puente",
+				label: "Pilar de puente",
+				color: STATUS_COLORS.azul,
+				shortLabel: "PIL",
+				type: "whole",
+			},
+			{
+				id: "pontico",
+				label: "Póntico",
+				color: STATUS_COLORS.azul,
+				shortLabel: "PON",
+				type: "whole",
+				exclusiveGroup: "estado_estructural",
 			},
 		],
 	},
@@ -211,7 +238,7 @@ export const MAIN_LEGEND = [
 	},
 	{
 		color: STATUS_COLORS.azul,
-		text: "Amalgama, coronas y endodoncia",
+		text: "Amalgama, coronas, endodoncia, postes y puentes",
 	},
 	{
 		color: STATUS_COLORS.rojo,
