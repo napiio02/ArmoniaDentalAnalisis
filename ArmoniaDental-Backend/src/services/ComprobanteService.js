@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import crypto from "node:crypto";
+import { readFile } from "node:fs/promises";
 import {
   PDFDocument,
   StandardFonts,
@@ -9,8 +11,15 @@ import ComprobanteModel, {
   ConsecutivoComprobante,
   TIPOS_COMPROBANTE,
 } from "../models/ComprobanteModel.js";
+import ComprobanteFirmadoModel from "../models/ComprobanteFirmadoModel.js";
 import PacienteModel from "../models/PacienteModel.js";
 import { enviarCorreoComprobante } from "./EmailService.js";
+import {
+  enviarMensajePlantilla,
+  normalizarTelefono,
+  subirDocumentoWhatsapp,
+  telefonoPermitido,
+} from "./WhatsappService.js";
 
 const FORMATO_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FORMATO_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,6 +43,12 @@ const CAMPOS_LISTADO = [
   "enviado_a",
   "enviado_en",
   "cantidad_envios",
+  "firmado",
+  "estado_whatsapp",
+  "whatsapp_enviado_a",
+  "whatsapp_enviado_en",
+  "whatsapp_version_enviada",
+  "cantidad_envios_whatsapp",
   "createdAt",
 ].join(" ");
 
@@ -397,143 +412,177 @@ export const crearComprobanteService = async (
   });
 };
 
-export const generarPdfComprobanteService = async (
-  comprobanteOId
-) => {
+/* ───────── PDF del comprobante (mismo estilo que la documentación de la clínica) ───────── */
+
+const CLINICA = {
+  nombre: "ARMONÍA DENTAL",
+  telefono: "6111-9106",
+  correo: "lau_ure@icloud.com",
+};
+
+const COLOR = {
+  azul: rgb(0x2a / 255, 0x4d / 255, 0x84 / 255), // #2a4d84
+  naranja: rgb(0xf1 / 255, 0x97 / 255, 0x2d / 255), // #f1972d
+  celeste: rgb(0xf4 / 255, 0xf7 / 255, 0xfb / 255), // #f4f7fb
+  borde: rgb(0xd9 / 255, 0xe1 / 255, 0xec / 255), // #d9e1ec
+  texto: rgb(0.12, 0.14, 0.18),
+  gris: rgb(0.42, 0.46, 0.52),
+};
+
+// El logo se lee una sola vez y se reutiliza en cada PDF
+let logoCache;
+const leerLogo = async () => {
+  if (logoCache === undefined) {
+    try {
+      logoCache = await readFile(new URL("../assets/logo-armonia-dental.png", import.meta.url));
+    } catch (error) {
+      console.error("No se encontró el logo para el comprobante:", error.message);
+      logoCache = null; // el PDF se genera igual, sin logo
+    }
+  }
+  return logoCache;
+};
+
+export const generarPdfComprobanteService = async (comprobanteOId) => {
   const comprobante =
     typeof comprobanteOId === "string"
       ? await obtenerComprobante(comprobanteOId)
       : comprobanteOId;
 
   const pdf = await PDFDocument.create();
-  const fuenteNormal = await pdf.embedFont(StandardFonts.Helvetica);
-  const fuenteNegrita = await pdf.embedFont(
-    StandardFonts.HelveticaBold
-  );
-  const anchoPagina = 612;
-  const altoPagina = 792;
-  const margen = 56;
-  const anchoContenido = anchoPagina - margen * 2;
+  pdf.setTitle(`Comprobante ${comprobante.numero}`);
+  pdf.setAuthor("Armonía Dental");
+  const normal = await pdf.embedFont(StandardFonts.Helvetica);
+  const negrita = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const bytesLogo = await leerLogo();
+  const logo = bytesLogo ? await pdf.embedPng(bytesLogo) : null;
+
+  const ANCHO = 612;
+  const ALTO = 792;
+  const MARGEN = 56;
+  const CONTENIDO = ANCHO - MARGEN * 2;
+  const PIE = 64; // espacio reservado para el pie de página
   let pagina;
   let y;
 
-  const crearPagina = () => {
-    pagina = pdf.addPage([anchoPagina, altoPagina]);
-    y = altoPagina - margen;
-
-    pagina.drawText("Armonía Dental", {
-      x: margen,
-      y,
-      size: 20,
-      font: fuenteNegrita,
-      color: rgb(0, 0.4, 0.53),
-    });
-
-    y -= 28;
-    pagina.drawText("Comprobante médico", {
-      x: margen,
-      y,
-      size: 15,
-      font: fuenteNegrita,
-      color: rgb(0.08, 0.11, 0.15),
-    });
-
-    y -= 18;
-    pagina.drawLine({
-      start: { x: margen, y },
-      end: { x: anchoPagina - margen, y },
-      thickness: 1,
-      color: rgb(0.75, 0.79, 0.81),
-    });
-    y -= 28;
+  const texto = (valor, { x, size = 10.5, fuente = normal, color = COLOR.texto, alinear = "izquierda", ancho = 0 }) => {
+    const t = textoSeguroPdf(valor);
+    const w = fuente.widthOfTextAtSize(t, size);
+    const xFinal = alinear === "derecha" ? x - w : alinear === "centro" ? x + (ancho - w) / 2 : x;
+    pagina.drawText(t, { x: xFinal, y, size, font: fuente, color });
   };
 
-  const asegurarEspacio = (altoNecesario) => {
-    if (y - altoNecesario < margen) {
-      crearPagina();
+  const encabezado = () => {
+    pagina = pdf.addPage([ANCHO, ALTO]);
+    const tope = ALTO - 44;
+
+    if (logo) {
+      const alto = 64;
+      const ancho = (logo.width / logo.height) * alto;
+      pagina.drawImage(logo, { x: MARGEN, y: tope - alto, width: ancho, height: alto });
     }
+
+    y = tope - 20;
+    texto(CLINICA.nombre, { x: ANCHO - MARGEN, size: 15, fuente: negrita, color: COLOR.azul, alinear: "derecha" });
+    y -= 16;
+    texto("COMPROBANTE MÉDICO", { x: ANCHO - MARGEN, size: 7.5, fuente: negrita, color: COLOR.gris, alinear: "derecha" });
+    y -= 13;
+    texto(`Tel. ${CLINICA.telefono}  ·  ${CLINICA.correo}`, { x: ANCHO - MARGEN, size: 8, color: COLOR.gris, alinear: "derecha" });
+
+    y = tope - 64 - 14;
+    pagina.drawLine({ start: { x: MARGEN, y }, end: { x: ANCHO - MARGEN, y }, thickness: 1.4, color: COLOR.azul });
+    y -= 22;
   };
 
-  const dibujarCampo = (etiqueta, valor) => {
-    const texto = textoSeguroPdf(valor || "No indicado");
-    const anchoEtiqueta = 130;
-    const lineas = dividirTexto(
-      texto,
-      fuenteNormal,
-      11,
-      anchoContenido - anchoEtiqueta
-    );
-    const alto = Math.max(1, lineas.length) * 16;
-
-    asegurarEspacio(alto + 8);
-
-    pagina.drawText(textoSeguroPdf(etiqueta), {
-      x: margen,
-      y,
-      size: 11,
-      font: fuenteNegrita,
-      color: rgb(0.25, 0.28, 0.31),
-    });
-
-    lineas.forEach((linea, indice) => {
-      pagina.drawText(linea, {
-        x: margen + anchoEtiqueta,
-        y: y - indice * 16,
-        size: 11,
-        font: fuenteNormal,
-        color: rgb(0.08, 0.11, 0.15),
-      });
-    });
-
-    y -= alto + 8;
+  const asegurarEspacio = (alto) => {
+    if (y - alto < MARGEN + PIE - 20) encabezado();
   };
 
-  crearPagina();
-  dibujarCampo("Número", comprobante.numero);
-  dibujarCampo("Tipo", comprobante.tipo);
-  dibujarCampo("Paciente", comprobante.paciente_nombre);
-  dibujarCampo("Cédula", comprobante.paciente_cedula);
-  dibujarCampo("Fecha", formatearFecha(comprobante.fecha));
+  // ── Primera página: encabezado, tipo y título ──
+  encabezado();
+  texto(String(comprobante.tipo || "").toUpperCase(), { x: MARGEN, size: 7.5, fuente: negrita, color: COLOR.naranja });
+  y -= 22;
+  texto("Comprobante de atención odontológica", { x: MARGEN, size: 19, fuente: negrita, color: COLOR.azul });
+  y -= 18;
+  texto(`N.º ${comprobante.numero}`, { x: MARGEN, size: 10, color: COLOR.gris });
+  y -= 22;
 
+  // ── Datos en recuadro celeste (dos columnas, como la carta) ──
   const horario =
     comprobante.hora_inicio || comprobante.hora_fin
-      ? `${comprobante.hora_inicio || "--:--"} - ${
-          comprobante.hora_fin || "--:--"
-        }`
+      ? `${comprobante.hora_inicio || "--:--"} a ${comprobante.hora_fin || "--:--"}`
       : "No indicado";
-
-  dibujarCampo("Horario", horario);
-  dibujarCampo("Profesional", comprobante.profesional_nombre);
-
-  asegurarEspacio(44);
-  y -= 8;
-  pagina.drawText("Descripción", {
-    x: margen,
-    y,
-    size: 11,
-    font: fuenteNegrita,
-    color: rgb(0.25, 0.28, 0.31),
-  });
-  y -= 20;
-
-  const lineasDescripcion = dividirTexto(
-    comprobante.descripcion,
-    fuenteNormal,
-    11,
-    anchoContenido
+  const filas = [
+    [["PACIENTE", comprobante.paciente_nombre], ["CÉDULA", comprobante.paciente_cedula || "No indicada"]],
+    [["FECHA DE ATENCIÓN", formatearFecha(comprobante.fecha)], ["HORARIO", horario]],
+    [["PROFESIONAL", comprobante.profesional_nombre], ["TIPO DE COMPROBANTE", comprobante.tipo]],
+  ];
+  // Cada valor puede ocupar varias líneas (ej. un nombre largo); la fila crece en lugar de recortarlo
+  const columna = CONTENIDO / 2;
+  const anchoValor = columna - 28;
+  const celdas = filas.map((fila) =>
+    fila.map(([etiqueta, valor]) => [etiqueta, dividirTexto(valor || "No indicado", normal, 10.5, anchoValor)])
   );
-
-  for (const linea of lineasDescripcion) {
-    asegurarEspacio(18);
-    pagina.drawText(linea, {
-      x: margen,
-      y,
-      size: 11,
-      font: fuenteNormal,
-      color: rgb(0.08, 0.11, 0.15),
+  const altos = celdas.map((fila) => 30 + (Math.max(...fila.map(([, l]) => l.length)) - 1) * 13 + 12);
+  const altoTabla = altos.reduce((a, b) => a + b, 0);
+  pagina.drawRectangle({ x: MARGEN, y: y - altoTabla, width: CONTENIDO, height: altoTabla, color: COLOR.celeste });
+  let base = y;
+  celdas.forEach((fila, i) => {
+    if (i > 0) {
+      pagina.drawLine({ start: { x: MARGEN, y: base }, end: { x: MARGEN + CONTENIDO, y: base }, thickness: 0.8, color: COLOR.borde });
+    }
+    fila.forEach(([etiqueta, lineas], j) => {
+      const x = MARGEN + 14 + j * columna;
+      y = base - 15;
+      texto(etiqueta, { x, size: 7, fuente: negrita, color: COLOR.azul });
+      lineas.forEach((linea, k) => {
+        y = base - 30 - k * 13;
+        texto(linea, { x, size: 10.5 });
+      });
     });
-    y -= 16;
+    base -= altos[i];
+  });
+  y = base - 26;
+
+  // ── Descripción ──
+  texto("Descripción", { x: MARGEN, size: 11, fuente: negrita, color: COLOR.azul });
+  y -= 18;
+  for (const linea of dividirTexto(comprobante.descripcion, normal, 10.5, CONTENIDO)) {
+    asegurarEspacio(16);
+    if (linea) texto(linea, { x: MARGEN, size: 10.5 });
+    y -= 15.5;
   }
+
+  // ── Cierre y firma ──
+  asegurarEspacio(120);
+  y -= 12;
+  texto("Se extiende el presente comprobante a solicitud del paciente, para los fines que estime convenientes.", {
+    x: MARGEN, size: 10, color: COLOR.gris,
+  });
+  y -= 70;
+  const anchoFirma = 210;
+  const xFirma = MARGEN + (CONTENIDO - anchoFirma) / 2;
+  pagina.drawLine({ start: { x: xFirma, y }, end: { x: xFirma + anchoFirma, y }, thickness: 0.8, color: COLOR.gris });
+  y -= 14;
+  texto(comprobante.profesional_nombre, { x: xFirma, ancho: anchoFirma, alinear: "centro", size: 10.5, fuente: negrita, color: COLOR.azul });
+  y -= 13;
+  texto("Armonía Dental", { x: xFirma, ancho: anchoFirma, alinear: "centro", size: 9, color: COLOR.gris });
+
+  // ── Pie de página en todas las páginas ──
+  const paginas = pdf.getPages();
+  paginas.forEach((p, i) => {
+    pagina = p;
+    y = 40;
+    p.drawLine({ start: { x: MARGEN, y: 54 }, end: { x: ANCHO - MARGEN, y: 54 }, thickness: 1, color: COLOR.naranja });
+    const izquierda = "ARMONÍA DENTAL";
+    const derecha = `Comprobante ${comprobante.numero}${paginas.length > 1 ? `  ·  Página ${i + 1} de ${paginas.length}` : ""}`;
+    const wI = negrita.widthOfTextAtSize(izquierda, 7.5);
+    const wD = normal.widthOfTextAtSize(textoSeguroPdf(derecha), 7.5);
+    const x0 = (ANCHO - (wI + 18 + wD)) / 2;
+    texto(izquierda, { x: x0, size: 7.5, fuente: negrita, color: COLOR.azul });
+    p.drawCircle({ x: x0 + wI + 9, y: y + 2.6, size: 1.6, color: COLOR.naranja });
+    texto(derecha, { x: x0 + wI + 18, size: 7.5, color: COLOR.gris });
+  });
 
   const bytes = await pdf.save();
   return Buffer.from(bytes);
@@ -570,14 +619,14 @@ export const enviarComprobanteService = async (id, correoDestinoOpcional) => {
   }
 
   try {
-    const pdfBuffer = await generarPdfComprobanteService(comprobante);
+    const { buffer: pdfBuffer, nombre: nombreArchivo } = await obtenerArchivoComprobante(comprobante);
 
     const resultadoEnvio = await enviarCorreoComprobante({
       destinatario: correoDestino,
       nombrePaciente: comprobante.paciente_nombre,
       numero: comprobante.numero,
       pdfBuffer,
-      nombreArchivo: `${comprobante.numero}.pdf`,
+      nombreArchivo,
     });
 
     if (!resultadoEnvio.accepted?.length) {
@@ -613,5 +662,144 @@ export const enviarComprobanteService = async (id, correoDestinoOpcional) => {
     });
 
     throw crearError(ERROR_ENVIO_SEGURO, 502);
+  }
+};
+
+/* ───────── Versión firmada digitalmente ───────── */
+
+export const TAMANO_MAXIMO_FIRMADO = 5 * 1024 * 1024; // 5 MB
+
+/*
+ * Un PDF con firma digital (PAdES, como la Firma Digital de Costa Rica) contiene un
+ * diccionario de firma con /ByteRange y su contenido PKCS#7/CAdES. No valida el
+ * certificado (eso lo hace el lector de PDF); evita subir por error el PDF sin firmar.
+ */
+export const tieneFirmaDigital = (buffer) => {
+  const texto = buffer.toString("latin1");
+  return /\/ByteRange\s*\[/.test(texto) && /\/(adbe\.pkcs7\.(detached|sha1)|ETSI\.CAdES\.detached)/.test(texto);
+};
+
+const nombreArchivo = (comprobante, firmado) =>
+  `${comprobante.numero}${firmado ? "-firmado" : ""}.pdf`;
+
+// PDF que se entrega al paciente: el firmado si existe; si no, el generado por el sistema
+export const obtenerArchivoComprobante = async (comprobante, version = "preferido") => {
+  if (version !== "generado" && comprobante.firmado) {
+    const firmado = await ComprobanteFirmadoModel.findOne({ comprobante_id: comprobante._id }).lean();
+    if (firmado?.archivo) {
+      return { buffer: Buffer.from(firmado.archivo.buffer ?? firmado.archivo), nombre: nombreArchivo(comprobante, true), firmado: true };
+    }
+    if (version === "firmado") throw crearError("No se encontró la versión firmada de este comprobante.", 404);
+  } else if (version === "firmado") {
+    throw crearError("Este comprobante todavía no tiene una versión firmada.", 404);
+  }
+  return { buffer: await generarPdfComprobanteService(comprobante), nombre: nombreArchivo(comprobante, false), firmado: false };
+};
+
+export const subirComprobanteFirmadoService = async (id, archivo, usuario) => {
+  const comprobante = await obtenerComprobante(id);
+
+  if (!archivo?.buffer?.length) throw crearError("Adjunte el PDF firmado.");
+  if (archivo.size > TAMANO_MAXIMO_FIRMADO) throw crearError("El archivo supera el tamaño máximo de 5 MB.");
+  if (archivo.buffer.subarray(0, 5).toString("latin1") !== "%PDF-") {
+    throw crearError("El archivo no es un PDF válido.");
+  }
+  if (!tieneFirmaDigital(archivo.buffer)) {
+    throw crearError(
+      "El PDF no tiene firma digital. Firme el comprobante con su firma digital y vuelva a subirlo."
+    );
+  }
+
+  const subido_en = new Date();
+  await ComprobanteFirmadoModel.findOneAndUpdate(
+    { comprobante_id: comprobante._id },
+    {
+      $set: {
+        archivo: archivo.buffer,
+        nombre_original: String(archivo.originalname || "").slice(0, 200),
+        tamano: archivo.size,
+        sha256: crypto.createHash("sha256").update(archivo.buffer).digest("hex"),
+        subido_por: { _id: usuario?._id, nombre: usuario?.nombre || "" },
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  return ComprobanteModel.findByIdAndUpdate(
+    comprobante._id,
+    {
+      $set: {
+        firmado: {
+          nombre_original: String(archivo.originalname || "").slice(0, 200),
+          tamano: archivo.size,
+          subido_por_nombre: usuario?.nombre || "",
+          subido_en,
+        },
+      },
+    },
+    { new: true }
+  );
+};
+
+export const eliminarComprobanteFirmadoService = async (id) => {
+  const comprobante = await obtenerComprobante(id);
+  if (!comprobante.firmado) throw crearError("Este comprobante no tiene una versión firmada.", 404);
+  await ComprobanteFirmadoModel.deleteOne({ comprobante_id: comprobante._id });
+  return ComprobanteModel.findByIdAndUpdate(comprobante._id, { $set: { firmado: null } }, { new: true });
+};
+
+/* ───────── Envío por WhatsApp ───────── */
+
+const plantillaComprobante = () =>
+  process.env.WHATSAPP_PLANTILLA_COMPROBANTE || "comprobante_paciente";
+
+const ERROR_WHATSAPP = "No fue posible enviar el comprobante por WhatsApp.";
+
+export const enviarWhatsappComprobanteService = async (id, telefonoOpcional) => {
+  const comprobante = await obtenerComprobante(id);
+
+  let telefono = telefonoOpcional;
+  if (!telefono) {
+    const paciente = await PacienteModel.findById(comprobante.paciente_id).select("telefono").lean();
+    telefono = paciente?.telefono || "";
+  }
+  const numero = normalizarTelefono(telefono);
+  if (!numero) throw crearError("El paciente no tiene un teléfono registrado.");
+  if (!/^\d{10,15}$/.test(numero)) throw crearError("El teléfono no es válido. Use 8 dígitos, por ejemplo 8888-7777.");
+  if (!telefonoPermitido(numero)) {
+    throw crearError("Este número no está en la lista de pruebas (WHATSAPP_LISTA_BLANCA), así que no se envió.");
+  }
+
+  try {
+    const archivo = await obtenerArchivoComprobante(comprobante);
+    const mediaId = await subirDocumentoWhatsapp(archivo.buffer, archivo.nombre);
+    await enviarMensajePlantilla({
+      telefono: numero,
+      nombrePlantilla: plantillaComprobante(),
+      parametrosNombrados: {
+        nombre_paciente: comprobante.paciente_nombre,
+        numero_comprobante: comprobante.numero,
+      },
+      conBotones: false,
+      documento: { id: mediaId, filename: archivo.nombre },
+    });
+
+    return ComprobanteModel.findByIdAndUpdate(
+      comprobante._id,
+      {
+        $set: {
+          estado_whatsapp: "enviado",
+          whatsapp_enviado_a: numero,
+          whatsapp_enviado_en: new Date(),
+          whatsapp_version_enviada: archivo.firmado ? "firmado" : "generado",
+        },
+        $inc: { cantidad_envios_whatsapp: 1 },
+      },
+      { new: true }
+    );
+  } catch (error) {
+    console.error("Error al enviar el comprobante por WhatsApp:", error.response?.data || error.message);
+    await ComprobanteModel.findByIdAndUpdate(comprobante._id, { $set: { estado_whatsapp: "error" } });
+    throw crearError(ERROR_WHATSAPP, 502);
   }
 };

@@ -91,7 +91,7 @@ const VisualizarPaciente = () => {
               arrow_back
             </span>
           </Link>
-          <span className="text-2xl">ꨄ︎</span>
+          <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
           <span className="font-bold text-[#151c27]">Armonía Dental</span>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
@@ -125,7 +125,7 @@ const VisualizarPaciente = () => {
           </span>
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
-        <span className="text-2xl">ꨄ︎</span>
+        <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
         <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
         <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link

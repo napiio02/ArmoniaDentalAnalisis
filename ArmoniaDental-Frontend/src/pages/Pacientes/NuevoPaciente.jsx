@@ -168,7 +168,7 @@ const NuevoPaciente = () => {
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
-        <span className="text-2xl">ꨄ︎</span>
+        <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
         <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
         <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link to="/pacientes" className="text-sm text-[#3f484e] hover:text-[#006686] transition-colors">Pacientes</Link>

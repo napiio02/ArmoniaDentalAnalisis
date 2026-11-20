@@ -19,13 +19,18 @@ export const ACCIONES_ODONTOGRAMA = [
   { codigo: "material_temporal", nombre: "Material temporal", grupo: "Restauraciones y tratamientos", color: "#dc2626", abreviatura: "TEMP", tipo_render: "faces" },
   { codigo: "sellante", nombre: "Sellante", grupo: "Restauraciones y tratamientos", color: "#16a34a", abreviatura: "S", tipo_render: "whole" },
   { codigo: "incrustacion", nombre: "Incrustación", grupo: "Restauraciones y tratamientos", color: "#2563eb", abreviatura: "INC", tipo_render: "faces" },
-  { codigo: "endodoncia", nombre: "Endodoncia", grupo: "Restauraciones y tratamientos", color: "#2563eb", abreviatura: "ENDO", tipo_render: "whole" },
+  { codigo: "endodoncia", nombre: "Endodoncia", grupo: "Restauraciones y tratamientos", color: "#dc2626", abreviatura: "ENDO", tipo_render: "whole" },
   { codigo: "implante", nombre: "Implante", grupo: "Restauraciones y tratamientos", color: "#111827", abreviatura: "IMP", tipo_render: "whole", grupo_exclusivo: "estado_estructural" },
   { codigo: "brackets", nombre: "Ortodoncia fija", grupo: "Restauraciones y tratamientos", color: "#111827", abreviatura: "ORTO", tipo_render: "label" },
   { codigo: "poste", nombre: "Poste intrarradicular", grupo: "Restauraciones y tratamientos", color: "#2563eb", abreviatura: "POS", tipo_render: "whole" },
   // Puente fijo: se marcan las piezas que lo sostienen (pilares) y las que reemplaza (pónticos)
   { codigo: "pilar_puente", nombre: "Pilar de puente", grupo: "Puentes", color: "#2563eb", abreviatura: "PIL", tipo_render: "whole" },
   { codigo: "pontico", nombre: "Póntico", grupo: "Puentes", color: "#2563eb", abreviatura: "PON", tipo_render: "whole", grupo_exclusivo: "estado_estructural" },
+  // Prótesis removibles: la parcial se marca en cada pieza que reemplaza y en los dientes con gancho;
+  // la total se aplica a toda la arcada desde la pantalla (una marca por pieza)
+  { codigo: "protesis_parcial", nombre: "Pieza en prótesis parcial removible", grupo: "Prótesis removibles", color: "#2563eb", abreviatura: "PPR", tipo_render: "whole", grupo_exclusivo: "estado_estructural" },
+  { codigo: "gancho", nombre: "Gancho (retenedor)", grupo: "Prótesis removibles", color: "#2563eb", abreviatura: "GAN", tipo_render: "whole" },
+  { codigo: "protesis_total", nombre: "Prótesis total (toda la arcada)", grupo: "Prótesis removibles", color: "#2563eb", abreviatura: "PT", tipo_render: "whole", grupo_exclusivo: "estado_estructural" },
   { codigo: "corona_metal_porcelana", nombre: "Corona metal porcelana", grupo: "Coronas", color: "#2563eb", abreviatura: "CMP", tipo_render: "whole", grupo_exclusivo: "coronas" },
   { codigo: "corona_libre_metal", nombre: "Corona libre de metal", grupo: "Coronas", color: "#2563eb", abreviatura: "CLM", tipo_render: "whole", grupo_exclusivo: "coronas" },
   { codigo: "corona_acero_cromado", nombre: "Corona de acero cromado", grupo: "Coronas", color: "#2563eb", abreviatura: "CAC", tipo_render: "whole", grupo_exclusivo: "coronas" },

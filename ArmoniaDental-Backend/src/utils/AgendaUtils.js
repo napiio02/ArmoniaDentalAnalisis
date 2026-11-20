@@ -28,13 +28,9 @@ export const CONFIG_POR_DEFECTO = Object.freeze({
 
 export const RECORDATORIOS = Object.freeze({
   horaVispera: "16:00", // día laboral anterior a la cita
-  horaManana: "07:00", // mismo día de la cita
-  citaDesdeParaManana: "10:00", // el de la mañana solo aplica a citas de esta hora en adelante
   silencioDesde: "20:00", // no se envían mensajes entre las 8 p. m. y las 7 a. m.
   silencioHasta: "07:00",
   graciaMin: 180, // un recordatorio puede salir hasta 3 h tarde (si el servidor estuvo caído)
-  anticipoMinimoMananaMin: 60, // el de la mañana no sale a menos de 1 h de la cita
-  margenCreacionMin: 180, // si la cita se crea a menos de 3 h del recordatorio, se omite
 });
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -182,9 +178,8 @@ export const generarSlots = ({ fecha, duracionMin, config, ahora = new Date() })
 };
 
 /* ── Recordatorios ──
- * Víspera: 4:00 p. m. del día laboral anterior (si la cita es lunes, sale el sábado).
- * Mañana:  7:00 a. m. del día de la cita, solo para citas de las 10:00 en adelante y solo
- *          si el paciente todavía no confirmó.
+ * Un único recordatorio: la víspera, a las 4:00 p. m. del día laboral anterior
+ * (si la cita es lunes, sale el sábado). El día de la cita no se envía ninguno.
  * Nunca se envía entre las 8:00 p. m. y las 7:00 a. m.
  */
 export const programarRecordatorios = (fechaHoraCita, config) => {
@@ -193,13 +188,7 @@ export const programarRecordatorios = (fechaHoraCita, config) => {
   let iso = sumarDiasISO(isoCita, -1);
   for (let i = 0; i < 31 && !esDiaLaboral(iso, config).laboral; i++) iso = sumarDiasISO(iso, -1);
 
-  return {
-    vispera: aFechaCR(iso, RECORDATORIOS.horaVispera),
-    manana:
-      minutosCR(fechaHoraCita) >= aMinutos(RECORDATORIOS.citaDesdeParaManana)
-        ? aFechaCR(isoCita, RECORDATORIOS.horaManana)
-        : null,
-  };
+  return { vispera: aFechaCR(iso, RECORDATORIOS.horaVispera) };
 };
 
 export const enSilencio = (ahora = new Date()) => {
@@ -207,17 +196,24 @@ export const enSilencio = (ahora = new Date()) => {
   return m >= aMinutos(RECORDATORIOS.silencioDesde) || m < aMinutos(RECORDATORIOS.silencioHasta);
 };
 
-// Banderas iniciales al crear o reagendar: los recordatorios que ya no tienen sentido quedan "enviados"
-export const calcularFlagsRecordatorio = (fechaHora, config, ahora = new Date()) => {
-  const { vispera, manana } = programarRecordatorios(fechaHora, config);
-  const margen = RECORDATORIOS.margenCreacionMin * 60000;
-  return {
-    recordatorioVisperaEnviado: ahora.getTime() > vispera.getTime() - margen,
-    recordatorioMananaEnviado: manana ? ahora.getTime() > manana.getTime() - margen : true,
-  };
-};
+// ¿La cita es para el mismo día en que se agenda? (hora de Costa Rica)
+export const esCitaMismoDia = (fechaHora, ahora = new Date()) => fechaCR(fechaHora) === fechaCR(ahora);
 
-// Qué recordatorios ("vispera" | "manana") le corresponde enviar ahora a una cita
+// Banderas iniciales al crear o reagendar: los recordatorios que ya no tienen sentido quedan "enviados".
+// Una cita para el mismo día no lleva recordatorio: recibe la confirmación al agendarse.
+// Una cita para otro día siempre recibe el recordatorio de la víspera (es su único mensaje).
+// recordatorioMananaEnviado queda siempre en true: el recordatorio del mismo día ya no existe.
+export const calcularFlagsRecordatorio = (fechaHora, config, ahora = new Date()) => ({
+  recordatorioVisperaEnviado: esCitaMismoDia(fechaHora, ahora),
+  recordatorioMananaEnviado: true,
+});
+
+// ¿Ya pasó la hora del recordatorio de la víspera? (ej. cita para mañana agendada a las 5 p. m.)
+// En ese caso el recordatorio se envía en el momento de agendar.
+export const visperaVencida = (fechaHora, config, ahora = new Date()) =>
+  ahora.getTime() >= programarRecordatorios(fechaHora, config).vispera.getTime();
+
+// Qué recordatorios ("vispera") le corresponde enviar ahora a una cita
 export const recordatoriosPendientes = (cita, config, ahora = new Date()) => {
   if (enSilencio(ahora)) return [];
 
@@ -226,24 +222,13 @@ export const recordatoriosPendientes = (cita, config, ahora = new Date()) => {
   if (t >= citaMs) return [];
 
   const gracia = RECORDATORIOS.graciaMin * 60000;
-  const { vispera, manana } = programarRecordatorios(cita.fecha_hora, config);
+  const { vispera } = programarRecordatorios(cita.fecha_hora, config);
   const pendientes = [];
 
   // recordatorio24Enviado / recordatorio12Enviado: banderas del esquema anterior
   const visperaEnviada = cita.recordatorioVisperaEnviado === true || cita.recordatorio24Enviado === true;
   if (!visperaEnviada && t >= vispera.getTime() && t <= Math.min(vispera.getTime() + gracia, citaMs)) {
     pendientes.push("vispera");
-  }
-
-  const mananaEnviada = cita.recordatorioMananaEnviado === true || cita.recordatorio12Enviado === true;
-  if (
-    manana &&
-    cita.estado === "Programada" &&
-    !mananaEnviada &&
-    t >= manana.getTime() &&
-    t <= Math.min(manana.getTime() + gracia, citaMs - RECORDATORIOS.anticipoMinimoMananaMin * 60000)
-  ) {
-    pendientes.push("manana");
   }
 
   return pendientes;

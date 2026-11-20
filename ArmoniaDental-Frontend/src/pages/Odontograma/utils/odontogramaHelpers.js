@@ -60,6 +60,7 @@ export function getTopLabels(marks = [], actionGroups = CONTEXT_ACTIONS) {
 		.map((mark) => getActionById(mark.actionId, actionGroups))
 		.filter(Boolean)
 		.filter((action) => ["label", "whole"].includes(action.type))
+		.filter((action) => action.id !== "protesis_total")
 		.filter((action) => {
 			if (seen.has(action.id)) return false;
 
@@ -115,6 +116,8 @@ export function getExclusiveGroup(actionId, actionGroups = CONTEXT_ACTIONS) {
 			"resto_radicular",
 			"indicada_exodoncia",
 			"pontico",
+			"protesis_parcial",
+			"protesis_total",
 		].includes(actionId)
 	) {
 		return "estado_estructural";
@@ -299,4 +302,14 @@ export function buildOdontogramaPayload({
 		notas_generales: notasGenerales || "",
 		version: version ?? null,
 	};
+}
+
+/* Prótesis total: arcada a la que pertenece una pieza y todas sus piezas en la dentición */
+export function getArcada(numero) {
+	return [1, 2, 5, 6].includes(Math.floor(Number(numero) / 10)) ? "superior" : "inferior";
+}
+
+export function getPiezasArcada(numero, dentadura) {
+	const arcada = getArcada(numero);
+	return getToothNumbers(dentadura).filter((n) => getArcada(n) === arcada);
 }

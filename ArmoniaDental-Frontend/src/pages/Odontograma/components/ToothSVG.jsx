@@ -69,6 +69,7 @@ function resolveSpriteKey(num) {
     83: 43,
     84: 46,
     85: 47,
+    38: 48,
   };
 
   return temporaryAliases[piece] || piece;
@@ -103,6 +104,12 @@ export default function ToothSVG({
   const pilarPuente = getWholeAction(marks, ["pilar_puente"], actionGroups);
   const pontico = getWholeAction(marks, ["pontico"], actionGroups);
   const puente = pilarPuente || pontico;
+  const protesisParcial = getWholeAction(marks, ["protesis_parcial"], actionGroups);
+  const protesisTotal = getWholeAction(marks, ["protesis_total"], actionGroups);
+  const gancho = getWholeAction(marks, ["gancho"], actionGroups);
+  const removible = protesisParcial || protesisTotal;
+  // Pieza artificial (póntico o diente de una prótesis): se dibuja solo la corona, sin raíz
+  const artificial = Boolean(pontico || removible);
 
   const corona =
     getWholeAction(marks, [
@@ -121,8 +128,10 @@ export default function ToothSVG({
   const filterCrownId = `tooth-crown-${num}`;
   const rootClipId = `tooth-root-clip-${num}`;
   const crownClipId = `tooth-crown-clip-${num}`;
-  const orientation = upper ? undefined : "translate(0 96) scale(1 -1)";
-  const rootColor = endodoncia?.color || restoRadicular?.color || null;
+  // Las imágenes tienen la corona arriba: las piezas superiores se voltean para que la raíz quede
+  // hacia arriba y la corona hacia la línea media; las inferiores quedan con la raíz hacia abajo.
+  const orientation = upper ? "translate(0 96) scale(1 -1)" : undefined;
+  const rootColor = restoRadicular?.color || null;
 
   return (
     <svg
@@ -186,12 +195,12 @@ export default function ToothSVG({
               width="46"
               height="94"
               preserveAspectRatio="xMidYMid meet"
-              clipPath={pontico ? `url(#${crownClipId})` : undefined}
+              clipPath={artificial ? `url(#${crownClipId})` : undefined}
               filter={`url(#${filterBaseId})`}
               pointerEvents="none"
             />
 
-            {rootColor && !pontico && (
+            {rootColor && !artificial && (
               <image
                 href={sprite}
                 x="1"
@@ -273,6 +282,8 @@ export default function ToothSVG({
           <text
             x="24"
             y="25"
+            transform={upper ? "translate(0 50) scale(1 -1)" : undefined}
+            dominantBaseline="middle"
             textAnchor="middle"
             fontSize="10"
             fontWeight="800"
@@ -314,12 +325,26 @@ export default function ToothSVG({
           </>
         )}
 
-        {poste && !ausente && !implante && !pontico && (
+        {/* Endodoncia y poste: barra dentro de la raíz. Si la pieza tiene ambos, el poste ocupa
+            la parte cercana a la corona y la endodoncia la parte de la punta de la raíz. */}
+        {endodoncia && !ausente && !implante && !artificial && (
+          <rect
+            x="22"
+            y={poste ? 47 : 27}
+            width="4"
+            height={poste ? 16 : 36}
+            rx="1.5"
+            fill={endodoncia.color}
+            pointerEvents="none"
+          />
+        )}
+
+        {poste && !ausente && !implante && !artificial && (
           <rect
             x="22"
             y="27"
             width="4"
-            height="36"
+            height={endodoncia ? 21 : 36}
             rx="1.5"
             fill={poste.color}
             pointerEvents="none"
@@ -351,6 +376,26 @@ export default function ToothSVG({
               />
             )}
           </>
+        )}
+
+        {/* Prótesis removible (parcial o total): doble línea que se une con las piezas vecinas */}
+        {removible && !ausente && (
+          <g pointerEvents="none" stroke={removible.color} strokeWidth="1.8">
+            <line x1="-3" y1="1" x2="51" y2="1" />
+            <line x1="-3" y1="5" x2="51" y2="5" />
+          </g>
+        )}
+
+        {/* Gancho de la prótesis parcial: abraza la corona del diente de apoyo */}
+        {gancho && !ausente && !implante && (
+          <path
+            d="M7 24 C 6 8, 42 8, 41 24"
+            fill="none"
+            stroke={gancho.color}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            pointerEvents="none"
+          />
         )}
 
         {fractureMarks.length > 0 && !ausente && !implante && (

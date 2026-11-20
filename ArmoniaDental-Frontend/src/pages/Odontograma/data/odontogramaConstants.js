@@ -130,7 +130,7 @@ export const CONTEXT_ACTIONS = [
 			{
 				id: "endodoncia",
 				label: "Endodoncia",
-				color: STATUS_COLORS.azul,
+				color: STATUS_COLORS.rojo,
 				shortLabel: "ENDO",
 				type: "whole",
 			},
@@ -172,6 +172,34 @@ export const CONTEXT_ACTIONS = [
 				label: "Póntico",
 				color: STATUS_COLORS.azul,
 				shortLabel: "PON",
+				type: "whole",
+				exclusiveGroup: "estado_estructural",
+			},
+		],
+	},
+	{
+		group: "Prótesis removibles",
+		items: [
+			{
+				id: "protesis_parcial",
+				label: "Pieza en prótesis parcial removible",
+				color: STATUS_COLORS.azul,
+				shortLabel: "PPR",
+				type: "whole",
+				exclusiveGroup: "estado_estructural",
+			},
+			{
+				id: "gancho",
+				label: "Gancho (retenedor)",
+				color: STATUS_COLORS.azul,
+				shortLabel: "GAN",
+				type: "whole",
+			},
+			{
+				id: "protesis_total",
+				label: "Prótesis total (toda la arcada)",
+				color: STATUS_COLORS.azul,
+				shortLabel: "PT",
 				type: "whole",
 				exclusiveGroup: "estado_estructural",
 			},
@@ -238,11 +266,11 @@ export const MAIN_LEGEND = [
 	},
 	{
 		color: STATUS_COLORS.azul,
-		text: "Amalgama, coronas, endodoncia, postes y puentes",
+		text: "Amalgama, coronas, postes, puentes y prótesis",
 	},
 	{
 		color: STATUS_COLORS.rojo,
-		text: "Caries, material temporal, exodoncia y resto radicular",
+		text: "Caries, material temporal, endodoncia, exodoncia y resto radicular",
 	},
 	{
 		color: STATUS_COLORS.negro,

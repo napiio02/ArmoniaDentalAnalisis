@@ -111,6 +111,29 @@ const comprobanteSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+    // Versión firmada digitalmente (el archivo está en ComprobanteFirmado; aquí solo el resumen)
+    firmado: {
+      type: new mongoose.Schema(
+        {
+          nombre_original: { type: String, default: "" },
+          tamano: { type: Number, default: 0 },
+          subido_por_nombre: { type: String, default: "" },
+          subido_en: { type: Date, default: null },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
+    // Envíos por WhatsApp
+    estado_whatsapp: {
+      type: String,
+      enum: ESTADOS_ENVIO_COMPROBANTE,
+      default: "pendiente",
+    },
+    whatsapp_enviado_a: { type: String, trim: true, default: "", maxlength: 20 },
+    whatsapp_enviado_en: { type: Date, default: null },
+    whatsapp_version_enviada: { type: String, enum: ["", "firmado", "generado"], default: "" },
+    cantidad_envios_whatsapp: { type: Number, min: 0, default: 0 },
   },
   {
     timestamps: true,

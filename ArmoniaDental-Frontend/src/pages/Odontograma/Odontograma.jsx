@@ -31,6 +31,8 @@ import {
   buildPatientOptions,
   getToothNumbers,
   buildOdontogramaPayload,
+  getArcada,
+  getPiezasArcada,
 } from "./utils/odontogramaHelpers";
 import {
   guardarOdontograma,
@@ -689,6 +691,35 @@ export default function Odontograma() {
       setContextMenu((p) => ({ ...p, open: false }));
       return;
     }
+    // Prótesis total: se aplica de una vez a todas las piezas de la arcada
+    if (action.id === "protesis_total") {
+      const piezas = getPiezasArcada(toothNumber, dentadura);
+      const marca = { actionId: action.id, area: "whole" };
+      const grupo = getExclusiveGroup(action.id, actionGroups);
+      if (piezas.every((n) => teeth[n]?.marks?.some((m) => markEquals(m, marca)))) {
+        showToast({ type: "warning", title: "Ya registrada", message: `La prótesis total ${getArcada(toothNumber)} ya está registrada.` });
+        setContextMenu((p) => ({ ...p, open: false }));
+        return;
+      }
+      setTeeth((prev) => {
+        const siguiente = { ...prev };
+        for (const n of piezas) {
+          const marcas = (prev[n]?.marks || []).filter(
+            (m) => getExclusiveGroup(m.actionId, actionGroups) !== grupo,
+          );
+          siguiente[n] = { ...prev[n], marks: [...marcas, marca] };
+        }
+        return siguiente;
+      });
+      registrarCambio();
+      setContextMenu((p) => ({ ...p, open: false }));
+      showToast({
+        type: "success",
+        title: `Prótesis total ${getArcada(toothNumber)}`,
+        message: `Se registró en las ${piezas.length} piezas de la arcada ${getArcada(toothNumber)}.`,
+      });
+      return;
+    }
     const current = teeth[toothNumber];
     if (!current) return;
     const area = action.type === "label" ? "label" : "whole";
@@ -719,6 +750,19 @@ export default function Odontograma() {
 
   function handleRemoveMark(toothNumber, markToRemove) {
     if (edicionBloqueada) return;
+    // Quitar la prótesis total la quita de toda la arcada
+    if (markToRemove.actionId === "protesis_total") {
+      const piezas = getPiezasArcada(toothNumber, dentadura);
+      setTeeth((prev) => {
+        const siguiente = { ...prev };
+        for (const n of piezas) {
+          siguiente[n] = { ...prev[n], marks: (prev[n]?.marks || []).filter((m) => m.actionId !== "protesis_total") };
+        }
+        return siguiente;
+      });
+      registrarCambio();
+      return;
+    }
     const current = teeth[toothNumber];
     if (!current) return;
     const newMarks = current.marks.filter(
@@ -1061,7 +1105,7 @@ export default function Odontograma() {
           </span>
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
-        <span className="text-2xl">ꨄ︎</span>
+        <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
         <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
         <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link

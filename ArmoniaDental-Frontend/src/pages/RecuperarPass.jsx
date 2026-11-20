@@ -52,9 +52,9 @@ function RecuperarPass() {
         <div className="bg-white border border-[#bec8ce] rounded-2xl shadow-xl p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="text-5xl mb-3">ꨄ︎</div>
+            <img src="/logo-armonia-dental.png" alt="" className="h-28 w-auto mx-auto mb-2" />
 
-            <h1 className="text-2xl font-extrabold text-[#151c27]">
+            <h1 className="sr-only">
               Armonía Dental
             </h1>
 

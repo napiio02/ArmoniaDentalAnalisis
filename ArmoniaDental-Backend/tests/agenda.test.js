@@ -4,6 +4,8 @@ import {
   CONFIG_POR_DEFECTO,
   aFechaCR,
   calcularFlagsRecordatorio,
+  esCitaMismoDia,
+  visperaVencida,
   enSilencio,
   esDiaLaboral,
   generarSlots,
@@ -79,14 +81,12 @@ test("horarios disponibles: según horario, duración y días sin atención", ()
 
 test("recordatorios: víspera a las 4 p. m. del día laboral anterior", () => {
   const c = config();
-  // Jueves 8 a. m.: víspera el miércoles; sin recordatorio de la mañana (la cita es antes de las 10)
+  // Jueves 8 a. m. o 2 p. m.: un solo recordatorio, el miércoles a las 4 p. m.; ninguno el mismo día
   let p = programarRecordatorios(cr("2026-10-15", "08:00"), c);
+  assert.deepEqual(Object.keys(p), ["vispera"]);
   assert.equal(p.vispera.toISOString(), cr("2026-10-14", "16:00").toISOString());
-  assert.equal(p.manana, null);
-  // Jueves 2 p. m.: víspera el miércoles 4 p. m. y mañana el jueves 7 a. m. (nunca a las 2 a. m.)
   p = programarRecordatorios(cr("2026-10-15", "14:00"), c);
   assert.equal(p.vispera.toISOString(), cr("2026-10-14", "16:00").toISOString());
-  assert.equal(p.manana.toISOString(), cr("2026-10-15", "07:00").toISOString());
   // Lunes: el domingo no se atiende, la víspera sale el sábado
   p = programarRecordatorios(cr("2026-10-12", "09:00"), c);
   assert.equal(p.vispera.toISOString(), cr("2026-10-10", "16:00").toISOString());
@@ -95,21 +95,27 @@ test("recordatorios: víspera a las 4 p. m. del día laboral anterior", () => {
   assert.equal(p.vispera.toISOString(), cr("2026-10-12", "16:00").toISOString());
 });
 
-test("recordatorios: al crear se omiten los que ya no tienen sentido", () => {
+test("recordatorios: al agendar, solo el mismo día queda sin recordatorio", () => {
   const c = config();
-  const cita = cr("2026-10-15", "14:00"); // víspera: miércoles 14 a las 4 p. m.; mañana: jueves 15 a las 7 a. m.
-  // Creada con varios días de anticipación: ambos pendientes
-  assert.deepEqual(calcularFlagsRecordatorio(cita, c, cr("2026-10-05", "10:00")),
-    { recordatorioVisperaEnviado: false, recordatorioMananaEnviado: false });
-  // Creada el miércoles al mediodía (4 h antes de la víspera): la víspera sí sale
-  assert.equal(calcularFlagsRecordatorio(cita, c, cr("2026-10-14", "12:00")).recordatorioVisperaEnviado, false);
-  // Creada el miércoles a las 3 p. m. (1 h antes): se omite, ya recibió la confirmación
-  assert.equal(calcularFlagsRecordatorio(cita, c, cr("2026-10-14", "15:00")).recordatorioVisperaEnviado, true);
-  // Creada el miércoles a las 5 p. m.: la víspera ya pasó; el de la mañana sí queda pendiente
-  const tarde = calcularFlagsRecordatorio(cita, c, cr("2026-10-14", "17:00"));
-  assert.deepEqual(tarde, { recordatorioVisperaEnviado: true, recordatorioMananaEnviado: false });
-  // Cita antes de las 10: nunca lleva recordatorio de la mañana
-  assert.equal(calcularFlagsRecordatorio(cr("2026-10-15", "09:00"), c, cr("2026-10-05", "10:00")).recordatorioMananaEnviado, true);
+  const cita = cr("2026-10-15", "14:00"); // víspera: miércoles 14 a las 4 p. m.
+  // Agendada con anticipación, o el mismo miércoles: el recordatorio queda pendiente
+  for (const ahora of [cr("2026-10-05", "10:00"), cr("2026-10-14", "15:00"), cr("2026-10-14", "17:00")]) {
+    assert.deepEqual(calcularFlagsRecordatorio(cita, c, ahora),
+      { recordatorioVisperaEnviado: false, recordatorioMananaEnviado: true });
+  }
+  // Agendada el mismo jueves: sin recordatorio (recibe la confirmación)
+  assert.deepEqual(calcularFlagsRecordatorio(cita, c, cr("2026-10-15", "08:00")),
+    { recordatorioVisperaEnviado: true, recordatorioMananaEnviado: true });
+});
+
+test("recordatorios: si la hora de la víspera ya pasó, se envía al agendar", () => {
+  const c = config();
+  const cita = cr("2026-10-15", "14:00");
+  assert.equal(visperaVencida(cita, c, cr("2026-10-14", "15:59")), false); // el job lo enviará a las 4 p. m.
+  assert.equal(visperaVencida(cita, c, cr("2026-10-14", "16:00")), true);
+  assert.equal(visperaVencida(cita, c, cr("2026-10-14", "21:30")), true); // de noche también: es una acción de la clínica
+  // Cita del lunes agendada el domingo: la víspera (sábado) ya pasó
+  assert.equal(visperaVencida(cr("2026-10-12", "09:00"), c, cr("2026-10-11", "10:00")), true);
 });
 
 test("recordatorios: cuándo toca enviar cada uno", () => {
@@ -123,23 +129,17 @@ test("recordatorios: cuándo toca enviar cada uno", () => {
   assert.deepEqual(cuando("2026-10-14", "19:30"), []); // ya pasó la gracia: no se envía tarde
   assert.deepEqual(cuando("2026-10-14", "20:30"), []); // silencio nocturno
   assert.deepEqual(cuando("2026-10-15", "02:00"), []); // jamás a las 2 a. m.
-  assert.deepEqual(cuando("2026-10-15", "07:10"), ["manana"]);
-  assert.deepEqual(cuando("2026-10-15", "13:30"), []); // faltan menos de 1 h
+  assert.deepEqual(cuando("2026-10-15", "07:10"), []); // el día de la cita no se recuerda
   assert.deepEqual(cuando("2026-10-15", "15:00"), []); // la cita ya empezó
 
-  // La de la mañana solo si no confirmó
-  assert.deepEqual(cuando("2026-10-15", "07:10", { ...base, estado: "Confirmada" }), []);
   // La víspera sale aunque ya esté confirmada (es un recordatorio)
   assert.deepEqual(cuando("2026-10-14", "16:05", { ...base, estado: "Confirmada" }), ["vispera"]);
   // Ya enviados
   assert.deepEqual(cuando("2026-10-14", "16:05", { ...base, recordatorioVisperaEnviado: true }), []);
-  assert.deepEqual(cuando("2026-10-15", "07:10", { ...base, recordatorioMananaEnviado: true }), []);
   // Banderas del esquema anterior (citas creadas antes del cambio) no generan mensajes duplicados
   assert.deepEqual(cuando("2026-10-14", "16:05", { ...base, recordatorio24Enviado: true }), []);
-  assert.deepEqual(cuando("2026-10-15", "07:10", { ...base, recordatorio12Enviado: true }), []);
-  // Cita temprana: solo la víspera
+  // Cita temprana: también solo la víspera
   const temprana = { fecha_hora: cr("2026-10-15", "09:00"), estado: "Programada" };
-  assert.deepEqual(cuando("2026-10-15", "07:10", temprana), []);
   assert.deepEqual(cuando("2026-10-14", "16:05", temprana), ["vispera"]);
   // Lunes 9 a. m.: la víspera es el sábado a las 4 p. m., no el domingo
   const lunes = { fecha_hora: cr("2026-10-12", "09:00"), estado: "Programada" };
@@ -153,4 +153,16 @@ test("silencio nocturno: 8 p. m. a 7 a. m. hora de Costa Rica", () => {
   assert.equal(enSilencio(cr("2026-10-12", "19:59")), false);
   assert.equal(enSilencio(cr("2026-10-12", "20:00")), true);
   assert.equal(enSilencio(cr("2026-10-12", "00:30")), true);
+});
+
+test("cita para el mismo día: sin recordatorio; desde el día siguiente sí lleva víspera", () => {
+  const c = config();
+  // Agendada el miércoles 14 a las 9:00 a. m. para ese mismo día a las 3:00 p. m.
+  assert.equal(esCitaMismoDia(cr("2026-10-14", "15:00"), cr("2026-10-14", "09:00")), true);
+  assert.deepEqual(calcularFlagsRecordatorio(cr("2026-10-14", "15:00"), c, cr("2026-10-14", "06:00")),
+    { recordatorioVisperaEnviado: true, recordatorioMananaEnviado: true });
+  // Agendada a las 11:30 p. m. para el día siguiente: no es el mismo día
+  assert.equal(esCitaMismoDia(cr("2026-10-15", "09:00"), cr("2026-10-14", "23:30")), false);
+  // Agendada el lunes 12 para el jueves 15: la víspera (miércoles 4 p. m.) queda pendiente
+  assert.equal(calcularFlagsRecordatorio(cr("2026-10-15", "14:00"), c, cr("2026-10-12", "10:00")).recordatorioVisperaEnviado, false);
 });

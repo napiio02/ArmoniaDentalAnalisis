@@ -79,7 +79,7 @@ const RegistrarEntrada = () => {
     return (
       <div className="min-h-screen bg-[#f9f9ff] flex flex-col">
         <header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
-          <span className="text-2xl">ꨄ︎</span>
+          <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
           <span className="font-bold text-[#151c27]">Armonía Dental</span>
         </header>
         <div className="flex-1 flex items-center justify-center">
@@ -93,7 +93,7 @@ const RegistrarEntrada = () => {
     return (
       <div className="min-h-screen bg-[#f9f9ff] flex flex-col">
         <header className="bg-white border-b border-[#bec8ce] px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-2 sm:gap-3">
-          <span className="text-2xl">ꨄ︎</span>
+          <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
           <span className="font-bold text-[#151c27]">Armonía Dental</span>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
@@ -127,7 +127,7 @@ const RegistrarEntrada = () => {
           </span>
         </Link>
         <div className="w-px h-5 bg-[#bec8ce]" />
-        <span className="text-2xl">ꨄ︎</span>
+        <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto" />
         <span className="hidden sm:inline font-bold text-[#151c27]">Armonía Dental</span>
         <span className="hidden sm:inline text-[#bec8ce] mx-1">/</span>
         <Link

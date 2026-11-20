@@ -129,13 +129,10 @@ export default function Sidebar({ activeItem = "citas" }) {
       {/* Logo */}
       <Link
         to="/"
-        className="p-6 flex items-center gap-2 mb-6 hover:opacity-80 transition-opacity"
+        className="px-6 pt-5 pb-3 flex items-center justify-center mb-4 hover:opacity-80 transition-opacity"
+        aria-label="Armonía Dental, ir al inicio"
       >
-        <span className="text-2xl">ꨄ︎</span>
-
-        <span className="font-bold text-lg text-[#151c27]">
-          Armonía Dental
-        </span>
+        <img src="/logo-armonia-dental.png" alt="Armonía Dental" className="h-20 w-auto" />
       </Link>
 
       {/* Navegación */}
@@ -311,7 +308,7 @@ export default function Sidebar({ activeItem = "citas" }) {
             <span className="material-symbols-outlined text-[24px]">menu</span>
           </button>
           <Link to="/" className="flex items-center gap-2 min-w-0">
-            <span className="text-xl">ꨄ︎</span>
+            <img src="/logo-armonia-dental.png" alt="" className="h-8 w-auto flex-shrink-0" />
             <span className="font-bold text-[#151c27] truncate">Armonía Dental</span>
           </Link>
           <div

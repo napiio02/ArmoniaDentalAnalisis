@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import CentroNotificaciones, {
   mostrarNotificacion,
@@ -9,6 +9,10 @@ import {
   enviarComprobante,
   listarComprobantes,
   obtenerComprobante,
+  obtenerPdfComprobante,
+  subirComprobanteFirmado,
+  quitarComprobanteFirmado,
+  enviarWhatsappComprobante,
 } from "../services/comprobanteService";
 
 const TIPOS = ["Incapacidad", "Justificación laboral"];
@@ -57,6 +61,10 @@ const Comprobantes = () => {
   const [mostrarDetalle, setMostrarDetalle] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [estadoEnvio, setEstadoEnvio] = useState("idle"); // idle | sending | sent
+  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
+  const [subiendoFirmado, setSubiendoFirmado] = useState(false);
+  const [confirmarQuitarFirmado, setConfirmarQuitarFirmado] = useState(false);
+  const inputFirmadoRef = useRef(null);
 
   const [formNuevo, setFormNuevo] = useState({
     paciente_id: "",
@@ -206,34 +214,92 @@ const Comprobantes = () => {
     }
   };
 
-  const escapar = (t = "") =>
-  String(t).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
+  // Abre el PDF oficial (el mismo que se envía por correo) para imprimirlo o guardarlo.
+  // La ventana se abre antes de la descarga para que el navegador no la bloquee.
+  const imprimirComprobante = async (comp, version = comp.firmado ? "firmado" : "generado") => {
+    const ventana = window.open("", "_blank");
+    if (ventana) {
+      ventana.document.title = `Comprobante ${comp.numero}`;
+      ventana.document.body.innerHTML =
+        '<p style="font-family:Arial,sans-serif;padding:32px;color:#3f484e">Generando comprobante...</p>';
+    }
+    try {
+      const url = URL.createObjectURL(await obtenerPdfComprobante(comp._id, version));
+      if (ventana && !ventana.closed) {
+        ventana.location.href = url;
+      } else {
+        const enlace = document.createElement("a");
+        enlace.href = url;
+        enlace.download = `${comp.numero}${version === "firmado" ? "-firmado" : ""}.pdf`;
+        enlace.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      ventana?.close();
+      mostrarNotificacion({
+        tipo: "error",
+        titulo: "No se pudo abrir el comprobante",
+        mensaje: err.message,
+      });
+    }
+  };
 
-  const imprimirComprobante = (comp) => {
-    const w = window.open("", "_blank", "width=800,height=900");
-    if (!w) return;
-    w.document.write(`
-      <html><head><title>Comprobante ${escapar(comp.numero)}</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:40px;color:#151c27}
-        h1{text-align:center;margin:0} .c{text-align:center;color:#555;font-size:13px}
-        hr{margin:20px 0} .r{display:flex;justify-content:space-between;margin:8px 0}
-        .d{background:#f0f3ff;padding:12px;border-radius:8px;margin-top:12px}
-      </style></head><body>
-        <h1>Armonía Dental</h1>
-        <p class="c">Teléfono: 61119106<br/>lau_ure@icloud.com</p><hr/>
-        <div class="r"><b>Número:</b><span>${escapar(comp.numero)}</span></div>
-        <div class="r"><b>Tipo:</b><span>${escapar(comp.tipo)}</span></div>
-        <div class="r"><b>Paciente:</b><span>${escapar(comp.paciente_nombre)}</span></div>
-        <div class="r"><b>Fecha:</b><span>${escapar(formatearFecha(comp.fecha))}</span></div>
-        <div class="r"><b>Horario:</b><span>${escapar(comp.hora_inicio)} – ${escapar(comp.hora_fin)}</span></div>
-        <div class="r"><b>Doctor(a):</b><span>${escapar(comp.profesional_nombre)}</span></div>
-        <div class="d"><b>Descripción:</b><br/>${escapar(comp.descripcion)}</div>
-        <script>window.onload=()=>{window.print()}</script>
-      </body></html>`);
-    w.document.close();
+  const actualizarComprobante = (actualizado) => {
+    setMostrarDetalle(actualizado);
+    setComprobantes((previos) => previos.map((c) => (c._id === actualizado._id ? actualizado : c)));
+  };
+
+  const handleSubirFirmado = async (evento) => {
+    const archivo = evento.target.files?.[0];
+    evento.target.value = ""; // permite volver a elegir el mismo archivo
+    if (!archivo || !mostrarDetalle) return;
+    if (archivo.type && archivo.type !== "application/pdf") {
+      mostrarNotificacion({ tipo: "error", titulo: "Archivo no válido", mensaje: "Seleccione el comprobante firmado en formato PDF." });
+      return;
+    }
+    if (archivo.size > 5 * 1024 * 1024) {
+      mostrarNotificacion({ tipo: "error", titulo: "Archivo muy grande", mensaje: "El PDF firmado no puede superar 5 MB." });
+      return;
+    }
+    setSubiendoFirmado(true);
+    try {
+      const resultado = await subirComprobanteFirmado(mostrarDetalle._id, archivo);
+      actualizarComprobante(resultado.data);
+      mostrarNotificacion({ tipo: "success", titulo: "Comprobante firmado guardado", mensaje: "Los envíos usarán la versión firmada." });
+    } catch (error) {
+      mostrarNotificacion({ tipo: "error", titulo: "No se pudo subir el comprobante firmado", mensaje: error.message });
+    } finally {
+      setSubiendoFirmado(false);
+    }
+  };
+
+  const handleQuitarFirmado = async () => {
+    setConfirmarQuitarFirmado(false);
+    try {
+      const resultado = await quitarComprobanteFirmado(mostrarDetalle._id);
+      actualizarComprobante(resultado.data);
+      mostrarNotificacion({ tipo: "success", titulo: "Se quitó la versión firmada", mensaje: "Puede subir otra cuando quiera." });
+    } catch (error) {
+      mostrarNotificacion({ tipo: "error", titulo: "No se pudo quitar la versión firmada", mensaje: error.message });
+    }
+  };
+
+  const handleEnviarWhatsapp = async () => {
+    if (enviandoWhatsapp || !mostrarDetalle) return;
+    setEnviandoWhatsapp(true);
+    try {
+      const resultado = await enviarWhatsappComprobante(mostrarDetalle._id);
+      actualizarComprobante(resultado.data);
+      mostrarNotificacion({
+        tipo: "success",
+        titulo: "Comprobante enviado por WhatsApp",
+        mensaje: `Se envió la versión ${resultado.data.whatsapp_version_enviada === "firmado" ? "firmada" : "sin firma"} al ${resultado.data.whatsapp_enviado_a}.`,
+      });
+    } catch (error) {
+      mostrarNotificacion({ tipo: "error", titulo: "No se pudo enviar por WhatsApp", mensaje: error.message });
+    } finally {
+      setEnviandoWhatsapp(false);
+    }
   };
 
   const handleVerDetalle = async (comprobante) => {
@@ -576,7 +642,7 @@ const Comprobantes = () => {
       {/* ── Modal detalle ── */}
       {mostrarDetalle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-3 sm:mx-4 p-5 sm:p-6 max-h-[92dvh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-lg font-bold text-[#151c27]">
                 Comprobante {mostrarDetalle.numero}
@@ -597,12 +663,13 @@ const Comprobantes = () => {
 
             {/* Vista del documento */}
             <div className="border border-[#bec8ce] rounded-xl p-5 space-y-3 mb-4">
-              <div className="text-center border-b border-[#bec8ce] pb-4 mb-2">
-                <p className="text-lg font-bold text-[#151c27]">
-                  ꨄ︎ Armonía Dental
-                </p>
-                <p className="text-xs text-[#3f484e]">Teléfono: 61119106</p>
-                <p className="text-xs text-[#3f484e]">lau_ure@icloud.com</p>
+              <div className="flex items-center justify-between gap-3 border-b-2 border-[#2a4d84] pb-3 mb-2">
+                <img src="/logo-armonia-dental.png" alt="Armonía Dental" className="h-14 w-auto" />
+                <div className="text-right">
+                  <p className="text-sm font-bold text-[#2a4d84] tracking-wide">ARMONÍA DENTAL</p>
+                  <p className="text-[10px] font-semibold text-[#3f484e] uppercase tracking-wider">Comprobante médico</p>
+                  <p className="text-[11px] text-[#3f484e]">Tel. 6111-9106 · lau_ure@icloud.com</p>
+                </div>
               </div>
 
               {[
@@ -674,6 +741,68 @@ const Comprobantes = () => {
               </div>
             </div>
 
+            {/* Firma digital */}
+            <input ref={inputFirmadoRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={handleSubirFirmado} />
+            {mostrarDetalle.firmado ? (
+              <div className="rounded-xl border border-[#6df5e1]/40 bg-[#6df5e120] px-4 py-3 mb-4">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-[#006b5f]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[#151c27]">Firmado digitalmente</p>
+                    <p className="text-xs text-[#3f484e]">
+                      Subido{mostrarDetalle.firmado.subido_por_nombre ? ` por ${mostrarDetalle.firmado.subido_por_nombre}` : ""}
+                      {mostrarDetalle.firmado.subido_en ? ` el ${new Date(mostrarDetalle.firmado.subido_en).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}` : ""}
+                      <br />Los envíos por correo y WhatsApp usan esta versión.
+                    </p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs font-semibold">
+                      <button type="button" onClick={() => imprimirComprobante(mostrarDetalle, "firmado")} className="text-[#006686] hover:underline">Ver firmado</button>
+                      <button type="button" onClick={() => inputFirmadoRef.current?.click()} disabled={subiendoFirmado} className="text-[#006686] hover:underline disabled:opacity-50">
+                        {subiendoFirmado ? "Subiendo..." : "Reemplazar"}
+                      </button>
+                      <button type="button" onClick={() => setConfirmarQuitarFirmado(true)} className="text-[#ba1a1a] hover:underline">Quitar</button>
+                    </div>
+                    {confirmarQuitarFirmado && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-[#3f484e]">¿Quitar la versión firmada?</span>
+                        <button type="button" onClick={handleQuitarFirmado} className="px-3 py-1 rounded-full bg-[#ba1a1a] text-white font-semibold">Sí, quitar</button>
+                        <button type="button" onClick={() => setConfirmarQuitarFirmado(false)} className="px-3 py-1 rounded-full border border-[#bec8ce] text-[#3f484e] font-semibold">No</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-[#bec8ce] bg-[#f9f9ff] px-4 py-3 mb-4">
+                <p className="text-sm font-semibold text-[#151c27] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#006686]">draw</span>
+                  Firma digital (opcional)
+                </p>
+                <ol className="mt-2 space-y-1.5 text-xs text-[#3f484e] list-decimal pl-5">
+                  <li>
+                    <button type="button" onClick={() => imprimirComprobante(mostrarDetalle, "generado")} className="font-semibold text-[#006686] hover:underline">
+                      Descargue el PDF
+                    </button>{" "}del comprobante.
+                  </li>
+                  <li>Fírmelo en su computadora con su firma digital.</li>
+                  <li>
+                    <button type="button" onClick={() => inputFirmadoRef.current?.click()} disabled={subiendoFirmado} className="font-semibold text-[#006686] hover:underline disabled:opacity-50">
+                      {subiendoFirmado ? "Subiendo..." : "Suba el PDF firmado"}
+                    </button>
+                    . Desde ese momento, el correo y WhatsApp enviarán la versión firmada.
+                  </li>
+                </ol>
+              </div>
+            )}
+
+            {mostrarDetalle.estado_whatsapp === "enviado" && (
+              <p className="text-xs text-[#006b5f] mb-3 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">chat</span>
+                Enviado por WhatsApp al {mostrarDetalle.whatsapp_enviado_a}
+                {mostrarDetalle.whatsapp_enviado_en ? ` el ${new Date(mostrarDetalle.whatsapp_enviado_en).toLocaleString("es-CR", { dateStyle: "medium", timeStyle: "short" })}` : ""}
+                {mostrarDetalle.whatsapp_version_enviada === "firmado" ? " (versión firmada)" : ""}
+              </p>
+            )}
+
             {!tieneCorreo(mostrarDetalle) && estadoEnvio === "idle" && (
               <div className="rounded-xl border border-[#855300]/20 bg-[#ffddb820] px-4 py-3 mb-4 flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#855300]">warning</span>
@@ -716,24 +845,37 @@ const Comprobantes = () => {
               </div>
             )}
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => {
                   setMostrarDetalle(null);
                   setEstadoEnvio("idle");
+                  setConfirmarQuitarFirmado(false);
                 }}
                 className="px-5 py-2.5 text-xs font-semibold text-[#3f484e] bg-[#f0f3ff] border border-[#bec8ce] rounded-full hover:bg-[#dce2f3] transition-colors"
               >
                 Cerrar
               </button>
 
-              {/* Nuevo botón */}
               <button
                 onClick={() => imprimirComprobante(mostrarDetalle)}
                 className="px-5 py-2.5 text-xs font-semibold text-[#006686] bg-white border border-[#006686] rounded-full hover:bg-[#f0f3ff] transition-colors flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-[16px]">print</span>
                 Imprimir / PDF
+              </button>
+
+              <button
+                onClick={handleEnviarWhatsapp}
+                disabled={enviandoWhatsapp}
+                className="px-5 py-2.5 text-xs font-semibold text-white bg-[#1f9d55] rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-60"
+              >
+                {enviandoWhatsapp ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  <span className="material-symbols-outlined text-[16px]">chat</span>
+                )}
+                {enviandoWhatsapp ? "Enviando..." : "Enviar por WhatsApp"}
               </button>
 
               <button
@@ -762,7 +904,7 @@ const Comprobantes = () => {
                     <span className="material-symbols-outlined text-[16px]">
                       send
                     </span>
-                    Enviar Comprobante
+                    Enviar por correo
                   </>
                 )}
               </button>

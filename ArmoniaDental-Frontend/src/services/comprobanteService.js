@@ -76,6 +76,20 @@ export const enviarComprobante = async (
   return procesarRespuesta(response);
 };
 
+// PDF generado por el servidor (el mismo que se envía por correo)
+// version: "generado" (para firmar) o "firmado"
+export const obtenerPdfComprobante = async (id, version = "generado") => {
+  const response = await apiFetch(`${API_URL}/comprobantes/${id}/pdf?version=${version}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const resultado = await response.json().catch(() => ({}));
+    throw new Error(resultado.message || "No se pudo generar el comprobante.");
+  }
+  return response.blob();
+};
+
 export const descargarPdfComprobante = async (
   id,
   numero
@@ -103,4 +117,35 @@ export const descargarPdfComprobante = async (
   enlace.download = `${numero || "comprobante"}.pdf`;
   enlace.click();
   URL.revokeObjectURL(url);
+};
+
+// Sube el PDF firmado digitalmente (reemplaza el anterior si existía)
+export const subirComprobanteFirmado = async (id, archivo) => {
+  const formulario = new FormData();
+  formulario.append("archivo", archivo);
+  const response = await apiFetch(`${API_URL}/comprobantes/${id}/firmado`, {
+    method: "POST",
+    credentials: "include",
+    body: formulario,
+  });
+  return procesarRespuesta(response);
+};
+
+export const quitarComprobanteFirmado = async (id) => {
+  const response = await apiFetch(`${API_URL}/comprobantes/${id}/firmado`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return procesarRespuesta(response);
+};
+
+// Envía por WhatsApp la versión firmada si existe; si no, la generada por el sistema
+export const enviarWhatsappComprobante = async (id) => {
+  const response = await apiFetch(`${API_URL}/comprobantes/${id}/whatsapp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({}),
+  });
+  return procesarRespuesta(response);
 };

@@ -1,6 +1,6 @@
 import CitaModel from "../models/CitaModel.js";
 import { enviarMensajePlantilla } from "./WhatsappService.js";
-import { notificarCancelacionCita } from "./RecordatorioService.js";
+import { notificarCancelacionCita, enviarRecordatorioAlAgendar } from "./RecordatorioService.js";
 import { obtenerConfiguracionAgenda } from "./ConfiguracionAgendaService.js";
 import {
   DURACIONES,
@@ -8,6 +8,8 @@ import {
   ZONA_HORARIA,
   aFechaCR,
   calcularFlagsRecordatorio,
+  esCitaMismoDia,
+  visperaVencida,
   duracionCita,
   fechaValida,
   generarSlots,
@@ -147,6 +149,38 @@ export const obtenerCitaPorIdService = async (id) => {
   return cita;
 };
 
+// Plantilla "cita agendada" (sin botones), solo para citas del mismo día
+const plantillaConfirmacion = () =>
+  process.env.WHATSAPP_PLANTILLA_CONFIRMACION || "confirmacion_cita";
+
+// Sin await en quien la llama: si WhatsApp falla, la cita igual queda guardada
+const enviarConfirmacionCita = (cita) => {
+  if (!cita?.paciente_id?.telefono) return;
+  const { fechaTexto, horaTexto } = formatearFechaHora(cita.fecha_hora);
+
+  // WhatsappService normaliza el teléfono (agrega 506 si hace falta)
+  enviarMensajePlantilla({
+    telefono: cita.paciente_id.telefono,
+    nombrePlantilla: plantillaConfirmacion(),
+    parametrosNombrados: {
+      nombre_paciente: cita.paciente_id.nombre,
+      tipo_cita: cita.tipo,
+      fecha_cita: fechaTexto,
+      hora_cita: horaTexto,
+    },
+    citaId: String(cita._id),
+    conBotones: false,
+  }).catch((err) =>
+    console.error("No se pudo enviar WhatsApp de confirmación:", err.message)
+  );
+};
+
+/*
+ * Mensajes al agendar:
+ * - Cita para el mismo día: queda Confirmada y recibe la confirmación (sin botones). Sin recordatorio.
+ * - Cita para otro día: no recibe mensaje al agendarse; recibe el recordatorio con los botones
+ *   Confirmar/Cancelar el día laboral anterior a las 4 p. m. Si esa hora ya pasó, sale de inmediato.
+ */
 export const crearCitaService = async (datos) => {
   const { paciente_id, usuario_id, tipo, motivo, observaciones } = datos;
   const fecha_hora = aFechaHoraCR(datos.fecha_hora);
@@ -162,7 +196,8 @@ export const crearCitaService = async (datos) => {
   const choque = await horarioChoque(fecha_hora, tipo);
   if (choque) lanzarError(mensajeChoque(choque), 409);
 
-  // Las banderas de recordatorio omiten los que ya no tienen sentido (ej. cita creada para mañana a las 3 p. m.)
+  const mismoDia = esCitaMismoDia(fecha_hora);
+
   const nueva = await CitaModel.create({
     paciente_id,
     usuario_id,
@@ -170,7 +205,7 @@ export const crearCitaService = async (datos) => {
     tipo,
     motivo,
     observaciones: observaciones || "",
-    estado: "Programada",
+    estado: mismoDia ? "Confirmada" : "Programada",
     ...calcularFlagsRecordatorio(fecha_hora, config),
   });
 
@@ -178,24 +213,8 @@ export const crearCitaService = async (datos) => {
     .populate("paciente_id", "nombre cedula telefono")
     .populate("usuario_id", "nombre email");
 
-  if (citaCompleta.paciente_id?.telefono) {
-    const { fechaTexto, horaTexto } = formatearFechaHora(fecha_hora);
-
-    // WhatsappService normaliza el teléfono (agrega 506 si hace falta)
-    enviarMensajePlantilla({
-      telefono: citaCompleta.paciente_id.telefono,
-      nombrePlantilla: "confirmacion_cita",
-      parametrosNombrados: {
-        nombre_paciente: citaCompleta.paciente_id.nombre,
-        tipo_cita: tipo,
-        fecha_cita: fechaTexto,
-        hora_cita: horaTexto,
-      },
-      citaId: nueva._id.toString(),
-    }).catch((err) =>
-      console.error("No se pudo enviar WhatsApp de confirmación:", err.message)
-    );
-  }
+  if (mismoDia) enviarConfirmacionCita(citaCompleta);
+  else if (visperaVencida(fecha_hora, config)) enviarRecordatorioAlAgendar(nueva._id);
 
   return citaCompleta;
 };
@@ -250,6 +269,13 @@ export const actualizarCitaService = async (id, datos) => {
 
   // Sin await: no debe bloquear ni romper la respuesta si WhatsApp falla
   if (seCancela) notificarCancelacionCita(id);
+
+  // Reagendada: al mismo día recibe la confirmación; a otro día, el recordatorio (de inmediato si su víspera ya pasó)
+  if (cambioFecha && !seCancela && actualizada.estado !== "Cancelada") {
+    const config = await obtenerConfiguracionAgenda();
+    if (esCitaMismoDia(fecha_hora)) enviarConfirmacionCita(actualizada);
+    else if (visperaVencida(fecha_hora, config)) enviarRecordatorioAlAgendar(id);
+  }
 
   return actualizada;
 };

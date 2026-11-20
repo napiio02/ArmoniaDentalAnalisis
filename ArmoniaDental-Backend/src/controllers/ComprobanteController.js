@@ -1,7 +1,10 @@
 import {
   crearComprobanteService,
+  eliminarComprobanteFirmadoService,
   enviarComprobanteService,
-  generarPdfComprobanteService,
+  enviarWhatsappComprobanteService,
+  obtenerArchivoComprobante,
+  subirComprobanteFirmadoService,
   listarComprobantesService,
   obtenerComprobantePorIdService,
 } from "../services/ComprobanteService.js";
@@ -86,8 +89,9 @@ export const descargarPdfComprobante = async (req, res) => {
     const comprobante = await obtenerComprobantePorIdService(
       req.params.id
     );
-    const pdfBuffer = await generarPdfComprobanteService(comprobante);
-    const nombreArchivo = `${comprobante.numero}.pdf`;
+    // ?version=firmado → la versión firmada; por defecto, el PDF generado por el sistema (para firmarlo)
+    const version = req.query.version === "firmado" ? "firmado" : "generado";
+    const { buffer: pdfBuffer, nombre: nombreArchivo } = await obtenerArchivoComprobante(comprobante, version);
 
     res.set({
       "Content-Type": "application/pdf",
@@ -125,5 +129,32 @@ export const enviarComprobante = async (req, res) => {
       error,
       "Ocurrió un error al enviar el comprobante."
     );
+  }
+};
+
+export const subirComprobanteFirmado = async (req, res) => {
+  try {
+    const comprobante = await subirComprobanteFirmadoService(req.params.id, req.file, req.user);
+    return res.status(200).json({ ok: true, message: "Comprobante firmado guardado correctamente.", data: comprobante });
+  } catch (error) {
+    return responderError(res, error, "Ocurrió un error al guardar el comprobante firmado.");
+  }
+};
+
+export const eliminarComprobanteFirmado = async (req, res) => {
+  try {
+    const comprobante = await eliminarComprobanteFirmadoService(req.params.id);
+    return res.status(200).json({ ok: true, message: "Se quitó la versión firmada.", data: comprobante });
+  } catch (error) {
+    return responderError(res, error, "Ocurrió un error al quitar la versión firmada.");
+  }
+};
+
+export const enviarWhatsappComprobante = async (req, res) => {
+  try {
+    const comprobante = await enviarWhatsappComprobanteService(req.params.id, req.body?.telefono);
+    return res.status(200).json({ ok: true, message: "Comprobante enviado por WhatsApp.", data: comprobante });
+  } catch (error) {
+    return responderError(res, error, "Ocurrió un error al enviar el comprobante por WhatsApp.");
   }
 };

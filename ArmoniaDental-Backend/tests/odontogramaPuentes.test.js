@@ -48,3 +48,30 @@ test("el historial registra el poste y el puente con su nombre", () => {
   assert.match(texto, /Póntico/);
   assert.match(texto, /Poste intrarradicular/);
 });
+
+test("prótesis removibles: catálogo, compatibilidad y prótesis total en toda la arcada", () => {
+  for (const codigo of ["protesis_parcial", "gancho", "protesis_total"]) {
+    assert.equal(catalogo.get(codigo)?.tipo_render, "whole", codigo);
+  }
+  // PPR en 15-16 con ganchos en 14 y 17 (uno con corona): válido
+  let lista = piezas();
+  en(lista, 15).marks = [{ actionId: "protesis_parcial", area: "whole" }];
+  en(lista, 16).marks = [{ actionId: "protesis_parcial", area: "whole" }];
+  en(lista, 14).marks = [{ actionId: "gancho", area: "whole" }];
+  en(lista, 17).marks = [{ actionId: "gancho", area: "whole" }, { actionId: "corona_metal_porcelana", area: "whole" }];
+  assert.equal(validarPiezas(lista, "permanente", catalogo).length, 32);
+
+  // La pieza de una prótesis no puede estar a la vez ausente, con implante o como póntico
+  for (const otro of ["ausente", "implante", "pontico", "protesis_total"]) {
+    lista = piezas();
+    en(lista, 15).marks = [{ actionId: "protesis_parcial", area: "whole" }, { actionId: otro, area: "whole" }];
+    assert.throws(() => validarPiezas(lista, "permanente", catalogo), /incompatibles/, otro);
+  }
+
+  // Prótesis total inferior: las 16 piezas de la arcada
+  lista = piezas();
+  for (const p of lista.filter((x) => [3, 4].includes(Math.floor(x.numero / 10)))) {
+    p.marks = [{ actionId: "protesis_total", area: "whole" }];
+  }
+  assert.equal(validarPiezas(lista, "permanente", catalogo).length, 32);
+});

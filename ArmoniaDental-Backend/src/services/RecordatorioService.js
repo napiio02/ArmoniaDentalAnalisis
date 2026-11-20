@@ -86,6 +86,27 @@ const enviarRecordatorio = async (cita, tipo) => {
 };
 
 /*
+ * Envía el recordatorio de inmediato al agendar o reagendar una cita cuya víspera ya pasó
+ * (ej. cita para mañana agendada después de las 4 p. m.). Nunca lanza error.
+ */
+export const enviarRecordatorioAlAgendar = async (citaId) => {
+  try {
+    if (String(process.env.RECORDATORIOS_ACTIVOS ?? "true").toLowerCase() === "false") return false;
+
+    const cita = await CitaModel.findById(citaId).populate("paciente_id", "nombre telefono").lean();
+    if (!cita) return false;
+    if (!cita.paciente_id?.telefono) {
+      console.warn(`Cita ${citaId}: el paciente no tiene teléfono registrado.`);
+      return false;
+    }
+    return await enviarRecordatorio(cita, "vispera");
+  } catch (error) {
+    console.error(`No se pudo enviar el recordatorio de la cita ${citaId}:`, error.message);
+    return false;
+  }
+};
+
+/*
  * Se ejecuta cada pocos minutos. Para cada cita próxima calcula qué recordatorio
  * le toca ahora según el horario de atención (días no laborables incluidos).
  * Interruptor para pruebas: RECORDATORIOS_ACTIVOS=false apaga todos los recordatorios.

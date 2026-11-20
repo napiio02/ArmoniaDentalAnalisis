@@ -56,12 +56,37 @@ const enviar = async (body, mensajeError) => {
  * conBotones (por defecto true): agrega los botones de respuesta rápida
  * Confirmar / Cancelar. Úsalo solo con plantillas que tengan esos 2 botones.
  */
+/*
+ * Sube un PDF a WhatsApp y devuelve su id para adjuntarlo en una plantilla.
+ * (Meta conserva el archivo unos días; se sube de nuevo en cada envío.)
+ */
+export const subirDocumentoWhatsapp = async (buffer, nombreArchivo) => {
+  const formulario = new FormData();
+  formulario.append("messaging_product", "whatsapp");
+  formulario.append("type", "application/pdf");
+  formulario.append("file", new Blob([buffer], { type: "application/pdf" }), nombreArchivo);
+  try {
+    const { data } = await axios.post(
+      `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_ID}/media`,
+      formulario,
+      { headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` } }
+    );
+    return data.id;
+  } catch (error) {
+    console.error("Error al subir el documento a WhatsApp:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export { telefonoPermitido };
+
 export const enviarMensajePlantilla = async ({
   telefono,
   nombrePlantilla,
   parametrosNombrados = {},
   citaId,
   conBotones = true,
+  documento = null, // { id, filename }: PDF en el encabezado de la plantilla
 }) => {
   if (!telefonoPermitido(telefono)) {
     console.log(`[WhatsApp] Envío omitido: ${normalizarTelefono(telefono)} no está en WHATSAPP_LISTA_BLANCA.`);
@@ -77,6 +102,13 @@ export const enviarMensajePlantilla = async ({
   );
 
   const components = [];
+
+  if (documento) {
+    components.push({
+      type: "header",
+      parameters: [{ type: "document", document: { id: documento.id, filename: documento.filename } }],
+    });
+  }
 
   if (parametrosBody.length > 0) {
     components.push({ type: "body", parameters: parametrosBody });

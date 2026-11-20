@@ -141,12 +141,17 @@ function ToothCol({
 
 	return (
 		<div className="flex flex-col items-center" style={{ gap: 2 }}>
-			<div className="h-5 flex items-center justify-center gap-1">
+			{/* Las etiquetas se acomodan dentro del ancho de la pieza (en varias líneas si hace falta),
+			    para que una pieza con muchos registros no se separe de sus vecinas. */}
+			<div
+				className="min-h-5 flex flex-wrap items-end content-end justify-center gap-0.5"
+				style={{ width: small ? 34 : 44 }}
+			>
 				{labels.length > 0 ? (
 					labels.map((label, index) => (
 						<span
 							key={`${label.text}-${index}`}
-							className="text-[8px] font-bold px-1 rounded border"
+							className="text-[8px] leading-[11px] font-bold px-0.5 rounded border"
 							style={{
 								color: label.color,
 								borderColor: `${label.color}55`,
@@ -237,6 +242,16 @@ export default function OdontogramaChart({
 }) {
 	const isPerm = dentadura === "permanente";
 
+	// La prótesis total se indica una sola vez, sobre la arcada que la tiene
+	const leyendaProtesisTotal = (numeros, arcada) =>
+		numeros.some((n) => teeth[n]?.marks?.some((m) => m.actionId === "protesis_total")) ? (
+			<div className="flex justify-center mb-2">
+				<span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border text-[#2563eb] border-[#2563eb]/40 bg-[#2563eb]/5">
+					PT · Prótesis total {arcada}
+				</span>
+			</div>
+		) : null;
+
 	const renderQuadrant = (nums, upper, small = false) => (
 		<div className="flex items-end gap-0.5 justify-center">
 			{nums.map((n) => (
@@ -295,6 +310,7 @@ export default function OdontogramaChart({
 
 				{isPerm ? (
 					<>
+						{leyendaProtesisTotal([...SUP_DER, ...SUP_IZQ], "superior")}
 						<div className="grid grid-cols-2 border-b-2 border-dashed border-gray-200 pb-6 mb-6">
 							<div className="flex justify-end pr-1 border-r-2 border-dashed border-gray-200">
 								{renderQuadrant(SUP_DER, true)}
@@ -305,13 +321,14 @@ export default function OdontogramaChart({
 							</div>
 						</div>
 
+						{leyendaProtesisTotal([...INF_DER, ...INF_IZQ], "inferior")}
 						<div className="grid grid-cols-2">
 							<div className="flex justify-end pr-1 border-r-2 border-dashed border-gray-200">
-								{renderQuadrant(INF_IZQ, false)}
+								{renderQuadrant([...INF_DER].reverse(), false)}
 							</div>
 
 							<div className="flex justify-start pl-1">
-								{renderQuadrant(INF_DER, false)}
+								{renderQuadrant(INF_IZQ, false)}
 							</div>
 						</div>
 					</>
@@ -321,6 +338,7 @@ export default function OdontogramaChart({
 							Dentición temporal
 						</p>
 
+						{leyendaProtesisTotal([...TEMP_SD, ...TEMP_SI], "superior")}
 						<div className="grid grid-cols-2 border-b-2 border-dashed border-gray-200 pb-6 mb-6">
 							<div className="flex justify-end pr-1 border-r-2 border-dashed border-gray-200">
 								{renderQuadrant(TEMP_SD, true, true)}
@@ -331,13 +349,14 @@ export default function OdontogramaChart({
 							</div>
 						</div>
 
+						{leyendaProtesisTotal([...TEMP_ID, ...TEMP_II], "inferior")}
 						<div className="grid grid-cols-2">
 							<div className="flex justify-end pr-1 border-r-2 border-dashed border-gray-200">
-								{renderQuadrant(TEMP_II, false, true)}
+								{renderQuadrant([...TEMP_ID].reverse(), false, true)}
 							</div>
 
 							<div className="flex justify-start pl-1">
-								{renderQuadrant(TEMP_ID, false, true)}
+								{renderQuadrant(TEMP_II, false, true)}
 							</div>
 						</div>
 					</>
