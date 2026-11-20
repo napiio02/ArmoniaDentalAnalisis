@@ -41,6 +41,10 @@ const TOOTH_SPRITES = {
   48: "data:image/png;base64,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",
 };
 
+// Imagen correcta para cada pieza superior: 11-12 incisivos, 13 canino, 14-15 premolares,
+// 16-18 molares (las imágenes originales estaban corridas una posición en 13 y 14).
+const ANATOMIA_SUPERIOR = { 11: 11, 12: 12, 13: 14, 14: 15, 15: 15, 16: 16, 17: 17, 18: 18 };
+
 function toothPosition(num) {
   return Math.abs(Number(num)) % 10;
 }
@@ -91,7 +95,13 @@ export default function ToothSVG({
   const position = toothPosition(num);
   const isTemporary = Number(num) >= 50;
   const isMolar = position >= 6 || (isTemporary && position >= 4);
-  const sprite = TOOTH_SPRITES[resolveSpriteKey(num)];
+  // Arcada superior: el lado izquierdo del paciente (21-28, y 61-65 por sus alias) se dibuja
+  // como el lado derecho en espejo, para que ambos tengan la misma anatomía.
+  const claveSprite = resolveSpriteKey(num);
+  const espejo = claveSprite >= 21 && claveSprite <= 28;
+  const claveSuperior = espejo ? claveSprite - 10 : claveSprite;
+  const sprite = TOOTH_SPRITES[ANATOMIA_SUPERIOR[claveSuperior] ?? claveSuperior];
+  const transformEspejo = espejo ? "translate(48 0) scale(-1 1)" : undefined;
 
   const ausente = getWholeAction(marks, ["ausente"], actionGroups);
   const implante = getWholeAction(marks, ["implante"], actionGroups);
@@ -190,6 +200,7 @@ export default function ToothSVG({
           <>
             <image
               href={sprite}
+              transform={transformEspejo}
               x="1"
               y="1"
               width="46"
@@ -203,6 +214,7 @@ export default function ToothSVG({
             {rootColor && !artificial && (
               <image
                 href={sprite}
+                transform={transformEspejo}
                 x="1"
                 y="1"
                 width="46"
@@ -234,6 +246,7 @@ export default function ToothSVG({
                 />
                 <image
                   href={sprite}
+                  transform={transformEspejo}
                   x="1"
                   y="1"
                   width="46"
